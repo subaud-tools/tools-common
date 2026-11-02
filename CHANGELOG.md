@@ -4,6 +4,15 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.51.0
+
+### Added
+- `channelmcp.ReportActivity`: a harness reports whether its session is working (a turn or a background agent is running) as `{event: "activity", working: true|false}` over `notifications/channels/report`, and a Claude Code mod as `<tool> report activity working|idle`. Both reach `OnReport` and `ReportFunc` as the event `activity` with the token `ActivityWorking` or `ActivityIdle`; a malformed one is ignored and logged. held, landed and turn_ended are unchanged.
+- The plugin mod reports `activity` once at session start and whenever the session starts or stops working: from `turn.start` to the main loop's `turn.complete`, and from each `agent.spawn` until that subagent's own `turn.complete`. A tool that ignores the event needs nothing.
+
+### Fixed
+- The plugin mod no longer runs `report turn-ended` when a subagent's run ends: only the main loop's `turn.complete` ends the turn.
+
 ## 0.50.0
 
 ### Added
