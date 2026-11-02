@@ -242,6 +242,11 @@ if (restart) {
     assert(doc().querySelectorAll(`#frames iframe[data-id="${id}"]`).length === 1, 'one frame for the moved tab');
   });
 
+  test('the tab list never scrolls up and down', async () => {
+    const list = doc().getElementById('tab-list');
+    assert(win().getComputedStyle(list).overflowY === 'hidden', `tab list overflow-y: ${win().getComputedStyle(list).overflowY}`);
+  });
+
   test('a pinned tab has no close button', async () => {
     const res = await post('/api/split/open', { session, address: two, title: 'Pinned', pinned: true });
     const pinned = (await res.json()).tabs.find((t) => t.pinned).id;
