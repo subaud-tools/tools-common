@@ -4,6 +4,18 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.54.0
+
+### Added
+- `splitpage`: a link the terminal prints is clickable and opens in a browser tab of its own (xterm's web-links addon), so an outside site reaches the user from one click.
+- `splitpage`: a tab opened with no title takes the title of its server's front page (a family tool's page is titled with the tool's name), read without the address's path or query; else its host and port.
+
+### Changed
+- `splitpage`: the tab bar is light and taller, and the tab that shows is white, bold and edged in blue. A tab's label and tooltip never show its address's query, so a tool's `?t=` token stays off the screen.
+
+### Fixed
+- `splitpage`: the reload button reloads a tab whose address has a `#` part (casebook's do); it puts a fresh frame in the tab's place instead of setting the same address again.
+
 ## 0.53.1
 
 ### Fixed

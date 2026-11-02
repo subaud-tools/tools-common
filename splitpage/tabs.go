@@ -4,10 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
+	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 )
 
 // Errors the tab calls return; Handler answers them with 400, 404 and 409.
@@ -80,11 +85,40 @@ func localAddress(address string) bool {
 	return err == nil && u.Scheme == "http" && u.User == nil && u.Hostname() == "127.0.0.1" && u.Port() != ""
 }
 
+// titleTag finds a page's <title>.
+var titleTag = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
+
+// pageTitle names a tab opened with no title: the <title> of its server's front
+// page (a family tool's page is titled with the tool's name), read without the
+// address's path or query, so a ?t= token never reaches the label; else the
+// address's host and port.
+func pageTitle(address string) string {
+	u, err := url.Parse(address)
+	if err != nil {
+		return ""
+	}
+	c := http.Client{Timeout: time.Second}
+	res, err := c.Get("http://" + u.Host + "/")
+	if err == nil {
+		defer func() { _ = res.Body.Close() }()
+		b, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
+		if m := titleTag.FindSubmatch(b); m != nil {
+			if s := strings.TrimSpace(html.UnescapeString(string(m[1]))); s != "" {
+				return s
+			}
+		}
+	}
+	return u.Host
+}
+
 // Open opens r.Address as a tab and shows it, or shows the tab already open
 // at that address.
 func (t *Tabs) Open(r OpenRequest) (TabList, error) {
 	if !localAddress(r.Address) {
 		return TabList{}, ErrNotLocal
+	}
+	if r.Title == "" {
+		r.Title = pageTitle(r.Address)
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()

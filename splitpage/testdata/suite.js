@@ -114,6 +114,43 @@ if (restart) {
     await until(async () => (await input()) === 'latehi\n', 'the newline arrives');
   });
 
+  test('a link in the terminal opens in a browser tab when clicked', async () => {
+    const opened = [];
+    win().open = (...a) => {
+      opened.push(a);
+      return null;
+    };
+    const t = split().term;
+    t.input(' https://example.com/x ');
+    await until(() => screen().includes('https://example.com/x'), 'the link shows');
+    const b = t.buffer.active;
+    let row = -1;
+    let col = -1;
+    for (let y = 0; y < t.rows; y++) {
+      const line = b.getLine(b.viewportY + y)?.translateToString() ?? '';
+      const at = line.indexOf('https://example.com/x');
+      if (at >= 0) {
+        row = y;
+        col = at + 3;
+      }
+    }
+    assert(row >= 0, 'the link is on screen');
+    const el = doc().querySelector('#term .xterm-screen');
+    const r = el.getBoundingClientRect();
+    const x = r.left + ((col + 0.5) * r.width) / t.cols;
+    const y = r.top + ((row + 0.5) * r.height) / t.rows;
+    const ev = (type) => new (win().MouseEvent)(type, { bubbles: true, clientX: x, clientY: y, button: 0, view: win() });
+    await until(() => {
+      el.dispatchEvent(ev('mousemove'));
+      return doc().querySelector('#term .xterm-screen')?.classList.contains('xterm-cursor-pointer');
+    }, 'the link is under the pointer');
+    el.dispatchEvent(ev('mousedown'));
+    el.dispatchEvent(ev('mouseup'));
+    el.dispatchEvent(ev('click'));
+    await until(() => opened.length > 0, 'the link opens');
+    assert(opened[0][0] === 'https://example.com/x' && opened[0][1] === '_blank', `opened ${JSON.stringify(opened[0])}`);
+  });
+
   let first, second;
   test('opens two local pages as tabs', async () => {
     let res = await post('/api/split/open', { session, address: one, title: 'One' });
@@ -147,6 +184,21 @@ if (restart) {
     await until(() => bar().length === 1, 'one tab left in the bar');
     assert((await tabs()).tabs.length === 1, 'the server still has the closed tab');
     assert(doc().querySelectorAll('#frames iframe').length === 1, 'the closed frame is gone');
+  });
+
+  test('the reload button reloads a tab whose address has a # part', async () => {
+    const res = await post('/api/split/open', { session, address: `${one}#/decide`, title: 'Hash' });
+    assert(res.ok, `open hash: ${res.status}`);
+    const id = (await res.json()).selected;
+    await until(() => shownFrame()?.dataset.id === id && shownFrame().contentDocument?.readyState === 'complete', 'the hash tab loads');
+    const before = shownFrame().contentWindow.performance.timeOrigin;
+    doc().getElementById('reload').click();
+    await until(() => {
+      const f = shownFrame();
+      return f?.dataset.id === id && f.contentDocument?.readyState === 'complete' && f.contentWindow.performance.timeOrigin !== before;
+    }, 'the hash tab loads again');
+    barTab(id).querySelector('.tab-close').click();
+    await until(() => !barTab(id), 'the hash tab closes');
   });
 
   test('a pinned tab has no close button', async () => {
