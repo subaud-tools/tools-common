@@ -230,3 +230,38 @@ func TestStreamSendsTheListAfterEachChange(t *testing.T) {
 		t.Fatalf("after close: %+v", got)
 	}
 }
+
+// A tab opened with no title takes the title of its server's front page, read
+// without the address's query, so a tool's ?t= token never reaches the label.
+func TestOpenWithNoTitleTakesThePagesTitle(t *testing.T) {
+	var asked string
+	page := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked = r.URL.RequestURI()
+		_, _ = w.Write([]byte("<!doctype html><html><head><title> diazo </title></head></html>"))
+	}))
+	defer page.Close()
+	tabs := NewTabs()
+	list, err := tabs.Open(OpenRequest{Session: "s", Address: page.URL + "/?t=secret&f=1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := list.Tabs[0].Title; got != "diazo" {
+		t.Errorf("title = %q, want diazo", got)
+	}
+	if asked != "/" {
+		t.Errorf("asked the page for %q, want /", asked)
+	}
+}
+
+// A page that gives no title is labelled by its host and port, never its query.
+func TestOpenWithNoTitleFallsBackToTheHost(t *testing.T) {
+	page := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer page.Close()
+	list, err := NewTabs().Open(OpenRequest{Session: "s", Address: page.URL + "/?t=secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := list.Tabs[0].Title, strings.TrimPrefix(page.URL, "http://"); got != want {
+		t.Errorf("title = %q, want %q", got, want)
+	}
+}

@@ -86,9 +86,10 @@ export function startTabs(session: string): TabsView {
         el = button(tab);
         buttons.set(tab.id, el);
       }
-      const title = tab.title || tab.address;
-      el.querySelector('.tab-title')!.textContent = title;
-      el.title = tab.address;
+      // Never the address's query: a tool's ?t= token would show.
+      const where = new URL(tab.address);
+      el.querySelector('.tab-title')!.textContent = tab.title || where.host;
+      el.title = where.origin + where.pathname;
       const on = tab.id === list.selected;
       el.classList.toggle('selected', on);
       el.setAttribute('aria-selected', String(on));
@@ -107,8 +108,15 @@ export function startTabs(session: string): TabsView {
   reload.addEventListener('click', () => {
     const tab = current.tabs?.find((t) => t.id === current.selected);
     const f = tab && shown.get(tab.id);
-    // Setting src again loads it again; a cross-origin frame can't be told to reload.
-    if (tab && f) f.src = tab.address;
+    // A cross-origin frame can't be told to reload, and setting src again does
+    // nothing when the address has a # part (casebook's do): a new frame in its
+    // place always loads.
+    if (tab && f) {
+      const fresh = frame(tab);
+      fresh.classList.add('shown');
+      f.replaceWith(fresh);
+      shown.set(tab.id, fresh);
+    }
   });
 
   const stream = new EventSource(`${api}stream?session=${encodeURIComponent(session)}`);

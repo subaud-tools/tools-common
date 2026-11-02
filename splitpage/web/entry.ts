@@ -5,6 +5,7 @@
 
 import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
+import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
 import type { Resize } from '../wire.d.ts';
@@ -87,6 +88,10 @@ function startTerminal(): void {
   const fit = new FitAddon();
   term.loadAddon(fit);
   term.loadAddon(new Unicode11Addon());
+  // A link the program prints opens in a browser tab of its own: an outside
+  // site can't be framed, and is reached by a click (spec: outside sites open
+  // from a link).
+  term.loadAddon(new WebLinksAddon((_ev, uri) => window.open(uri, '_blank', 'noopener')));
   term.unicode.activeVersion = '11';
   term.open(document.getElementById('term')!);
   try {
