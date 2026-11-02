@@ -10,6 +10,10 @@
 //   BIN report held <token>     the line's prompt is waiting: the agent is mid-turn
 //   BIN report landed <token>   the line's prompt started a turn
 //   BIN report turn-ended       a turn completed after one of its lines landed
+//   BIN report activity working|idle
+//                               the session started or stopped working: a turn
+//                               or a subagent is running, or none is (and once
+//                               at session start)
 
 const NAME = {{.NameJS}}
 const BIN = {{.BinJS}}
@@ -37,6 +41,13 @@ let delay = FIRST_DELAY
 // landed is true once one of this mod's lines started a turn, until that turn
 // completes: only then does turn.complete run the binary.
 let landed = false
+// turning is true from turn.start to the main loop's turn.complete; agents
+// holds each subagent started (agent.spawn) until its own turn.complete,
+// which carries its agentId. working is the last activity reported, null
+// before the first.
+let turning = false
+const agents = new Set()
+let working = null
 // reports runs each report after the one before it has exited: each is its
 // own process calling the tool's server, so started together they could
 // arrive in either order.
@@ -45,6 +56,15 @@ let reports = Promise.resolve()
 // queueReport runs report($, args) once every earlier report has exited.
 function queueReport($, args) {
   reports = reports.then(() => report($, args))
+}
+
+// activity reports `activity working|idle` when the session's state differs
+// from the last one reported, or always when force is set.
+function activity($, force) {
+  const now = turning || agents.size > 0
+  if (!force && now === working) return
+  working = now
+  queueReport($, ['activity', now ? 'working' : 'idle'])
 }
 
 // report runs `BIN report ...args` in this session. A failure goes to the
@@ -158,10 +178,35 @@ export function register(on) {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     start($)
+    activity($, true)
     return started
   })
 
+  // Only the main loop raises turn.start; a subagent's run raises none.
+  on('turn.start', async ($, e, next) => {
+    turning = true
+    activity($, false)
+    return next(e)
+  })
+
+  on('agent.spawn', async ($, e, next) => {
+    const r = await next(e)
+    if (typeof r?.agentId === 'string' && r.agentId) {
+      agents.add(r.agentId)
+      activity($, false)
+    }
+    return r
+  })
+
   on('turn.complete', async ($, e, next) => {
+    // A subagent's run ends with its own turn.complete, carrying its agentId.
+    if (typeof e?.agentId === 'string' && e.agentId) {
+      agents.delete(e.agentId)
+      activity($, false)
+      return next(e)
+    }
+    turning = false
+    activity($, false)
     if (landed) {
       landed = false
       queueReport($, ['turn-ended'])

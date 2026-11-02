@@ -82,10 +82,27 @@ func TestReportCommandIsQuietInABridgeChild(t *testing.T) {
 	}
 }
 
+// The Claude Code plugin runs `report activity working|idle` whenever its
+// session starts or stops working.
+func TestReportCommandDeliversActivity(t *testing.T) {
+	claudeSession(t, "cc-1")
+	app, got := reportApp(t, nil)
+	for _, w := range []string{"working", "idle"} {
+		var errw bytes.Buffer
+		if code := app.Dispatch([]string{"report", "activity", w}, &bytes.Buffer{}, &errw); code != 0 {
+			t.Fatalf("report activity %s exit %d: %s", w, code, errw.String())
+		}
+	}
+	want := []delivered{{"cc-1", ReportActivity, ActivityWorking}, {"cc-1", ReportActivity, ActivityIdle}}
+	if len(*got) != 2 || (*got)[0] != want[0] || (*got)[1] != want[1] {
+		t.Fatalf("delivered %+v, want %+v", *got, want)
+	}
+}
+
 func TestReportCommandRefusesBadArguments(t *testing.T) {
 	claudeSession(t, "cc-1")
 	app, got := reportApp(t, nil)
-	for _, args := range [][]string{{}, {"landed"}, {"landed", ""}, {"landed", "t7", "x"}, {"turn-ended", "t7"}, {"held"}, {"held", ""}, {"held", "t7", "x"}, {"turn_ended"}} {
+	for _, args := range [][]string{{}, {"landed"}, {"landed", ""}, {"landed", "t7", "x"}, {"turn-ended", "t7"}, {"held"}, {"held", ""}, {"held", "t7", "x"}, {"turn_ended"}, {"activity"}, {"activity", ""}, {"activity", "busy"}, {"activity", "true"}, {"activity", "working", "x"}} {
 		if code := app.Dispatch(append([]string{"report"}, args...), &bytes.Buffer{}, &bytes.Buffer{}); code != 2 {
 			t.Errorf("report %q: exit %d, want 2", args, code)
 		}

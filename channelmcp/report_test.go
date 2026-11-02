@@ -71,6 +71,45 @@ func TestMalformedReportIsIgnoredAndLogged(t *testing.T) {
 	}
 }
 
+// activity names no event: its working flag reaches OnReport as the token
+// "working" or "idle".
+func TestReportCallsOnReportForActivity(t *testing.T) {
+	var got []gotReport
+	h := Handler{Name: "m", Version: "1", OnReport: func(e ReportEvent, token string) {
+		got = append(got, gotReport{e, token})
+	}}
+	pingAfter(t, h,
+		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"activity","working":true}}`,
+		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"activity","working":false}}`,
+	)
+	want := []gotReport{{ReportActivity, ActivityWorking}, {ReportActivity, ActivityIdle}}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("OnReport calls = %+v, want %+v", got, want)
+	}
+}
+
+func TestMalformedActivityIsIgnoredAndLogged(t *testing.T) {
+	var logs bytes.Buffer
+	log.SetOutput(&logs)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	var got []gotReport
+	h := Handler{Name: "m", Version: "1", OnReport: func(e ReportEvent, token string) {
+		got = append(got, gotReport{e, token})
+	}}
+	pingAfter(t, h,
+		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"activity"}}`,
+		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"activity","working":"yes"}}`,
+		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"activity","working":null}}`,
+		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"activity","report":"working"}}`,
+	)
+	if len(got) != 0 {
+		t.Errorf("a malformed activity reached OnReport: %+v", got)
+	}
+	if n := strings.Count(logs.String(), "channelmcp: ignored report"); n != 4 {
+		t.Errorf("want 4 logged ignores, got %d:\n%s", n, logs.String())
+	}
+}
+
 func TestReportWithNoHandlerIsIgnored(t *testing.T) {
 	pingAfter(t, Handler{Name: "m", Version: "1"},
 		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"landed","report":"t7"}}`)

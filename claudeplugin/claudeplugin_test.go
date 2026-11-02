@@ -110,15 +110,18 @@ type modRun struct {
 	// Watches is each watch's argv.
 	Watches  [][]string `json:"watches"`
 	Restarts int        `json:"restarts"`
-	// Reports is each `BIN report ...` the mod ran, with its env.
+	// Reports is each `BIN report ...` the mod ran, with its env, apart from
+	// `report activity`, which goes to Activity.
 	Reports []struct {
 		Argv []string          `json:"argv"`
 		Env  map[string]string `json:"env"`
 	} `json:"reports"`
 	Logs []string `json:"logs"`
-	// Order is "start <event>" and "end <event>" for each report, as they
-	// happened.
+	// Order is "start <event>" and "end <event>" for each report but
+	// activity, as they happened.
 	Order []string `json:"order"`
+	// Activity is the word of each `BIN report activity <word>`, in order.
+	Activity []string `json:"activity"`
 }
 
 // modOpts shapes runMod's fake Claude Code.
@@ -134,6 +137,10 @@ type modOpts struct {
 	// SubmitMs is how long $.prompt.submit takes to resolve: a submit made
 	// mid-turn stays pending until the running turn completes.
 	SubmitMs int
+	// Events is JavaScript run after session.start has settled and before
+	// TurnComplete: it calls hooks with fire(name, e), and fire('agent.spawn',
+	// e, {agentId}) has next resolve with the given result.
+	Events string
 }
 
 // runMod runs a rendered register.js under node with a fake mods API: each
@@ -168,7 +175,7 @@ import { register } from './register.mjs'
 const hooks = {}
 register((name, fn) => { hooks[name] = fn })
 const out = ` + strconvQuote(out) + `
-const run = { submitted: [], watches: [], spawns: 0, restarts: 0, reports: [], logs: [], order: [] }
+const run = { submitted: [], watches: [], spawns: 0, restarts: 0, reports: [], logs: [], order: [], activity: [] }
 const waits = []
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 async function settle() {
@@ -181,6 +188,11 @@ const $ = {
   env: { get: async () => '' },
   process: { spawn: ({ argv, env }) => {
     const at = argv.indexOf('report')
+    if (at > 0 && argv[at + 1] === 'activity') {
+      run.activity.push(argv[at + 2])
+      const result = Promise.resolve({ code: 0 })
+      return { result, return() {}, async *[Symbol.asyncIterator]() {} }
+    }
     if (at > 0) {
       run.reports.push({ argv, env })
       const what = argv[at + 1]
@@ -207,7 +219,10 @@ const $ = {
     waits.push(sleep(ms).then(fn))
   } },
 }
+const fire = (name, e, result) => hooks[name]($, e, async ev => result ?? ev)
 await hooks['session.start']($, {}, async e => e)
+await settle()
+` + o.Events + `
 await settle()
 if (` + strconv.FormatBool(o.TurnComplete) + `) {
   await hooks['turn.complete']($, {}, async e => e)
@@ -571,5 +586,84 @@ func TestModReportsNoHeldForAPromptThatStartsAtOnce(t *testing.T) {
 	plain := runModWith(t, files["hooks/register.js"], `{"text":"hi"}`+"\n", modOpts{SubmitMs: 1500})
 	if len(plain.Reports) != 0 {
 		t.Fatalf("a line with no token reported %+v", plain.Reports)
+	}
+}
+
+// activityRun runs a mod that watches nothing through events and reports the
+// activity words it ran.
+func activityRun(t *testing.T, events string, o modOpts) modRun {
+	t.Helper()
+	files, err := Render(galley)
+	if err != nil {
+		t.Fatal(err)
+	}
+	o.Events = events
+	return runModWith(t, files["hooks/register.js"], "", o)
+}
+
+// TestModReportsIdleAtSessionStart: the session's state goes to the server
+// once when the mod starts, so a restarted serve learns it.
+func TestModReportsIdleAtSessionStart(t *testing.T) {
+	r := activityRun(t, "", modOpts{})
+	if !slices.Equal(r.Activity, []string{"idle"}) {
+		t.Fatalf("activity %q, want [idle]", r.Activity)
+	}
+}
+
+// TestModReportsWorkingForATurn: turn.start makes the session working and the
+// main loop's turn.complete idle; a second turn.start while working reports
+// nothing new.
+func TestModReportsWorkingForATurn(t *testing.T) {
+	r := activityRun(t, `
+await fire('turn.start', { turnId: 't1', text: 'hi' })
+await fire('turn.start', { turnId: 't1', text: '' })
+`, modOpts{TurnComplete: true})
+	if want := []string{"idle", "working", "idle"}; !slices.Equal(r.Activity, want) {
+		t.Fatalf("activity %q, want %q", r.Activity, want)
+	}
+}
+
+// TestModStaysWorkingWhileASubagentRuns: a subagent started in a turn keeps
+// the session working after the turn ends, until its own turn.complete
+// (carrying its agentId); a subagent that ends reports no turn-ended.
+func TestModStaysWorkingWhileASubagentRuns(t *testing.T) {
+	r := activityRun(t, `
+await fire('turn.start', { turnId: 't1', text: 'hi' })
+await fire('agent.spawn', { prompt: 'p' }, { model: 'm', agentId: 'a1' })
+await fire('agent.spawn', { prompt: 'p' }, { deny: 'no' })
+await fire('turn.complete', { turnId: 't1' })
+await fire('turn.complete', { turnId: 't2', agentId: 'a1' })
+`, modOpts{})
+	if want := []string{"idle", "working", "idle"}; !slices.Equal(r.Activity, want) {
+		t.Fatalf("activity %q, want %q", r.Activity, want)
+	}
+}
+
+// TestModReportsWorkingForASubagentAlone: a subagent a plugin starts while no
+// turn runs makes the session working until it ends.
+func TestModReportsWorkingForASubagentAlone(t *testing.T) {
+	r := activityRun(t, `
+await fire('agent.spawn', { prompt: 'p' }, { model: 'm', agentId: 'a1' })
+await fire('agent.spawn', { prompt: 'p' }, { model: 'm', agentId: 'a2' })
+await fire('turn.complete', { turnId: 'x', agentId: 'a1' })
+await fire('turn.complete', { turnId: 'y', agentId: 'a2' })
+`, modOpts{})
+	if want := []string{"idle", "working", "idle"}; !slices.Equal(r.Activity, want) {
+		t.Fatalf("activity %q, want %q", r.Activity, want)
+	}
+}
+
+// TestModReportsNoTurnEndedForASubagentsTurn: a line landed, then a
+// subagent's run ends: that is not the main turn ending.
+func TestModReportsNoTurnEndedForASubagentsTurn(t *testing.T) {
+	files, err := Render(galley)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := runModWith(t, files["hooks/register.js"], `{"text":"hi","report":"t7"}`+"\n", modOpts{Events: `
+await fire('turn.complete', { turnId: 'x', agentId: 'a1' })
+`})
+	if len(r.Reports) != 1 || strings.Join(r.Reports[0].Argv, " ") != galley.Bin+" report landed t7" {
+		t.Fatalf("reports %+v", r.Reports)
 	}
 }

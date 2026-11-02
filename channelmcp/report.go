@@ -23,6 +23,18 @@ const (
 	// ReportTurnEnded: the agent's turn ended. It names no event: the tool
 	// resolves it against what landed in that session and has not ended.
 	ReportTurnEnded ReportEvent = "turn_ended"
+	// ReportActivity: the session started or stopped working (a turn or a
+	// background agent is running, or none is). It names no event: a harness
+	// sends {event: "activity", working: true|false} whenever that changes and
+	// each time it connects, and the tool receives the token ActivityWorking
+	// or ActivityIdle.
+	ReportActivity ReportEvent = "activity"
+)
+
+// The token an activity report reaches OnReport and ReportFunc with.
+const (
+	ActivityWorking = "working"
+	ActivityIdle    = "idle"
 )
 
 // MetaReport is the meta key that carries an event's report token: the tool
@@ -36,7 +48,8 @@ const reportMethod = "notifications/channels/report"
 // report hands one report notification to OnReport. With no OnReport it is
 // ignored, as every other notification is. A report that is not
 // {event: held|landed|turn_ended, report: <token>} (held and landed need the
-// token) is ignored and logged: there is no one to answer.
+// token) or {event: activity, working: true|false} is ignored and logged:
+// there is no one to answer.
 func (s *Server) report(params json.RawMessage) {
 	if s.h.OnReport == nil {
 		return
@@ -44,16 +57,23 @@ func (s *Server) report(params json.RawMessage) {
 	var p struct {
 		Event ReportEvent `json:"event"`
 		Token string      `json:"report"`
+		// Working is activity's flag; a pointer, so a missing one is refused.
+		Working *bool `json:"working"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		log.Printf("channelmcp: ignored report %s: %v", params, err)
 		return
 	}
 	switch {
+	case p.Event == ReportActivity && p.Working != nil:
+		p.Token = ActivityIdle
+		if *p.Working {
+			p.Token = ActivityWorking
+		}
 	case p.Event == ReportTurnEnded:
 	case (p.Event == ReportHeld || p.Event == ReportLanded) && p.Token != "":
 	default:
-		log.Printf("channelmcp: ignored report %s: want event held|landed with a token, or turn_ended", params)
+		log.Printf("channelmcp: ignored report %s: want event held|landed with a token, turn_ended, or activity with working true|false", params)
 		return
 	}
 	s.h.OnReport(p.Event, p.Token)
@@ -65,9 +85,11 @@ func (s *Server) report(params json.RawMessage) {
 type ReportFunc func(session string, event ReportEvent, token string) error
 
 // ReportCommand is `<tool> report held <token>`, `<tool> report landed
-// <token>` and `<tool> report turn-ended`, which the tool's Claude Code mod
-// runs when an event's prompt is still waiting a second after it was submitted
-// (the agent is mid-turn), when it starts a turn, and when a turn completes. It reads the session the way watch
+// <token>`, `<tool> report turn-ended` and `<tool> report activity
+// working|idle`, which the tool's Claude Code mod runs when an event's prompt
+// is still waiting a second after it was submitted (the agent is mid-turn),
+// when it starts a turn, when a turn completes, and when the session starts
+// or stops working (and once at session start). It reads the session the way watch
 // does (harness.FromEnv) and hands the report to deliver; it prints nothing.
 // In a bridge child it delivers nothing, since the hosting pi session's
 // channel reports for it. A tool mounts it in one line:
@@ -76,8 +98,8 @@ type ReportFunc func(session string, event ReportEvent, token string) error
 func ReportCommand(deliver ReportFunc) tools.Command {
 	return tools.Command{
 		Name:     "report",
-		Summary:  "tell the server an event is held, landed in the agent's turn, or the turn ended (run by the Claude Code plugin)",
-		Synopsis: "report held <token> | report landed <token> | report turn-ended",
+		Summary:  "tell the server an event is held, landed in the agent's turn, the turn ended, or the session is working or idle (run by the Claude Code plugin)",
+		Synopsis: "report held <token> | report landed <token> | report turn-ended | report activity working|idle",
 		Run: func(args []string, _, _ io.Writer) error {
 			event, token, err := parseReport(args)
 			if err != nil {
@@ -103,6 +125,8 @@ func parseReport(args []string) (ReportEvent, string, error) {
 		return ReportLanded, args[1], nil
 	case len(args) == 1 && args[0] == "turn-ended":
 		return ReportTurnEnded, "", nil
+	case len(args) == 2 && args[0] == "activity" && (args[1] == ActivityWorking || args[1] == ActivityIdle):
+		return ReportActivity, args[1], nil
 	}
-	return "", "", tools.UsageError{Msg: "usage: report held <token> | report landed <token> | report turn-ended"}
+	return "", "", tools.UsageError{Msg: "usage: report held <token> | report landed <token> | report turn-ended | report activity working|idle"}
 }

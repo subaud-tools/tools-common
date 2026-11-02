@@ -194,7 +194,8 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any) (in
 }
 
 // Report hands serve one report from the harness about session: a send
-// held or landed (with its claim's token), or the turn ended.
+// held or landed (with its claim's token), the turn ended, or the session's
+// activity (token "working" or "idle").
 func (c *Client) Report(ctx context.Context, session string, event channelmcp.ReportEvent, token string) error {
 	_, err := c.Do(ctx, http.MethodPost, "/api/agent/report", map[string]string{"session": session, "event": string(event), "token": token}, nil)
 	return err
