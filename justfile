@@ -46,8 +46,8 @@ prepare:
 # in headless Chrome (KIT_BROWSER=required fails if no browser is found), and
 # localweb/page/build's files in a scratch tool (npm ci, eslint, its probe).
 # The root gate's `go test` skips them. Then splitpage's page: its TypeScript
-# checks and tests, and its committed assets equal to a fresh build of
-# splitpage/web, since nothing at runtime needs node.
+# checks and tests, its committed assets equal to a fresh build of
+# splitpage/web (nothing at runtime needs node), and its browser suite.
 verify-slow:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -58,6 +58,7 @@ verify-slow:
         git diff -- splitpage/assets | head -40
         exit 1
     fi
+    KIT_BROWSER=required go test ./splitpage/...
 
 # Checks beyond the root Go gate (CI runs this too): the root module must stay
 # stdlib-only, and the separate sqlitedb, threadstore and mermaidkit modules (own
