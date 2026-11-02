@@ -1,9 +1,10 @@
 package pageserve
 
 // The session's Chrome window: a session running in tmux has a terminal and,
-// through proj, a Chrome window beside it, and a page it opens goes there. Moved
-// from diazo's internal/serve/terminal.go and internal/channel/tools.go, with
-// the plan's owner as a Where. Anything in proj is used as it is.
+// through proj, a Chrome window holding its split page (splitpage: the terminal
+// on the left, its tabs on the right), and a page it opens goes there as a tab.
+// Moved from diazo's internal/serve/terminal.go and internal/channel/tools.go,
+// with the plan's owner as a Where. Anything in proj is used as it is.
 
 import (
 	"context"
@@ -141,9 +142,10 @@ var ErrNotInTmux = errors.New("the session isn't in tmux")
 func (w Where) Known() bool { return w.Socket != "" && w.Pane != "" }
 
 // Window runs proj window for the session at w, which opens the session's Chrome
-// window or brings it forward, with url on its right half; with keepView a
-// terminal showing the session elsewhere keeps it. An error carries what proj
-// said.
+// window or brings it forward, and opens url as a tab of the session's split
+// page, beside the terminal; with keepView a terminal showing the session
+// elsewhere keeps it. proj refuses a url that isn't one of our pages on
+// 127.0.0.1. An error carries what proj said.
 func Window(w Where, url string, keepView bool) error {
 	if !w.Known() {
 		return ErrNotInTmux
@@ -164,8 +166,8 @@ func Window(w Where, url string, keepView bool) error {
 	return nil
 }
 
-// Show's answers: the session's Chrome window took the page, a page tab did, or
-// none is open and the caller opens the browser.
+// Show's answers: the session's split page took the page as a tab, a page tab
+// did, or none is open and the caller opens the browser.
 const (
 	ShowWindow = "window"
 	ShowReused = "reused"
@@ -176,8 +178,8 @@ const (
 // log. Tests replace it.
 var showLog io.Writer = os.Stderr
 
-// Show puts page, at url, in the Chrome window of the session at w when it has
-// one, and otherwise in a tab: one that shows it, a front-page tab asked through
+// Show puts page, at url, as a tab of the split page of the session at w when
+// it has a window, and otherwise in a browser tab: one that shows it, a front-page tab asked through
 // events to move to it, or tabs on other pages, which list it in their bar. It
 // opens nothing itself: on ShowOpened the caller's channel opens the browser. A
 // proj that fails costs the window only, and is logged.
