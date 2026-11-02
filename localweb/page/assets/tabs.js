@@ -1,7 +1,7 @@
 // tabs.js: tabs in the right column, one body shown at a time. What each body
 // holds is the tool's, and it stays in the page while hidden, so a half-written
-// box keeps its words. The whole thing goes in the frame's rightBody, so
-// setRightEmpty still folds the column around it.
+// box keeps its words. The whole thing goes in the frame's rightBody, so the
+// toggle folds the column around it.
 import { h } from './dom.js';
 import { remembered } from './remembered.js';
 

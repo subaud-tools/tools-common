@@ -46,43 +46,23 @@ export function collapsible({ col, body, panel, side, name, folded, onPress }) {
   return on => set(on, false);
 }
 
-function side(name, which, cls, o, onPress) {
-  if (!o) return [null, null, null];
+function side(name, which, cls, o) {
+  if (!o) return [null, null];
   const col = h('aside', { class: `${cls} kit-col kit-${which}-col`, 'aria-label': o.label });
   const body = h('div', { class: 'kit-col-body' });
-  const fold = collapsible({ col, body, panel: o.panel, side: which, name, folded: o.folded, onPress });
-  return [col, body, fold];
+  collapsible({ col, body, panel: o.panel, side: which, name, folded: o.folded });
+  return [col, body];
 }
 
 // frame builds the columns. left and right are { panel, label, folded }, each
 // optional; centre is { label }. The caller draws into leftBody, centre and
-// rightBody, and appends left, centre and right to its grid. setRightEmpty(empty,
-// card) tells it whether the thread of the card in front of the reader (its id)
-// has messages: an empty one folds, and its first message opens it. The id must
-// be unique across the tool (e.g. `${folder}/${card}`). A press on the toggle wins
-// until the card changes. The tab holds it; it is also kept beside the fold, read
-// only on the first call, so a reload on that card holds it and a tab on another
-// card can't undo it.
+// rightBody, and appends left, centre and right to its grid. A side stays where
+// the reader's toggle left it: nothing a card holds moves it.
 export function frame({ name, left, centre, right }) {
   const [l, leftBody] = side(name, 'left', 'kit-list', left);
-  const pressedOn = `${name}.collapsed.${right ? right.panel : ''}.card`;
-  let shown = '';
-  let pressed; // the card this tab's press holds on, null for none; undefined before the first call
-  const [r, rightBody, foldRight] = side(name, 'right', 'kit-rail', right, () => {
-    pressed = shown;
-    remembered.set(pressedOn, shown);
-  });
+  const [r, rightBody] = side(name, 'right', 'kit-rail', right);
   const mid = h('main', { class: 'kit-read kit-col kit-mid', 'aria-label': centre.label });
-  const setRightEmpty = (empty, card = '') => {
-    if (!r) return;
-    shown = card;
-    if (pressed === undefined) pressed = remembered.get(pressedOn) === card ? card : null;
-    if (pressed === card) return;
-    if (pressed !== null && remembered.get(pressedOn) === pressed) remembered.remove(pressedOn);
-    pressed = null;
-    foldRight(empty);
-  };
-  return { left: l, leftBody, centre: mid, right: r, rightBody, setRightEmpty };
+  return { left: l, leftBody, centre: mid, right: r, rightBody };
 }
 
 // narrowMode shows one thing at a time at 1080 wide or less: the centre, or a
@@ -91,8 +71,8 @@ export function frame({ name, left, centre, right }) {
 // keep their meaning for the wide page: while narrow they are ignored and never
 // written. A page opens on the centre; leaving narrow goes back to it. show(side)
 // takes 'left', 'right' or null, setCount(side, n) puts a count under a strip's
-// toggle (none at zero), onShow(side) hears each change, and stop lets go of the
-// window.
+// toggle (none at zero; at wide widths only a closed right strip shows it),
+// onShow(side) hears each change, and stop lets go of the window.
 export function narrowMode({ root, left, right, onShow }) {
   const cols = { left, right };
   const narrow = matchMedia('(width <= 1080px)');

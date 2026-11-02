@@ -4,6 +4,15 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.57.0
+
+### Changed
+- `frame`: the thread stays where the reader left it. The toggle's remembered setting alone decides it, per tool and panel, and a setting already saved still applies.
+- `narrowMode`'s `setCount`: a closed right strip shows its count at any width. The left strip's count stays narrow only.
+
+### Removed
+- `frame`'s `setRightEmpty` and the per-card hold on a press. A tool that calls it drops the call when it bumps; its typecheck names it. `collapsible` keeps `folded` and `onPress`.
+
 ## 0.56.0
 
 ### Changed
