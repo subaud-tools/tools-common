@@ -179,7 +179,9 @@ function startTerminal(): void {
     };
     socket.onclose = (ev) => void closed(ev);
     // What the browser tests read and wait on.
-    Object.assign(window, { splitPage: { term, socket, canSend, tabs } });
+    // fit sizes the terminal to its panel again: a tool's script that pads the
+    // terminal (lwc's first-run note) calls it.
+    Object.assign(window, { splitPage: { term, socket, canSend, tabs, fit: () => fit.fit() } });
   };
 
   const closed = async (ev: CloseEvent): Promise<void> => {

@@ -100,6 +100,12 @@ export function startTabs(session: string): TabsView {
       if (!f) {
         f = frame(tab);
         shown.set(tab.id, f);
+      } else if (f.getAttribute('src') !== tab.address) {
+        // The tool moved the tab (its page came back on a new port).
+        const moved = frame(tab);
+        f.replaceWith(moved);
+        f = moved;
+        shown.set(tab.id, f);
       }
       f.classList.toggle('shown', on);
     }

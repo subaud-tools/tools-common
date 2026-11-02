@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -279,5 +280,36 @@ func TestOpenWithNoTitleFallsBackToTheHost(t *testing.T) {
 	}
 	if got, want := list.Tabs[0].Title, strings.TrimPrefix(page.URL, "http://"); got != want {
 		t.Errorf("title = %q, want %q", got, want)
+	}
+}
+
+// A tool moves a tab it keeps, pinned or not, to a new address in place: the
+// lesson page comes back on a new port after a restart, and stays one tab.
+func TestReplaceMovesATabInPlace(t *testing.T) {
+	tabs := NewTabs()
+	if _, err := tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:1/a", Title: "One"}); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:2/lesson", Title: "Lesson", Pinned: true, Types: true})
+	id := list.Selected
+	list, err := tabs.Replace("s", id, "http://127.0.0.1:3/lesson")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Tabs) != 2 {
+		t.Fatalf("tabs %+v, want two", list.Tabs)
+	}
+	got := list.Tabs[1]
+	if got.ID != id || got.Address != "http://127.0.0.1:3/lesson" || got.Title != "Lesson" || !got.Pinned || !got.Types {
+		t.Fatalf("replaced tab %+v", got)
+	}
+	if list.Selected != id {
+		t.Errorf("selected %q, want %q as before", list.Selected, id)
+	}
+	if _, err := tabs.Replace("s", id, "https://github.com/"); !errors.Is(err, ErrNotLocal) {
+		t.Errorf("a non-local address: %v", err)
+	}
+	if _, err := tabs.Replace("s", "tab-99", "http://127.0.0.1:4/x"); !errors.Is(err, ErrNoTab) {
+		t.Errorf("an unknown tab: %v", err)
 	}
 }
