@@ -21,22 +21,42 @@ const closeStopped = 4410;
 const minPanel = 120;
 
 // What the tool filled in (splitpage.Config). The page is authenticated by
-// localweb's cookie, so no address here carries a token.
+// localweb's cookie, so no address here carries a token. A page opened with
+// ?session= is for that session (proj serves many from one server), and its
+// own query goes on to the terminal socket.
+const pageQuery = new URLSearchParams(location.search);
+pageQuery.delete('t');
 const socketPath = document.body.dataset.socket ?? '';
-const session = document.body.dataset.session ?? '';
+const session = pageQuery.get('session') ?? document.body.dataset.session ?? '';
 const canRestart = document.body.dataset.restart === 'true';
+const canTake = document.body.dataset.take === 'true';
 const withSession = (path: string): string =>
   `${path}?session=${encodeURIComponent(session)}`;
+
+// socketURL is the terminal socket's address: Config.Socket with the page's
+// own query and the session added, and take=1 when taking the terminal from
+// another page.
+function socketURL(take: boolean): string {
+  const [path, own = ''] = socketPath.split('?', 2);
+  const q = new URLSearchParams(own);
+  for (const [k, v] of pageQuery) q.set(k, v);
+  q.set('session', session);
+  if (take) q.set('take', '1');
+  return `ws://${location.host}${path}?${q}`;
+}
 
 const notice = document.getElementById('stopped')!;
 const noticeText = document.getElementById('stopped-text')!;
 const startAgain = document.getElementById('start-again') as HTMLButtonElement;
+const takeHere = document.getElementById('take-here') as HTMLButtonElement;
 
-function showNotice(text: string, button: boolean): void {
+// showNotice says text, with one of the two buttons or neither.
+function showNotice(text: string, button: HTMLButtonElement | null = null): void {
   noticeText.textContent = text;
-  startAgain.hidden = !button;
+  startAgain.hidden = button !== startAgain;
+  takeHere.hidden = button !== takeHere;
   notice.hidden = false;
-  if (button) startAgain.focus();
+  button?.focus();
 }
 
 // Reloading can't help once the server has gone, so this is the page's last
@@ -44,7 +64,7 @@ function showNotice(text: string, button: boolean): void {
 let serverGone = false;
 function sayServerGone(): void {
   serverGone = true;
-  showNotice('The page’s server has stopped.', false);
+  showNotice('The page’s server has stopped.');
 }
 
 function startTerminal(): void {
@@ -120,8 +140,8 @@ function startTerminal(): void {
   });
   new ResizeObserver(() => fit.fit()).observe(document.getElementById('term')!);
 
-  const connect = (): void => {
-    const socket = new WebSocket(`ws://${location.host}${withSession(socketPath)}`);
+  const connect = (take = false): void => {
+    const socket = new WebSocket(socketURL(take));
     socket.binaryType = 'arraybuffer';
     ws = socket;
     replayed = false;
@@ -140,13 +160,14 @@ function startTerminal(): void {
     if (serverGone) return;
     switch (ev.code) {
       case closeStopped:
-        showNotice('The session’s program has stopped.', canRestart);
+        showNotice('The session’s program has stopped.', canRestart ? startAgain : null);
         return;
       case closeReplaced:
-        showNotice('Opened in another tab: reload to show it here.', false);
+        if (canTake) showNotice('Opened in another tab.', takeHere);
+        else showNotice('Opened in another tab: reload to show it here.');
         return;
       case closeNoSession:
-        showNotice('This session no longer exists.', false);
+        showNotice('This session no longer exists.');
         return;
     }
     // Only a server that still answers can be reconnected to by reloading.
@@ -168,7 +189,7 @@ function startTerminal(): void {
           term.focus();
           connect();
         } else {
-          showNotice(`Couldn’t start it again: ${await res.text()}`, true);
+          showNotice(`Couldn’t start it again: ${await res.text()}`, startAgain);
         }
       } catch {
         sayServerGone();
@@ -176,6 +197,12 @@ function startTerminal(): void {
         startAgain.disabled = false;
       }
     })();
+  });
+
+  takeHere.addEventListener('click', () => {
+    notice.hidden = true;
+    term.focus();
+    connect(true);
   });
 
   connect();

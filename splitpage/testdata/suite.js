@@ -6,6 +6,7 @@
 const q = new URLSearchParams(location.search);
 const one = q.get('one');
 const two = q.get('two');
+const clip = q.get('clip');
 const restart = q.get('restart') === '1';
 const session = 's1';
 const frame = document.getElementById('page');
@@ -48,6 +49,26 @@ async function tabs() {
 }
 
 const input = async () => (await fetch('/api/test/input')).text();
+const queries = async () => (await fetch('/api/test/queries')).json();
+
+// newQuery waits for a terminal connection after the first n and returns its
+// query's parameters.
+async function newQuery(n, msg) {
+  const q = await until(async () => {
+    const all = await queries();
+    return all.length > n && all[all.length - 1];
+  }, msg);
+  return new URLSearchParams(q);
+}
+
+// load points the frame at path and waits for the page to connect.
+async function load(path) {
+  const loaded = new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  if (path === undefined) win().location.reload();
+  else frame.src = path;
+  await loaded;
+  await pageReady();
+}
 
 // The terminal's text, every line joined.
 function screen() {
@@ -136,6 +157,33 @@ if (restart) {
     assert(barTab(first).querySelector('.tab-close'), 'an ordinary tab lost its close button');
   });
 
+  test('a framed tool page may write to the clipboard', async () => {
+    const res = await post('/api/split/open', { session, address: clip, title: 'Clip' });
+    const id = (await res.json()).selected;
+    const f = await until(() => doc().querySelector(`#frames iframe[data-id="${id}"]`), 'the clip frame');
+    let got;
+    const on = (ev) => {
+      if (ev.source === f.contentWindow) got = ev.data;
+    };
+    addEventListener('message', on);
+    // Asked again until the framed page has loaded and answers.
+    await until(async () => {
+      f.contentWindow.focus();
+      f.contentWindow.postMessage('copy', '*');
+      await sleep(100);
+      return got;
+    }, 'the framed page answers');
+    removeEventListener('message', on);
+    // Headless Chrome denies every clipboard write, even at the top level, so
+    // a copy can't succeed here: what matters is that the frame's permissions
+    // policy no longer blocks it, which is what a frame without the allow
+    // attribute gets.
+    assert(got.copied || !/permissions policy/.test(got.error), `writeText in a tab: ${got.error}`);
+    assert(f.allow.includes('clipboard-write'), `frame allow: ${f.allow}`);
+    barTab(id).querySelector('.tab-close').click();
+    await until(() => !barTab(id), 'the clip tab closes');
+  });
+
   test('a reload of the page shows the same tabs', async () => {
     const before = await tabs();
     const loaded = new Promise((r) => frame.addEventListener('load', r, { once: true }));
@@ -171,10 +219,49 @@ if (restart) {
     await until(() => notice.hidden && split().socket !== before, 'the page reconnects');
     await until(() => split().canSend(), 'the new connection has its replay');
   });
+
+  test('a page opened with ?session= and ?socket= connects with both', async () => {
+    let res = await post('/api/split/open', { session: 'x', address: one, title: 'X one' });
+    assert(res.ok, `open in session x: ${res.status}`);
+    const n = (await queries()).length;
+    await load('/?session=x&socket=y');
+    const p = await newQuery(n, 'the page connects');
+    assert(p.get('session') === 'x' && p.get('socket') === 'y', `socket query: ${p}`);
+    assert(!p.has('take'), `the first connection sent take: ${p}`);
+    await until(() => bar().length === 1 && bar()[0].textContent.includes('X one'), "the bar shows session x's tabs");
+  });
+
+  test('with Take, 4409 offers Show it here, which reconnects with take=1', async () => {
+    await until(() => split().canSend(), 'the replay is written');
+    const n = (await queries()).length;
+    await post('/api/test/replace');
+    const notice = doc().getElementById('stopped');
+    await until(() => !notice.hidden, 'the replaced notice');
+    const here = doc().getElementById('take-here');
+    assert(here && !here.hidden, 'no Show it here');
+    assert(doc().getElementById('start-again').hidden, 'Start it again offered on 4409');
+    here.click();
+    const p = await newQuery(n, 'the page reconnects');
+    assert(p.get('take') === '1' && p.get('session') === 'x' && p.get('socket') === 'y', `take query: ${p}`);
+    await until(() => notice.hidden && split().canSend(), 'the taken connection has its replay');
+  });
 } else {
-  test('a stopped program, with no restart, has no Start it again', async () => {
+  test('without Take, 4409 says reload and offers no button', async () => {
     await pageReady();
     await post('/api/test/release');
+    await until(() => split().canSend(), 'the replay is written');
+    await post('/api/test/replace');
+    const notice = doc().getElementById('stopped');
+    await until(() => !notice.hidden, 'the replaced notice');
+    const here = doc().getElementById('take-here');
+    assert(!here || here.hidden, 'Show it here offered with no take');
+    assert(doc().getElementById('start-again').hidden, 'Start it again offered on 4409');
+    const text = doc().getElementById('stopped-text').textContent;
+    assert(text.includes('reload to show it here'), `notice: ${text}`);
+    await load(); // a fresh connection for the next test
+  });
+
+  test('a stopped program, with no restart, has no Start it again', async () => {
     await until(() => split().canSend(), 'the replay is written');
     await post('/api/test/stop');
     const notice = doc().getElementById('stopped');

@@ -27,7 +27,7 @@ func get(t *testing.T, c Config, path string) (int, http.Header, string) {
 }
 
 func TestPageCarriesTheConfig(t *testing.T) {
-	code, _, body := get(t, Config{Title: `proj <s1>`, Socket: "/api/term", Session: `s"1`, Restart: true}, "/")
+	code, _, body := get(t, Config{Title: `proj <s1>`, Socket: "/api/term", Session: `s"1`, Restart: true, Take: true}, "/")
 	if code != http.StatusOK {
 		t.Fatalf("GET /: %d", code)
 	}
@@ -36,14 +36,15 @@ func TestPageCarriesTheConfig(t *testing.T) {
 		`data-socket="/api/term"`,
 		`data-session="s&#34;1"`,
 		`data-restart="true"`,
+		`data-take="true"`,
 		`src="split.js"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %s:\n%s", want, body)
 		}
 	}
-	if _, _, body := get(t, Config{Socket: "/api/term"}, "/"); !strings.Contains(body, `data-restart="false"`) {
-		t.Errorf("a page with no restart says otherwise:\n%s", body)
+	if _, _, body := get(t, Config{Socket: "/api/term"}, "/"); !strings.Contains(body, `data-restart="false"`) || !strings.Contains(body, `data-take="false"`) {
+		t.Errorf("a page with no restart or take says otherwise:\n%s", body)
 	}
 }
 

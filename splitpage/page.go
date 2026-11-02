@@ -30,6 +30,10 @@ type Config struct {
 	// starts the program again: the page then offers Start it again when the
 	// terminal closes with CloseStopped.
 	Restart bool
+	// Take says the tool's socket takes the terminal from another page when
+	// asked with take=1: the page then offers Show it here when the terminal
+	// closes with CloseReplaced. The first connection never asks.
+	Take bool
 }
 
 // Page is the page, for a tool to serve as its localweb Assets: index.html
@@ -54,6 +58,7 @@ func Page(c Config) fs.FS {
 		"__SOCKET__", html.EscapeString(c.Socket),
 		"__SESSION__", html.EscapeString(c.Session),
 		"__RESTART__", strconv.FormatBool(c.Restart),
+		"__TAKE__", strconv.FormatBool(c.Take),
 	).Replace(string(tmpl))
 	return pageFS{assets: sub, index: []byte(index)}
 }

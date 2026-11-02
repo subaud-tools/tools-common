@@ -9,7 +9,12 @@ package splitpage
 //     TerminalReset, and the page sends no input until it has written it
 //     (xterm answers terminal queries in old output as it writes them);
 //   - the server closes with CloseNoSession, CloseReplaced or CloseStopped,
-//     and the page says which.
+//     and the page says which;
+//   - the handler refuses an Origin whose host is not the request's own
+//     (coder/websocket Accept's default), and never sets InsecureSkipVerify
+//     or broad OriginPatterns: localweb's cross-origin check skips GETs, and
+//     every 127.0.0.1 port is the same site, so the cookie alone doesn't
+//     protect the socket from another local page.
 //
 // wire.d.ts is generated from these structs by wire_test.go.
 

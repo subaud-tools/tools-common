@@ -60,6 +60,9 @@ export function startTabs(session: string): TabsView {
     const el = document.createElement('iframe');
     el.title = tab.title || tab.address;
     el.dataset.id = tab.id;
+    // A tool page's copy buttons write to the clipboard, which a frame may
+    // only do when allowed.
+    el.allow = 'clipboard-write';
     el.src = tab.address;
     frames.append(el);
     return el;

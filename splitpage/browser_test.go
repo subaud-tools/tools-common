@@ -6,6 +6,7 @@ import (
 	"crypto/sha1" //nolint:gosec // G505: the websocket handshake is defined with SHA-1
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
@@ -80,7 +81,8 @@ func profileDir(t *testing.T) string {
 func TestBrowserPage(t *testing.T)      { runSuite(t, true) }
 func TestBrowserNoRestart(t *testing.T) { runSuite(t, false) }
 
-// runSuite serves the page (offering a restart or not) and runs the suite.
+// runSuite serves the page, offering a restart and a take or neither, and runs
+// the suite.
 func runSuite(t *testing.T, restart bool) {
 	chrome := needChrome(t)
 	t.Setenv("XDG_STATE_HOME", t.TempDir()) // localweb remembers its port there
@@ -98,7 +100,12 @@ func runSuite(t *testing.T, restart bool) {
 		_, _ = io.WriteString(w, term.received())
 	})
 	api.HandleFunc("POST /api/test/release", func(http.ResponseWriter, *http.Request) { term.release() })
-	api.HandleFunc("POST /api/test/stop", func(http.ResponseWriter, *http.Request) { term.stop() })
+	api.HandleFunc("POST /api/test/stop", func(http.ResponseWriter, *http.Request) { term.closeNewest(CloseStopped) })
+	api.HandleFunc("POST /api/test/replace", func(http.ResponseWriter, *http.Request) { term.closeNewest(CloseReplaced) })
+	api.HandleFunc("GET /api/test/queries", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(term.queries())
+	})
 	api.HandleFunc("POST /api/test/result", func(_ http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
 		select {
@@ -109,7 +116,7 @@ func runSuite(t *testing.T, restart bool) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	page := Page(Config{Title: "splitpage test", Socket: "/api/term", Session: "s1", Restart: restart})
+	page := Page(Config{Title: "splitpage test", Socket: "/api/term", Session: "s1", Restart: restart, Take: restart})
 	srv, err := localweb.Start(ctx, localweb.Config{Tool: "splitpage-test", Assets: withTestdata{page}, API: api})
 	if err != nil {
 		t.Fatal(err)
@@ -120,7 +127,7 @@ func runSuite(t *testing.T, restart bool) {
 		t.Cleanup(s.Close)
 		return s.URL + "/" + name
 	}
-	q := url.Values{"t": {srv.Token}, "one": {framed("one.html")}, "two": {framed("two.html")}}
+	q := url.Values{"t": {srv.Token}, "one": {framed("one.html")}, "two": {framed("two.html")}, "clip": {framed("clip.html")}}
 	if restart {
 		q.Set("restart", "1")
 	}
@@ -170,6 +177,7 @@ type stubTerminal struct {
 	mu       sync.Mutex
 	input    strings.Builder
 	conns    []*wsConn
+	query    []string // each connection's raw query, in order
 	held     chan struct{}
 	released bool
 }
@@ -189,8 +197,14 @@ func (s *stubTerminal) release() {
 	}
 }
 
-// stop closes the newest connection as a program that exited.
-func (s *stubTerminal) stop() {
+func (s *stubTerminal) queries() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string{}, s.query...)
+}
+
+// closeNewest closes the newest connection with code.
+func (s *stubTerminal) closeNewest(code uint16) {
 	s.mu.Lock()
 	var c *wsConn
 	if n := len(s.conns); n > 0 {
@@ -198,7 +212,7 @@ func (s *stubTerminal) stop() {
 	}
 	s.mu.Unlock()
 	if c != nil {
-		_ = c.close(CloseStopped, "the session ended")
+		_ = c.close(code, "closed by the test")
 	}
 }
 
@@ -219,6 +233,7 @@ func (s *stubTerminal) serve(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = c.conn.Close() }()
 	s.mu.Lock()
 	s.conns = append(s.conns, c)
+	s.query = append(s.query, r.URL.RawQuery)
 	s.mu.Unlock()
 	<-s.held
 	if c.write(opBinary, []byte(TerminalReset)) != nil {

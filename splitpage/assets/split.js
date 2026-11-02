@@ -13827,6 +13827,7 @@ function startTabs(session2) {
     const el2 = document.createElement("iframe");
     el2.title = tab.title || tab.address;
     el2.dataset.id = tab.id;
+    el2.allow = "clipboard-write";
     el2.src = tab.address;
     frames.append(el2);
     return el2;
@@ -13884,23 +13885,36 @@ var closeNoSession = 4404;
 var closeReplaced = 4409;
 var closeStopped = 4410;
 var minPanel = 120;
+var pageQuery = new URLSearchParams(location.search);
+pageQuery.delete("t");
 var socketPath = document.body.dataset.socket ?? "";
-var session = document.body.dataset.session ?? "";
+var session = pageQuery.get("session") ?? document.body.dataset.session ?? "";
 var canRestart = document.body.dataset.restart === "true";
+var canTake = document.body.dataset.take === "true";
 var withSession = (path) => `${path}?session=${encodeURIComponent(session)}`;
+function socketURL(take) {
+  const [path, own = ""] = socketPath.split("?", 2);
+  const q2 = new URLSearchParams(own);
+  for (const [k2, v2] of pageQuery) q2.set(k2, v2);
+  q2.set("session", session);
+  if (take) q2.set("take", "1");
+  return `ws://${location.host}${path}?${q2}`;
+}
 var notice = document.getElementById("stopped");
 var noticeText = document.getElementById("stopped-text");
 var startAgain = document.getElementById("start-again");
-function showNotice(text, button) {
+var takeHere = document.getElementById("take-here");
+function showNotice(text, button = null) {
   noticeText.textContent = text;
-  startAgain.hidden = !button;
+  startAgain.hidden = button !== startAgain;
+  takeHere.hidden = button !== takeHere;
   notice.hidden = false;
-  if (button) startAgain.focus();
+  button?.focus();
 }
 var serverGone = false;
 function sayServerGone() {
   serverGone = true;
-  showNotice("The page’s server has stopped.", false);
+  showNotice("The page’s server has stopped.");
 }
 function startTerminal() {
   const term = new Dl({
@@ -13967,8 +13981,8 @@ function startTerminal() {
     return true;
   });
   new ResizeObserver(() => fit.fit()).observe(document.getElementById("term"));
-  const connect = () => {
-    const socket = new WebSocket(`ws://${location.host}${withSession(socketPath)}`);
+  const connect = (take = false) => {
+    const socket = new WebSocket(socketURL(take));
     socket.binaryType = "arraybuffer";
     ws3 = socket;
     replayed = false;
@@ -13985,13 +13999,14 @@ function startTerminal() {
     if (serverGone) return;
     switch (ev.code) {
       case closeStopped:
-        showNotice("The session’s program has stopped.", canRestart);
+        showNotice("The session’s program has stopped.", canRestart ? startAgain : null);
         return;
       case closeReplaced:
-        showNotice("Opened in another tab: reload to show it here.", false);
+        if (canTake) showNotice("Opened in another tab.", takeHere);
+        else showNotice("Opened in another tab: reload to show it here.");
         return;
       case closeNoSession:
-        showNotice("This session no longer exists.", false);
+        showNotice("This session no longer exists.");
         return;
     }
     try {
@@ -14013,7 +14028,7 @@ function startTerminal() {
           term.focus();
           connect();
         } else {
-          showNotice(`Couldn’t start it again: ${await res.text()}`, true);
+          showNotice(`Couldn’t start it again: ${await res.text()}`, startAgain);
         }
       } catch {
         sayServerGone();
@@ -14021,6 +14036,11 @@ function startTerminal() {
         startAgain.disabled = false;
       }
     })();
+  });
+  takeHere.addEventListener("click", () => {
+    notice.hidden = true;
+    term.focus();
+    connect(true);
   });
   connect();
 }
