@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.53.1
+
+### Fixed
+- `pageserve`: the channel no longer logs a report it can't post because no serve runs (`sift channel: report activity: sift serve isn't running`), as its loop already didn't. pi sends an activity report each time a session starts or stops working, so every session of a tool whose serve wasn't up printed it. Other failed posts are still logged, and the last activity still reaches serve once it starts.
+
 ## 0.53.0
 
 ### Fixed

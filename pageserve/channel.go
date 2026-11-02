@@ -249,8 +249,9 @@ func (ch *Channel) Run(ctx context.Context, r io.Reader, w io.Writer) error {
 }
 
 // postReports posts each report the harness sent to serve, in the order
-// sent, until ctx ends. It never starts serve. A failed post is logged, not
-// retried, except activity: the harness sends it again only when it
+// sent, until ctx ends. It never starts serve, and while no serve runs it
+// logs nothing, as the loop does. A failed post is logged, not retried,
+// except activity: the harness sends it again only when it
 // reconnects to the channel, so the last one is posted again, when the loop
 // nudges, to a serve it hasn't reached (a restarted serve, or the same one
 // after a failed post).
@@ -266,7 +267,7 @@ func (ch *Channel) postReports(ctx context.Context) {
 				postedTo = ""
 			}
 		}
-		if err != nil && ctx.Err() == nil {
+		if err != nil && ctx.Err() == nil && !errors.Is(err, ErrNoServe) {
 			ch.logf("report %s: %v", r.event, err)
 		}
 	}

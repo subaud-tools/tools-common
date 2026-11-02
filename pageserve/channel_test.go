@@ -798,20 +798,41 @@ func TestAFailedActivityReachesServeWhenItIsBack(t *testing.T) {
 	f := newFakeServe(t)
 	cl := f.client()
 	var up atomic.Bool
+	var downFinds atomic.Int32
 	cl.Find = func() (Entry, error) {
 		if !up.Load() {
+			downFinds.Add(1)
 			return Entry{}, ErrNotRunning
 		}
 		return Entry{Base: f.srv.URL, Token: "tok", PID: 1}, nil
 	}
-	c := connect(t, New(cullSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: t.TempDir()}, cl))
+	ch := New(cullSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: t.TempDir()}, cl)
+	c := connect(t, ch)
 	c.notify("notifications/channels/report", map[string]any{"event": "activity", "working": true})
-	for deadline := time.Now().Add(5 * time.Second); !strings.Contains(c.logs.String(), "report activity:"); {
-		if time.Now().After(deadline) {
-			t.Fatalf("the activity post never failed: %s", c.logs.String())
-		}
-		time.Sleep(10 * time.Millisecond)
+	awaitFailedPost(t, ch, &downFinds)
+	if logs := c.logs.String(); strings.Contains(logs, "isn't running") {
+		t.Errorf("a report with no serve was logged: %s", logs)
 	}
 	up.Store(true)
 	expectActivity(t, f, channelmcp.ActivityWorking)
+}
+
+// awaitFailedPost waits until postReports has taken every queued report and
+// tried serve: a post looks for serve twice (its key, then its call), so two
+// more looks after the queue empties mean the post has failed.
+func awaitFailedPost(t *testing.T, ch *Channel, finds *atomic.Int32) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for len(ch.reports) > 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the report was never taken")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	for from := finds.Load(); finds.Load() < from+2; {
+		if time.Now().After(deadline) {
+			t.Fatal("the report was never posted")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }
