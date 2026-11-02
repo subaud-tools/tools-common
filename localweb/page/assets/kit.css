@@ -380,7 +380,7 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   .kit-narrow > .kit-left-col, .kit-narrow > .kit-right-col { width: 40px; overflow: hidden; padding: 0; }
   .kit-narrow > .kit-col > .kit-col-body { display: none; }
   .kit-narrow > .kit-col > .kit-col-toggle { margin: 8px auto; }
-  .kit-narrow > .kit-col > .kit-col-count {
+  .kit-narrow > .kit-col > .kit-col-count, .kit-right-col.kit-collapsed > .kit-col-count {
     display: block; box-sizing: border-box; width: fit-content; min-width: 22px; margin: 0 auto;
     padding: 2px 5px; border-radius: 10px; text-align: center;
     background: var(--kit-signal); color: var(--kit-signal-ink); font: 700 11px/16px var(--kit-mono);

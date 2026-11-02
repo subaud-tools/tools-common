@@ -157,9 +157,9 @@ test('railTabs: under the toggle line, folded with the column, the same tab open
   fixture().append(app);
   const row = t.el.querySelector('[role=tablist]');
   assert(row.getBoundingClientRect().top >= f.right.firstChild.getBoundingClientRect().bottom, 'the row is under the toggle');
-  f.setRightEmpty(true, 'C1');
+  f.right.firstChild.click();
   eq(row.offsetWidth, 0, 'folded');
-  f.setRightEmpty(false, 'C2');
+  f.right.firstChild.click();
   assert(row.offsetWidth > 0, 'open');
   assert(shown(t)[0].firstChild === b, 'chat is still open');
 });

@@ -75,65 +75,27 @@ test('frame: it opens with the state diazo users already have, and another tool 
   clean();
 });
 
-test('frame: a thread with no messages folds and its first message opens it, leaving what is remembered alone', () => {
+test('frame: moving through cards never changes the column', () => {
   clean();
   const f = frame(parts());
-  f.setRightEmpty(true, 'F1');
-  assert(f.right.classList.contains('kit-collapsed'), 'folded with nothing to show');
-  eq(f.right.firstChild.title, 'Show the thread');
-  f.setRightEmpty(false, 'F1');
-  assert(!f.right.classList.contains('kit-collapsed'), 'the first message opens it');
-  eq(localStorage.getItem('tooltest.collapsed.thread'), ''); // collapsible writes '' as it starts
-});
-
-test('frame: a press wins over the empty rule until the card changes', () => {
-  clean();
-  const f = frame(parts());
-  f.setRightEmpty(true, 'F1');
+  mount(f);
+  assert(!('setRightEmpty' in f), 'nothing a card holds can reach the column');
+  assert(!f.right.classList.contains('kit-collapsed'), 'nothing remembered: open');
   f.right.firstChild.click();
-  f.setRightEmpty(true, 'F1');
-  assert(!f.right.classList.contains('kit-collapsed'), 'opened by hand, empty stays open');
-  f.right.firstChild.click();
-  f.setRightEmpty(false, 'F1');
-  assert(f.right.classList.contains('kit-collapsed'), 'folded by hand, a message leaves it folded');
+  const again = frame(parts());
+  assert(again.right.classList.contains('kit-collapsed'), 'closed by hand, closed on the next frame');
   eq(localStorage.getItem('tooltest.collapsed.thread'), '1');
-  f.setRightEmpty(false, 'F2');
-  assert(!f.right.classList.contains('kit-collapsed'), 'the next card takes the rule');
-  f.setRightEmpty(true, 'F1');
-  assert(f.right.classList.contains('kit-collapsed'), 'the press went with its card: back on F1 the rule holds');
 });
 
-test('frame: a press holds over a reload on its card, and not on another', () => {
+test('frame: a press survives a new frame on the same name, and a remembered 1 alone folds', () => {
   clean();
   const f = frame(parts());
-  f.setRightEmpty(false, 'F1');
   f.right.firstChild.click();
-  const same = frame(parts());
-  same.setRightEmpty(false, 'F1');
-  assert(same.right.classList.contains('kit-collapsed'), 'still folded on its card');
-  const other = frame(parts());
-  other.setRightEmpty(false, 'F2');
-  assert(!other.right.classList.contains('kit-collapsed'), 'another card takes the rule');
-});
-
-test('frame: a tab on another card leaves a press alone', () => {
+  assert(frame(parts()).right.classList.contains('kit-collapsed'), 'the press is kept');
+  localStorage.setItem('tooltest.collapsed.thread', '');
+  localStorage.setItem('tooltest.collapsed.thread.card', 'F1');
+  assert(!frame(parts()).right.classList.contains('kit-collapsed'), 'anything but 1 starts open, and the old per-card hold means nothing');
   clean();
-  const here = frame(parts());
-  const there = frame(parts());
-  here.setRightEmpty(false, 'plan-a/F1');
-  there.setRightEmpty(false, 'plan-b/F1');
-  here.right.firstChild.click();
-  there.setRightEmpty(false, 'plan-b/F1');
-  here.setRightEmpty(false, 'plan-a/F1');
-  assert(here.right.classList.contains('kit-collapsed'), 'the press holds in its tab');
-  const reloaded = frame(parts());
-  reloaded.setRightEmpty(false, 'plan-a/F1');
-  assert(reloaded.right.classList.contains('kit-collapsed'), 'and over a reload on its card');
-});
-
-test('frame: the empty rule does nothing to a page with no thread', () => {
-  clean();
-  frame(parts({ right: undefined })).setRightEmpty(true, 'F1');
 });
 
 test('collapsible: folded starts it folded and leaves what the page remembers alone', () => {
@@ -261,25 +223,6 @@ test('narrowMode: presses leave what is remembered untouched', () => {
   });
 });
 
-test('narrowMode: setRightEmpty changes nothing visible while narrow, and its fold is there on widening', () => {
-  withWidth(fire => {
-    const p = narrowed();
-    const t = p.f.right.firstChild;
-    const look = () => [stateOf(p), t.textContent, t.title, t.getAttribute('aria-expanded'), p.f.right.offsetWidth];
-    const shut = look();
-    p.f.setRightEmpty(true, 'F1');
-    p.f.setRightEmpty(false, 'F1');
-    eq(look(), shut);
-    t.click();
-    const open = look();
-    p.f.setRightEmpty(true, 'F2');
-    eq(look(), open);
-    fire(false);
-    assert(p.f.right.classList.contains('kit-collapsed'), 'the empty rule holds once wide');
-    eq(t.title, 'Show the thread');
-  });
-});
-
 test('narrowMode: the toggle follows the state while narrow and the fold again when wide', () => {
   withWidth(fire => {
     const { f, n } = narrowed();
@@ -346,6 +289,28 @@ test('narrowMode: a count is a badge under the toggle, absent at zero, and shown
     fire(true);
     n.setCount('right', 0);
     assert(!badge(), 'gone at zero');
+  });
+});
+
+test('narrowMode: at wide widths a count shows on a closed right strip, not on an open one, and never on the left', () => {
+  withWidth(fire => {
+    const { f, n } = narrowed();
+    f.right.style.transition = 'none';
+    fire(false);
+    n.setCount('right', 2);
+    n.setCount('left', 2);
+    const badge = col => col.querySelector(':scope > .kit-col-count');
+    eq(getComputedStyle(badge(f.right)).display, 'none');
+    f.right.firstChild.click();
+    eq(getComputedStyle(badge(f.right)).display, 'block');
+    eq(badge(f.right).textContent, '2');
+    assert(badge(f.right).getBoundingClientRect().top >= f.right.firstChild.getBoundingClientRect().bottom, 'below the toggle on the strip');
+    assert(badge(f.right).getBoundingClientRect().right <= f.right.getBoundingClientRect().right, 'inside the strip');
+    f.right.firstChild.click();
+    eq(getComputedStyle(badge(f.right)).display, 'none');
+    f.left.firstChild.click();
+    eq(getComputedStyle(badge(f.left)).display, 'none');
+    clean();
   });
 });
 
@@ -458,14 +423,9 @@ test('frame: draws where storage is blocked, and folds without remembering', () 
     assert(!f.left.classList.contains('kit-collapsed'), 'nothing remembered: open');
     f.left.firstChild.click();
     assert(f.left.classList.contains('kit-collapsed'), 'the press still folds');
-    f.setRightEmpty(true, 'c1');
-    assert(f.right.classList.contains('kit-collapsed'), 'an empty thread folds');
     f.right.firstChild.click();
-    assert(!f.right.classList.contains('kit-collapsed'), 'a press opens it');
-    f.setRightEmpty(true, 'c1');
-    assert(!f.right.classList.contains('kit-collapsed'), 'the press holds on its card in this tab');
-    f.setRightEmpty(true, 'c2');
-    assert(f.right.classList.contains('kit-collapsed'), 'a new card lets go of it');
+    assert(f.right.classList.contains('kit-collapsed'), 'the thread folds the same');
+    assert(frame(parts()).right.classList.contains('kit-collapsed') === false, 'with nowhere to keep it, a new frame starts open');
   });
   eq(localStorage.getItem('tooltest.collapsed.index'), null);
 });
