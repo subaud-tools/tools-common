@@ -13884,7 +13884,7 @@ function sentText(data, origin, tab) {
   if (typeof data !== "object" || data === null) return null;
   const { type, text } = data;
   if (type !== "send" || typeof text !== "string") return null;
-  const trimmed = text.replace(/\n+$/, "");
+  const trimmed = text.replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, "").replace(/\n+$/, "");
   return trimmed === "" ? null : trimmed;
 }
 

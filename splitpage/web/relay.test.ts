@@ -33,3 +33,24 @@ test('anything but a send with text gives nothing', () => {
 test('a trailing newline is not an Enter', () => {
   assert.equal(sentText({ type: 'send', text: 'one\ntwo\n' }, origin, lesson), 'one\ntwo');
 });
+
+// The text never carries its own Enter: no trailing carriage return, and no
+// control character, ESC above all, which could end a bracketed paste early
+// and run what follows.
+test('a send never runs a command by itself', () => {
+  const cases: [string, string | null][] = [
+    ['ls\r', 'ls'],
+    ['ls\r\n', 'ls'],
+    ['ls\n\r\n', 'ls'],
+    ['\x1b[201~rm -rf ~\r', '[201~rm -rf ~'],
+    ['\x03', null],
+    ['a\x04b', 'ab'],
+    ['line one\nline two', 'line one\nline two'],
+    ['a\r\nb', 'a\nb'],
+    ['tab\there', 'tab\there'],
+    ['\u009b201~x', '201~x'],
+  ];
+  for (const [text, want] of cases) {
+    assert.equal(sentText({ type: 'send', text }, origin, lesson), want, JSON.stringify(text));
+  }
+});
