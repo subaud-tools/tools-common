@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>__TITLE__</title>
+<link rel="stylesheet" href="split.css">
+</head>
+<body data-socket="__SOCKET__" data-session="__SESSION__" data-restart="__RESTART__" data-take="__TAKE__">
+<div id="term">
+  <div id="stopped" hidden>
+    <span id="stopped-text"></span>
+    <button id="start-again" type="button">Start it again</button>
+    <button id="take-here" type="button" hidden>Show it here</button>
+  </div>
+</div>
+<div id="divider" role="separator" aria-orientation="vertical" aria-label="Drag to resize the panels"></div>
+<div id="tabs-panel">
+  <div id="tabbar">
+    <div id="tab-list" role="tablist"></div>
+    <button id="reload" type="button" title="Reload this tab" aria-label="Reload this tab">&#x21bb;</button>
+  </div>
+  <div id="frames">
+    <div id="tabs-empty">Pages an agent opens appear here.</div>
+  </div>
+</div>
+<script type="module" src="split.js"></script>
+</body>
+</html>

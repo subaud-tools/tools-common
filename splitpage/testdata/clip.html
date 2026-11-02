@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Clip</title>
+<p>A tool page with a copy button: asked by the suite, it copies and says how it went.</p>
+<script>
+addEventListener('message', async (ev) => {
+  if (ev.data !== 'copy') return;
+  try {
+    await navigator.clipboard.writeText('copied from a tab');
+    ev.source.postMessage({ copied: true }, '*');
+  } catch (e) {
+    ev.source.postMessage({ copied: false, error: String(e) }, '*');
+  }
+});
+</script>
