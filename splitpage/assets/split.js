@@ -13887,6 +13887,12 @@ var closeStopped = 4410;
 var minPanel = 120;
 var pageQuery = new URLSearchParams(location.search);
 pageQuery.delete("t");
+var takeOnLoad = pageQuery.get("take") === "1";
+if (pageQuery.has("take")) {
+  pageQuery.delete("take");
+  const kept = pageQuery.toString();
+  history.replaceState(null, "", location.pathname + (kept ? `?${kept}` : "") + location.hash);
+}
 var socketPath = document.body.dataset.socket ?? "";
 var session = pageQuery.get("session") ?? document.body.dataset.session ?? "";
 var canRestart = document.body.dataset.restart === "true";
@@ -14042,7 +14048,7 @@ function startTerminal() {
     term.focus();
     connect(true);
   });
-  connect();
+  connect(takeOnLoad);
 }
 function startDivider() {
   const divider = document.getElementById("divider");

@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.52.1
+
+### Fixed
+- `splitpage`: a page opened with `take=1` in its address takes the terminal on its first connection only, then drops `take` from its address, so a reload or a window the browser restores no longer takes the session from another terminal (proj's own page did the same). `Config.Take`'s doc now says so.
+
 ## 0.52.0
 
 ### Added
