@@ -245,6 +245,22 @@ if (restart) {
     assert(p.get('take') === '1' && p.get('session') === 'x' && p.get('socket') === 'y', `take query: ${p}`);
     await until(() => notice.hidden && split().canSend(), 'the taken connection has its replay');
   });
+
+  test('a page opened with take=1 takes once, then drops take from its address', async () => {
+    let n = (await queries()).length;
+    await load('/?session=x&socket=y&take=1');
+    let p = await newQuery(n, 'the page connects');
+    assert(p.get('take') === '1', `the first connection did not take: ${p}`);
+    const left = new URLSearchParams(win().location.search);
+    assert(!left.has('take'), `take left in the address: ${win().location.search}`);
+    assert(left.get('session') === 'x' && left.get('socket') === 'y', `address lost its session: ${win().location.search}`);
+    await until(() => split().canSend(), 'the replay is written');
+    n = (await queries()).length;
+    await load();
+    p = await newQuery(n, 'the reloaded page connects');
+    assert(!p.has('take'), `a reload took the session: ${p}`);
+    assert(p.get('session') === 'x', `the reload lost its session: ${p}`);
+  });
 } else {
   test('without Take, 4409 says reload and offers no button', async () => {
     await pageReady();

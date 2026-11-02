@@ -32,7 +32,9 @@ type Config struct {
 	Restart bool
 	// Take says the tool's socket takes the terminal from another page when
 	// asked with take=1: the page then offers Show it here when the terminal
-	// closes with CloseReplaced. The first connection never asks.
+	// closes with CloseReplaced. The first connection asks only when the page's
+	// own address carries take=1, which the page then drops from its address, so
+	// a reload or a restored window never takes the terminal.
 	Take bool
 }
 

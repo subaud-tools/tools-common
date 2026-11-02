@@ -26,6 +26,15 @@ const minPanel = 120;
 // own query goes on to the terminal socket.
 const pageQuery = new URLSearchParams(location.search);
 pageQuery.delete('t');
+// take=1 in the page's own address (a tool opening its window) takes the
+// terminal once: it leaves the address, so a reload or a window the browser
+// restores never takes it again.
+const takeOnLoad = pageQuery.get('take') === '1';
+if (pageQuery.has('take')) {
+  pageQuery.delete('take');
+  const kept = pageQuery.toString();
+  history.replaceState(null, '', location.pathname + (kept ? `?${kept}` : '') + location.hash);
+}
 const socketPath = document.body.dataset.socket ?? '';
 const session = pageQuery.get('session') ?? document.body.dataset.session ?? '';
 const canRestart = document.body.dataset.restart === 'true';
@@ -205,7 +214,7 @@ function startTerminal(): void {
     connect(true);
   });
 
-  connect();
+  connect(takeOnLoad);
 }
 
 function startDivider(): void {
