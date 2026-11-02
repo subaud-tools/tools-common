@@ -13878,6 +13878,16 @@ function handleKey(ev, send) {
   return false;
 }
 
+// relay.ts
+function sentText(data, origin, tab) {
+  if (!tab?.types || origin !== new URL(tab.address).origin) return null;
+  if (typeof data !== "object" || data === null) return null;
+  const { type, text } = data;
+  if (type !== "send" || typeof text !== "string") return null;
+  const trimmed = text.replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, "").replace(/\n+$/, "");
+  return trimmed === "" ? null : trimmed;
+}
+
 // tabs.ts
 var api = "/api/split/";
 function startTabs(session2) {
@@ -13979,7 +13989,14 @@ function startTabs(session2) {
   const stream = new EventSource(`${api}stream?session=${encodeURIComponent(session2)}`);
   stream.onmessage = (ev) => render(JSON.parse(ev.data));
   render(current);
-  return { list: () => current };
+  const from = (source) => {
+    if (source === null) return void 0;
+    for (const [id, f] of shown) {
+      if (f.contentWindow === source) return current.tabs?.find((t) => t.id === id);
+    }
+    return void 0;
+  };
+  return { list: () => current, from };
 }
 
 // entry.ts
@@ -14001,6 +14018,7 @@ var socketPath = document.body.dataset.socket ?? "";
 var session = pageQuery.get("session") ?? document.body.dataset.session ?? "";
 var canRestart = document.body.dataset.restart === "true";
 var canTake = document.body.dataset.take === "true";
+var script = document.body.dataset.script ?? "";
 var withSession = (path) => `${path}?session=${encodeURIComponent(session)}`;
 function socketURL(take) {
   const [path, own = ""] = socketPath.split("?", 2);
@@ -14092,6 +14110,13 @@ function startTerminal() {
     return true;
   });
   new ResizeObserver(() => fit.fit()).observe(document.getElementById("term"));
+  addEventListener("message", (ev) => {
+    const text = sentText(ev.data, ev.origin, tabs.from(ev.source));
+    if (text !== null) {
+      term.paste(text);
+      term.focus();
+    }
+  });
   const connect = (take = false) => {
     const socket = new WebSocket(socketURL(take));
     socket.binaryType = "arraybuffer";
@@ -14182,6 +14207,10 @@ function startDivider() {
 var tabs = startTabs(session);
 startTerminal();
 startDivider();
+if (script !== "") {
+  const url = new URL(script, location.href);
+  if (url.origin === location.origin) await import(url.href);
+}
 /*! Bundled license information:
 
 @xterm/addon-fit/lib/addon-fit.mjs:

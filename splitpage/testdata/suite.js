@@ -7,6 +7,8 @@ const q = new URLSearchParams(location.search);
 const one = q.get('one');
 const two = q.get('two');
 const clip = q.get('clip');
+const send = q.get('send');
+const elsewhere = q.get('elsewhere'); // send.html on another origin
 const restart = q.get('restart') === '1';
 const session = 's1';
 const frame = document.getElementById('page');
@@ -81,6 +83,28 @@ function screen() {
 const bar = () => [...doc().querySelectorAll('#tab-list .tab')];
 const barTab = (id) => doc().querySelector(`#tab-list .tab[data-id="${id}"]`);
 const shownFrame = () => doc().querySelector('#frames iframe.shown');
+
+// tell gives the framed tab id cmd (a post to the split page, or a go to
+// another address), asked again until the tab's page has loaded and answers.
+let told = 0;
+async function tell(id, cmd) {
+  const n = ++told;
+  const f = await until(() => doc().querySelector(`#frames iframe[data-id="${id}"]`), `the frame of ${id}`);
+  let done = false;
+  const on = (ev) => {
+    if (ev.data?.done === n) done = true;
+  };
+  addEventListener('message', on);
+  try {
+    await until(async () => {
+      f.contentWindow.postMessage({ id: n, ...cmd }, '*');
+      await sleep(50);
+      return done;
+    }, `${id} answers`);
+  } finally {
+    removeEventListener('message', on);
+  }
+}
 
 // pageReady waits for the page in the frame to have connected its terminal.
 async function pageReady() {
@@ -259,6 +283,40 @@ if (restart) {
     assert(width === '300px', `--term-width ${width}`);
   });
 
+  test("the tool's script runs and sees the page's terminal", async () => {
+    const saw = await until(() => win().scriptSaw, 'the script runs');
+    assert(saw.term && saw.cols > 0, `the script saw ${JSON.stringify(saw)}`);
+  });
+
+  test('a tab that types puts a send in the terminal, and nothing else does', async () => {
+    await until(() => split().canSend(), 'the replay is written');
+    let res = await post('/api/split/open', { session, address: send, title: 'Types', types: true });
+    assert(res.ok, `open send: ${res.status}`);
+    const typer = (await res.json()).selected;
+    res = await post('/api/split/open', { session, address: `${send}?plain`, title: 'Plain' });
+    const plain = (await res.json()).selected;
+    const before = await input();
+    // From a tab without types, and of another type from the one with it.
+    await tell(plain, { post: { type: 'send', text: 'from plain' } });
+    await tell(typer, { post: { type: 'other', text: 'other type' } });
+    await tell(typer, { post: { type: 'send', text: 'typed\n' } });
+    await until(async () => (await input()).length > before.length, 'the send arrives');
+    await sleep(200);
+    const got = (await input()).slice(before.length);
+    assert(got === 'typed', `typed ${JSON.stringify(got)}`);
+    // The tab that types, gone to another origin, types nothing.
+    await tell(typer, { go: elsewhere });
+    await sleep(300);
+    await tell(typer, { post: { type: 'send', text: 'from elsewhere' } });
+    await sleep(300);
+    const after = (await input()).slice(before.length);
+    assert(after === 'typed', `typed ${JSON.stringify(after)}`);
+    for (const id of [typer, plain]) {
+      barTab(id).querySelector('.tab-close').click();
+      await until(() => !barTab(id), 'the send tab closes');
+    }
+  });
+
   test('a stopped program offers Start it again', async () => {
     await until(() => split().canSend(), 'the reloaded page has its replay');
     const before = split().socket;
@@ -314,6 +372,14 @@ if (restart) {
     assert(p.get('session') === 'x', `the reload lost its session: ${p}`);
   });
 } else {
+  test('without a Script nothing extra loads', async () => {
+    await pageReady();
+    await sleep(200);
+    assert(win().scriptSaw === undefined, 'a script ran');
+    const scripts = win().performance.getEntriesByType('resource').filter((e) => e.name.endsWith('.js'));
+    assert(scripts.every((e) => e.name.endsWith('/split.js')), `loaded ${scripts.map((e) => e.name)}`);
+  });
+
   test('without Take, 4409 says reload and offers no button', async () => {
     await pageReady();
     await post('/api/test/release');

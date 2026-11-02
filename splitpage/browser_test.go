@@ -116,18 +116,24 @@ func runSuite(t *testing.T, restart bool) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	page := Page(Config{Title: "splitpage test", Socket: "/api/term", Session: "s1", Restart: restart, Take: restart})
+	c := Config{Title: "splitpage test", Socket: "/api/term", Session: "s1", Restart: restart, Take: restart}
+	if restart {
+		c.Script = "test/script.js"
+	}
+	page := Page(c)
 	srv, err := localweb.Start(ctx, localweb.Config{Tool: "splitpage-test", Assets: withTestdata{page}, API: api})
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	// Each framed page on an origin of its own.
 	framed := func(name string) string {
 		s := httptest.NewServer(http.FileServerFS(os.DirFS("testdata")))
 		t.Cleanup(s.Close)
 		return s.URL + "/" + name
 	}
-	q := url.Values{"t": {srv.Token}, "one": {framed("one.html")}, "two": {framed("two.html")}, "clip": {framed("clip.html")}}
+	q := url.Values{"t": {srv.Token}, "one": {framed("one.html")}, "two": {framed("two.html")}, "clip": {framed("clip.html")},
+		"send": {framed("send.html")}, "elsewhere": {framed("send.html")}}
 	if restart {
 		q.Set("restart", "1")
 	}

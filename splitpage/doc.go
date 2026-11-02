@@ -6,4 +6,7 @@
 // A tool serves it on localweb: Page as its Assets, Tabs.Handler under its
 // API at /api/split/, and its own terminal websocket under /api/, keeping the
 // contract in wire.go. Open is the client an agent's tool calls to open a tab.
+//
+// A tab opened with Types may type into the terminal (lwc's lesson does), and
+// Config.Script adds a tool's own module to the page.
 package splitpage

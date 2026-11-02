@@ -10,6 +10,7 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
 import type { Resize } from '../wire.d.ts';
 import { handleKey } from './keys.ts';
+import { sentText } from './relay.ts';
 import { startTabs } from './tabs.ts';
 
 const fontFamily =
@@ -40,6 +41,7 @@ const socketPath = document.body.dataset.socket ?? '';
 const session = pageQuery.get('session') ?? document.body.dataset.session ?? '';
 const canRestart = document.body.dataset.restart === 'true';
 const canTake = document.body.dataset.take === 'true';
+const script = document.body.dataset.script ?? '';
 const withSession = (path: string): string =>
   `${path}?session=${encodeURIComponent(session)}`;
 
@@ -154,6 +156,16 @@ function startTerminal(): void {
   });
   new ResizeObserver(() => fit.fit()).observe(document.getElementById('term')!);
 
+  // A tab opened with types (lwc's lesson) types into the terminal as a paste
+  // does, with no Enter: the user reads it and sends it.
+  addEventListener('message', (ev) => {
+    const text = sentText(ev.data, ev.origin, tabs.from(ev.source));
+    if (text !== null) {
+      term.paste(text);
+      term.focus();
+    }
+  });
+
   const connect = (take = false): void => {
     const socket = new WebSocket(socketURL(take));
     socket.binaryType = 'arraybuffer';
@@ -251,3 +263,9 @@ function startDivider(): void {
 const tabs = startTabs(session);
 startTerminal();
 startDivider();
+// The tool's own script (Config.Script), from its own assets, once
+// window.splitPage is set.
+if (script !== '') {
+  const url = new URL(script, location.href);
+  if (url.origin === location.origin) await import(url.href);
+}
