@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.53.0
+
+### Fixed
+- `pageserve`: the channel remembers the last `activity` report the harness sent and posts it again whenever its loop finds a new serve, and after a failed post once serve answers again, instead of dropping it. The harness re-sends activity only when it reconnects to the channel, which a serve restart doesn't cause, so a session working through a restart showed idle, then stalled. Other reports are unchanged.
+
 ## 0.52.1
 
 ### Fixed

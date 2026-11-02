@@ -132,6 +132,9 @@ type Channel struct {
 	rootErr error
 	runCtx  context.Context
 	reports chan report // pi's reports, posted to serve in order by one goroutine
+	// resend is the loop's nudge to postReports: a new serve was found, or
+	// serve answered, so serve may lack the session's last activity.
+	resend chan struct{}
 }
 
 // queueReport hands a report to the goroutine that posts them. A full queue
@@ -155,7 +158,7 @@ type report struct {
 // session's working directory.
 func New(spec Spec, id Identity, c *Client) *Channel {
 	ch := &Channel{Spec: spec, ID: id, Client: c, Log: io.Discard, Open: localweb.OpenBrowser,
-		findFor: 2 * time.Second, Retry: 5 * time.Second, Presence: 30 * time.Second, Poll: 55 * time.Second, reports: make(chan report, 64)}
+		findFor: 2 * time.Second, Retry: 5 * time.Second, Presence: 30 * time.Second, Poll: 55 * time.Second, reports: make(chan report, 64), resend: make(chan struct{}, 1)}
 	if spec.Root != nil {
 		ch.root, ch.rootErr = spec.Root(id.CWD)
 	}
@@ -247,18 +250,45 @@ func (ch *Channel) Run(ctx context.Context, r io.Reader, w io.Writer) error {
 
 // postReports posts each report the harness sent to serve, in the order
 // sent, until ctx ends. It never starts serve. A failed post is logged, not
-// retried.
+// retried, except activity: the harness sends it again only when it
+// reconnects to the channel, so the last one is posted again, when the loop
+// nudges, to a serve it hasn't reached (a restarted serve, or the same one
+// after a failed post).
 func (ch *Channel) postReports(ctx context.Context) {
 	c := ch.Client.Passive()
+	var activity, postedTo string // the last activity token, and the serve it reached ("": none)
+	post := func(r report) {
+		at := serveKey(c)
+		err := c.Report(ctx, ch.ID.Session, r.event, r.token)
+		if r.event == channelmcp.ReportActivity {
+			activity, postedTo = r.token, at
+			if err != nil {
+				postedTo = ""
+			}
+		}
+		if err != nil && ctx.Err() == nil {
+			ch.logf("report %s: %v", r.event, err)
+		}
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case r := <-ch.reports:
-			if err := c.Report(ctx, ch.ID.Session, r.event, r.token); err != nil && ctx.Err() == nil {
-				ch.logf("report %s: %v", r.event, err)
+			post(r)
+		case <-ch.resend:
+			if at := serveKey(c); activity != "" && at != "" && at != postedTo {
+				post(report{channelmcp.ReportActivity, activity})
 			}
 		}
+	}
+}
+
+// nudge tells postReports serve may lack the session's last activity.
+func (ch *Channel) nudge() {
+	select {
+	case ch.resend <- struct{}{}:
+	default:
 	}
 }
 
@@ -332,8 +362,13 @@ func (ch *Channel) loop(ctx context.Context) {
 		}
 		return ch.rest(ctx, c, at, fastUntil)
 	}
+	var lastAt string // the serve the loop last found
 	for ctx.Err() == nil {
 		at := serveKey(c)
+		if at != "" && at != lastAt {
+			ch.nudge()
+		}
+		lastAt = at
 		if ch.Spec.OnServe != nil {
 			if e, err := c.Find(); err == nil && !e.StartedAt.Equal(seen) {
 				if !seen.IsZero() {
@@ -354,6 +389,7 @@ func (ch *Channel) loop(ctx context.Context) {
 				continue
 			}
 			lastPresence, lastErr = time.Now(), ""
+			ch.nudge()
 		}
 		var got json.RawMessage
 		code, err := c.Do(ctx, http.MethodGet, "/api/agent/wait?"+Query(
@@ -373,6 +409,7 @@ func (ch *Channel) loop(ctx context.Context) {
 			}
 		case code == http.StatusOK && len(got) > 0:
 			lastErr = ""
+			ch.nudge()
 			text, meta, ok := ch.Spec.Wake(got)
 			if !ok {
 				ch.logf("refused delivery: %s", refused(got))
@@ -383,6 +420,7 @@ func (ch *Channel) loop(ctx context.Context) {
 			}
 		default:
 			lastErr = ""
+			ch.nudge()
 		}
 	}
 }
