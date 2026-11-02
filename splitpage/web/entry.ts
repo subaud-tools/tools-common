@@ -1,0 +1,212 @@
+// The split page: xterm.js over the tool's terminal websocket on the left, the
+// tabs on the right, and a divider between them. The wire is splitpage's
+// (wire.go): binary frames carry terminal bytes both ways, a text frame from
+// here is a resize, and the first frame from the server is the replay.
+
+import { FitAddon } from '@xterm/addon-fit';
+import { Unicode11Addon } from '@xterm/addon-unicode11';
+import { WebglAddon } from '@xterm/addon-webgl';
+import { Terminal } from '@xterm/xterm';
+import type { Resize } from '../wire.d.ts';
+import { handleKey } from './keys.ts';
+import { startTabs } from './tabs.ts';
+
+const fontFamily =
+  'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
+const encoder = new TextEncoder();
+// wire.go's close codes.
+const closeNoSession = 4404;
+const closeReplaced = 4409;
+const closeStopped = 4410;
+const minPanel = 120;
+
+// What the tool filled in (splitpage.Config). The page is authenticated by
+// localweb's cookie, so no address here carries a token.
+const socketPath = document.body.dataset.socket ?? '';
+const session = document.body.dataset.session ?? '';
+const canRestart = document.body.dataset.restart === 'true';
+const withSession = (path: string): string =>
+  `${path}?session=${encodeURIComponent(session)}`;
+
+const notice = document.getElementById('stopped')!;
+const noticeText = document.getElementById('stopped-text')!;
+const startAgain = document.getElementById('start-again') as HTMLButtonElement;
+
+function showNotice(text: string, button: boolean): void {
+  noticeText.textContent = text;
+  startAgain.hidden = !button;
+  notice.hidden = false;
+  if (button) startAgain.focus();
+}
+
+// Reloading can't help once the server has gone, so this is the page's last
+// word: nothing replaces this notice.
+let serverGone = false;
+function sayServerGone(): void {
+  serverGone = true;
+  showNotice('The page’s server has stopped.', false);
+}
+
+function startTerminal(): void {
+  const term = new Terminal({
+    fontFamily,
+    fontSize: 13,
+    allowProposedApi: true,
+    macOptionIsMeta: true,
+    macOptionClickForcesSelection: true,
+  });
+  const fit = new FitAddon();
+  term.loadAddon(fit);
+  term.loadAddon(new Unicode11Addon());
+  term.unicode.activeVersion = '11';
+  term.open(document.getElementById('term')!);
+  try {
+    const webgl = new WebglAddon();
+    webgl.onContextLoss(() => webgl.dispose());
+    term.loadAddon(webgl);
+  } catch {
+    // no WebGL here: xterm's DOM renderer still draws
+  }
+  fit.fit();
+  term.focus();
+
+  let ws: WebSocket;
+  // xterm answers any terminal queries in the kept output as it writes them, and
+  // those answers are old: nothing goes to the program until the replay, the first
+  // frame, has been written.
+  let replayed = false;
+  const canSend = (): boolean => replayed && ws.readyState === WebSocket.OPEN;
+  const send = (data: string): void => {
+    if (canSend()) ws.send(encoder.encode(data));
+  };
+  const sendSize = (): void => {
+    if (ws.readyState === WebSocket.OPEN) {
+      const msg: Resize = { type: 'resize', cols: term.cols, rows: term.rows };
+      ws.send(JSON.stringify(msg));
+    }
+  };
+
+  term.attachCustomKeyEventHandler((ev) => {
+    // Only left Option is Alt; right Option still types its characters. The
+    // modifier's own keydown is the one event that tells them apart.
+    if (ev.type === 'keydown' && ev.key === 'Alt') {
+      term.options.macOptionIsMeta = ev.code === 'AltLeft';
+    }
+    return handleKey(ev, send);
+  });
+  term.onData(send);
+  term.onBinary((data) => {
+    if (canSend()) {
+      ws.send(Uint8Array.from(data, (c) => c.charCodeAt(0)));
+    }
+  });
+  term.onResize(sendSize);
+  term.onTitleChange((title) => {
+    document.title = title;
+  });
+  term.onSelectionChange(() => {
+    const text = term.getSelection();
+    if (text) void navigator.clipboard.writeText(text).catch(() => {});
+  });
+  // A program copies through OSC 52.
+  term.parser.registerOscHandler(52, (data) => {
+    const b64 = data.slice(data.indexOf(';') + 1);
+    if (b64 !== '?') {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const text = new TextDecoder().decode(bytes);
+      void navigator.clipboard.writeText(text).catch(() => {});
+    }
+    return true;
+  });
+  new ResizeObserver(() => fit.fit()).observe(document.getElementById('term')!);
+
+  const connect = (): void => {
+    const socket = new WebSocket(`ws://${location.host}${withSession(socketPath)}`);
+    socket.binaryType = 'arraybuffer';
+    ws = socket;
+    replayed = false;
+    socket.onopen = sendSize;
+    socket.onmessage = (ev) => {
+      term.write(new Uint8Array(ev.data as ArrayBuffer), () => {
+        replayed = true;
+      });
+    };
+    socket.onclose = (ev) => void closed(ev);
+    // What the browser tests read and wait on.
+    Object.assign(window, { splitPage: { term, socket, canSend, tabs } });
+  };
+
+  const closed = async (ev: CloseEvent): Promise<void> => {
+    if (serverGone) return;
+    switch (ev.code) {
+      case closeStopped:
+        showNotice('The session’s program has stopped.', canRestart);
+        return;
+      case closeReplaced:
+        showNotice('Opened in another tab: reload to show it here.', false);
+        return;
+      case closeNoSession:
+        showNotice('This session no longer exists.', false);
+        return;
+    }
+    // Only a server that still answers can be reconnected to by reloading.
+    try {
+      await fetch(withSession('/api/split/tabs'));
+      term.write(`\r\n[${ev.reason || 'connection lost'}: reload to reconnect]\r\n`);
+    } catch {
+      sayServerGone();
+    }
+  };
+
+  startAgain.addEventListener('click', () => {
+    startAgain.disabled = true;
+    void (async () => {
+      try {
+        const res = await fetch(withSession('/api/split/restart'), { method: 'POST' });
+        if (res.ok) {
+          notice.hidden = true;
+          term.focus();
+          connect();
+        } else {
+          showNotice(`Couldn’t start it again: ${await res.text()}`, true);
+        }
+      } catch {
+        sayServerGone();
+      } finally {
+        startAgain.disabled = false;
+      }
+    })();
+  });
+
+  connect();
+}
+
+function startDivider(): void {
+  const divider = document.getElementById('divider')!;
+  let dragging = false;
+  divider.addEventListener('pointerdown', (ev) => {
+    dragging = true;
+    try {
+      divider.setPointerCapture(ev.pointerId);
+    } catch {
+      // a pointer the browser doesn't know (a synthetic one) can't be captured
+    }
+    divider.classList.add('dragging');
+  });
+  divider.addEventListener('pointermove', (ev) => {
+    if (!dragging) return;
+    const most = document.body.clientWidth - divider.offsetWidth - minPanel;
+    const width = Math.min(Math.max(ev.clientX, minPanel), most);
+    document.body.style.setProperty('--term-width', `${width}px`);
+  });
+  const end = (): void => {
+    dragging = false;
+    divider.classList.remove('dragging');
+  };
+  divider.addEventListener('pointerup', end);
+  divider.addEventListener('pointercancel', end);
+}
+
+const tabs = startTabs(session);
+startTerminal();
+startDivider();

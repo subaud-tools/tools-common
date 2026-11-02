@@ -34,7 +34,8 @@ jobs:
       - uses: extractions/setup-just@v4.0.0
       - run: just verify-extra
   # The localweb/page kit's JS suites need a browser, too slow for the push
-  # gate; CI runs them as their own required job.
+  # gate; CI runs them as their own required job, with splitpage's page build
+  # (node) and its committed assets check.
   browser:
     runs-on: ubuntu-26.04
     steps:
@@ -42,5 +43,8 @@ jobs:
       - uses: actions/setup-go@v7.0.0
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
       - uses: extractions/setup-just@v4.0.0
       - run: just verify-slow
