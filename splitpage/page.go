@@ -38,7 +38,9 @@ type Config struct {
 	Take bool
 	// Script is the path of a module in the tool's own assets, relative to the
 	// page, that the page loads once it has started, with window.splitPage (its
-	// terminal) already set: what one tool adds to the page. Empty loads nothing.
+	// terminal, and fit, which sizes the terminal to its panel again, for a
+	// script that pads it) already set: what one tool adds to the page. Empty
+	// loads nothing.
 	Script string
 }
 

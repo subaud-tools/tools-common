@@ -14134,7 +14134,7 @@ function startTerminal() {
       });
     };
     socket.onclose = (ev) => void closed(ev);
-    Object.assign(window, { splitPage: { term, socket, canSend, tabs } });
+    Object.assign(window, { splitPage: { term, socket, canSend, tabs, fit: () => fit.fit() } });
   };
   const closed = async (ev) => {
     if (serverGone) return;

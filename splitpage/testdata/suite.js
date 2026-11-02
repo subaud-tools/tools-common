@@ -289,6 +289,17 @@ if (restart) {
     assert(barTab(before.selected).classList.contains('selected'), 'the selection after reload');
   });
 
+  test("a tool's script makes room above the terminal with fit", async () => {
+    const t = split().term;
+    const rows = t.rows;
+    t.element.style.paddingTop = '60px';
+    split().fit();
+    await until(() => t.rows < rows, `rows after padding: ${t.rows}, before ${rows}`);
+    t.element.style.paddingTop = '';
+    split().fit();
+    await until(() => t.rows === rows, `rows after the padding went: ${t.rows}, want ${rows}`);
+  });
+
   test('the divider drags', async () => {
     const divider = doc().getElementById('divider');
     const at = (type, x) =>
