@@ -7,9 +7,10 @@ const items = [
   { label: 'Copy link', act: 'copy-link' },
 ];
 
-function setup(onPick = () => {}) {
+function setup(onPick = () => {}, atFoot = false) {
   const bar = document.createElement('div');
-  bar.style.cssText = 'display:flex;justify-content:flex-end;padding:20px';
+  bar.style.cssText = 'display:flex;justify-content:flex-end;padding:20px' +
+    (atFoot ? ';position:fixed;left:0;right:0;bottom:0' : '');
   const button = document.createElement('button');
   button.textContent = SHARE_LABEL;
   bar.append(button);
@@ -36,6 +37,17 @@ test('share: it opens right-aligned under its button', () => {
     const b = button.getBoundingClientRect(), m = menu.el.getBoundingClientRect();
     assert(Math.abs(m.right - b.right) < 1, `menu right ${m.right}, button right ${b.right}`);
     assert(m.top >= b.bottom, `menu top ${m.top}, button bottom ${b.bottom}`);
+  } finally { menu.destroy(); }
+});
+
+test('share: a button at the window\'s foot opens its menu above it, inside the window', () => {
+  const { button, menu } = setup(() => {}, true);
+  try {
+    button.click();
+    const b = button.getBoundingClientRect(), m = menu.el.getBoundingClientRect();
+    assert(m.bottom <= b.top, `menu bottom ${m.bottom}, button top ${b.top}`);
+    assert(m.top >= 0, `menu top ${m.top}`);
+    assert(Math.abs(m.right - b.right) < 1, `menu right ${m.right}, button right ${b.right}`);
   } finally { menu.destroy(); }
 });
 

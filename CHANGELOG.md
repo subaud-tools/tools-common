@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.56.0
+
+### Changed
+- `shareMenu` (`localweb/page/assets/share.js`): the menu opens above its button when it would run past the window's foot and there is more room above, so a Share button in a bar at the foot of the window opens up. A button with room below opens down as before.
+
 ## 0.55.0
 
 ### Added
