@@ -8,6 +8,8 @@ const api = '/api/split/';
 export interface TabsView {
   // The list the page shows now.
   list(): TabList;
+  // The tab whose frame is source, or undefined for any other window.
+  from(source: MessageEventSource | null): Tab | undefined;
 }
 
 export function startTabs(session: string): TabsView {
@@ -122,5 +124,13 @@ export function startTabs(session: string): TabsView {
   const stream = new EventSource(`${api}stream?session=${encodeURIComponent(session)}`);
   stream.onmessage = (ev) => render(JSON.parse(ev.data as string) as TabList);
   render(current);
-  return { list: () => current };
+  const from = (source: MessageEventSource | null): Tab | undefined => {
+    if (source === null) return undefined;
+    for (const [id, f] of shown) {
+      if (f.contentWindow === source) return current.tabs?.find((t) => t.id === id);
+    }
+    return undefined;
+  };
+
+  return { list: () => current, from };
 }

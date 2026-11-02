@@ -12,6 +12,7 @@ export interface OpenRequest {
   address: string;
   title: string;
   pinned?: boolean;
+  types?: boolean;
 }
 
 export interface SelectRequest {
@@ -35,6 +36,7 @@ export interface Tab {
   address: string;
   title: string;
   pinned: boolean;
+  types: boolean;
 }
 
 export type ResizeType = 'resize';

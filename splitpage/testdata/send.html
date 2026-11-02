@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Send</title>
+<p>A tool page that types into the terminal, as lwc's lesson does: told by the suite, it posts a message to the split page or goes to another address, and answers with the command's id.</p>
+<script>
+addEventListener('message', (ev) => {
+  const cmd = ev.data;
+  if (!cmd || typeof cmd !== 'object' || !cmd.id) return;
+  ev.source.postMessage({ done: cmd.id }, '*');
+  if (cmd.post) parent.postMessage(cmd.post, '*');
+  if (cmd.go) location.href = cmd.go;
+});
+</script>

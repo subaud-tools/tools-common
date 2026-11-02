@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.55.0
+
+### Added
+- `splitpage`: a tab may type into the terminal. `OpenRequest` and `Tab` gain `Types`; the page of a tab opened with it posts `{type: "send", text}` to the split page, and the text goes to the terminal as a paste, with a trailing newline dropped so the user presses Enter. The message counts only from that tab's frame and from its address's origin; any other window, origin or message is ignored. lwc's lesson panel uses it for Send to Claude.
+- `splitpage`: `Config.Script` names a module in the tool's own assets, which the page loads once it has started, with `window.splitPage` (its terminal) already set. With no `Script`, nothing more loads. lwc's first-run note is such a script.
+
 ## 0.54.0
 
 ### Added

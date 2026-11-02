@@ -131,7 +131,7 @@ func (t *Tabs) Open(r OpenRequest) (TabList, error) {
 		}
 	}
 	t.next++
-	tb := Tab{ID: "tab-" + strconv.Itoa(t.next), Address: r.Address, Title: r.Title, Pinned: r.Pinned}
+	tb := Tab{ID: "tab-" + strconv.Itoa(t.next), Address: r.Address, Title: r.Title, Pinned: r.Pinned, Types: r.Types}
 	s.list.Tabs = append(s.list.Tabs, tb)
 	s.list.Selected = tb.ID
 	s.changed()

@@ -24,6 +24,10 @@ type Tab struct {
 	Address string `json:"address"` // http://127.0.0.1:<port>/...
 	Title   string `json:"title"`
 	Pinned  bool   `json:"pinned"` // can't be closed
+	// Types says the tab's page may type into the terminal: a message
+	// {type: "send", text} it posts to the split page from its own origin is
+	// pasted at the terminal's input line, with no Enter.
+	Types bool `json:"types"`
 }
 
 // TabList is a session's tabs, in bar order, and the one that shows ("" when
@@ -41,6 +45,7 @@ type OpenRequest struct {
 	Address string `json:"address"`
 	Title   string `json:"title"`
 	Pinned  bool   `json:"pinned,omitempty"`
+	Types   bool   `json:"types,omitempty"`
 }
 
 // SelectRequest is POST /api/split/select: show tab ID.

@@ -109,6 +109,22 @@ func TestOpenAnOpenAddressSelectsIt(t *testing.T) {
 	}
 }
 
+func TestOpenKeepsTypes(t *testing.T) {
+	srv := serveTabs(t)
+	code, l := post(t, srv, "open", OpenRequest{Session: "s1", Address: pageA, Title: "Lesson", Pinned: true, Types: true})
+	if code != http.StatusOK {
+		t.Fatalf("open: %d", code)
+	}
+	open(t, srv, "s1", pageB, false)
+	got := list(t, srv, "s1")
+	if !got.Tabs[0].Types || got.Tabs[1].Types {
+		t.Fatalf("types = %v, %v; want true, false", got.Tabs[0].Types, got.Tabs[1].Types)
+	}
+	if !l.Tabs[0].Types {
+		t.Fatalf("open's answer lost types: %+v", l.Tabs[0])
+	}
+}
+
 func TestOpenRefusesANonLocalAddress(t *testing.T) {
 	srv := serveTabs(t)
 	for _, addr := range []string{

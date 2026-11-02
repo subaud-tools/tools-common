@@ -36,6 +36,10 @@ type Config struct {
 	// own address carries take=1, which the page then drops from its address, so
 	// a reload or a restored window never takes the terminal.
 	Take bool
+	// Script is the path of a module in the tool's own assets, relative to the
+	// page, that the page loads once it has started, with window.splitPage (its
+	// terminal) already set: what one tool adds to the page. Empty loads nothing.
+	Script string
 }
 
 // Page is the page, for a tool to serve as its localweb Assets: index.html
@@ -61,6 +65,7 @@ func Page(c Config) fs.FS {
 		"__SESSION__", html.EscapeString(c.Session),
 		"__RESTART__", strconv.FormatBool(c.Restart),
 		"__TAKE__", strconv.FormatBool(c.Take),
+		"__SCRIPT__", html.EscapeString(c.Script),
 	).Replace(string(tmpl))
 	return pageFS{assets: sub, index: []byte(index)}
 }
