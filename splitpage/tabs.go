@@ -100,7 +100,7 @@ func pageTitle(address string) string {
 	c := http.Client{Timeout: time.Second}
 	res, err := c.Get("http://" + u.Host + "/")
 	if err == nil {
-		defer res.Body.Close()
+		defer func() { _ = res.Body.Close() }()
 		b, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
 		if m := titleTag.FindSubmatch(b); m != nil {
 			if s := strings.TrimSpace(html.UnescapeString(string(m[1]))); s != "" {
