@@ -225,6 +225,23 @@ if (restart) {
     await until(() => !barTab(id), 'the hash tab closes');
   });
 
+  test('a tab the tool moves loads its new address, still one tab', async () => {
+    let res = await post('/api/split/open', { session, address: `${one}?moving`, title: 'Moving', pinned: true });
+    assert(res.ok, `open moving: ${res.status}`);
+    const id = (await res.json()).selected;
+    await until(() => shownFrame()?.dataset.id === id, 'the moving tab shows');
+    const count = bar().length;
+    const to = `${two}?moved`;
+    res = await post('/api/test/replace-tab', { Session: session, ID: id, Address: to });
+    assert(res.ok, `replace: ${res.status}`);
+    await until(() => {
+      const f = shownFrame();
+      return f?.dataset.id === id && f.getAttribute('src') === to;
+    }, 'the moved tab loads its new address');
+    assert(bar().length === count, `tabs after the move: ${bar().length}, want ${count}`);
+    assert(doc().querySelectorAll(`#frames iframe[data-id="${id}"]`).length === 1, 'one frame for the moved tab');
+  });
+
   test('a pinned tab has no close button', async () => {
     const res = await post('/api/split/open', { session, address: two, title: 'Pinned', pinned: true });
     const pinned = (await res.json()).tabs.find((t) => t.pinned).id;

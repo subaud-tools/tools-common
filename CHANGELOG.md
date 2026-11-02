@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.58.0
+
+### Added
+- `splitpage`: `Tabs.Replace(session, id, address)` moves a tab to a new address in place, keeping its id, title, pin, whether it types and whether it shows. It is the tool's call, not the page's: `Handler` doesn't serve it. lwc uses it when its lesson page comes back on a new port after Start it again, so the Lesson stays one tab. The page loads the new address in the tab's frame.
+
 ## 0.57.0
 
 ### Changed

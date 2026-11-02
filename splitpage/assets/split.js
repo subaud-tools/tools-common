@@ -13970,6 +13970,11 @@ function startTabs(session2) {
       if (!f) {
         f = frame(tab);
         shown.set(tab.id, f);
+      } else if (f.getAttribute("src") !== tab.address) {
+        const moved = frame(tab);
+        f.replaceWith(moved);
+        f = moved;
+        shown.set(tab.id, f);
       }
       f.classList.toggle("shown", on3);
     }

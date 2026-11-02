@@ -138,6 +138,26 @@ func (t *Tabs) Open(r OpenRequest) (TabList, error) {
 	return copyList(s.list), nil
 }
 
+// Replace moves tab id to address in place, keeping its id, title, pin and
+// whether it types, and whether it shows. It is for the tool, not the page: a
+// tool whose own page comes back on a new port (lwc's lesson after a restart)
+// keeps it one tab. Handler does not serve it.
+func (t *Tabs) Replace(name, id, address string) (TabList, error) {
+	if !localAddress(address) {
+		return TabList{}, ErrNotLocal
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	s := t.get(name)
+	i := s.index(id)
+	if i < 0 {
+		return TabList{}, ErrNoTab
+	}
+	s.list.Tabs[i].Address = address
+	s.changed()
+	return copyList(s.list), nil
+}
+
 // Select shows tab id.
 func (t *Tabs) Select(name, id string) (TabList, error) {
 	t.mu.Lock()

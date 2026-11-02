@@ -91,7 +91,19 @@ func runSuite(t *testing.T, restart bool) {
 	t.Cleanup(term.closeAll)
 	result := make(chan string, 1)
 	api := http.NewServeMux()
-	api.Handle("/api/split/", NewTabs().Handler())
+	tabs := NewTabs()
+	api.Handle("/api/split/", tabs.Handler())
+	// What a tool does when its own page moves: Replace, which Handler doesn't serve.
+	api.HandleFunc("POST /api/test/replace-tab", func(w http.ResponseWriter, r *http.Request) {
+		var req struct{ Session, ID, Address string }
+		if json.NewDecoder(r.Body).Decode(&req) != nil {
+			http.Error(w, "bad body", http.StatusBadRequest)
+			return
+		}
+		if _, err := tabs.Replace(req.Session, req.ID, req.Address); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+	})
 	api.HandleFunc("GET /api/term", term.serve)
 	if restart {
 		api.HandleFunc("POST /api/split/restart", func(http.ResponseWriter, *http.Request) {})
