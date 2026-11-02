@@ -753,3 +753,65 @@ func TestScopeSendsTheRootWithoutGatingTheLoop(t *testing.T) {
 		t.Fatalf("presence %v", p)
 	}
 }
+
+// expectActivity waits for f to receive the session's activity report.
+func expectActivity(t *testing.T, f *fakeServe, token string) {
+	t.Helper()
+	want := map[string]string{"session": "s-1", "event": "activity", "token": token}
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case got := <-f.reports:
+			if reflect.DeepEqual(got, want) {
+				return
+			}
+		case <-deadline:
+			t.Fatalf("serve never received %v", want)
+		}
+	}
+}
+
+// A restarted serve gets the session's last activity again: the harness only
+// re-sends it when it reconnects to the channel, which a restart doesn't
+// cause, so the session would show idle while it works.
+func TestANewServeGetsTheLastActivity(t *testing.T) {
+	first, next := newFakeServe(t), newFakeServe(t)
+	cl := first.client()
+	var moved atomic.Bool
+	cl.Find = func() (Entry, error) {
+		if moved.Load() {
+			return Entry{Base: next.srv.URL, Token: "tok", PID: 2}, nil
+		}
+		return Entry{Base: first.srv.URL, Token: "tok", PID: 1}, nil
+	}
+	c := connect(t, New(cullSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: t.TempDir()}, cl))
+	c.notify("notifications/channels/report", map[string]any{"event": "activity", "working": true})
+	expectActivity(t, first, channelmcp.ActivityWorking)
+	moved.Store(true)
+	first.srv.Close()
+	expectActivity(t, next, channelmcp.ActivityWorking)
+}
+
+// An activity report that fails while no serve runs reaches serve once it
+// is back, instead of being dropped.
+func TestAFailedActivityReachesServeWhenItIsBack(t *testing.T) {
+	f := newFakeServe(t)
+	cl := f.client()
+	var up atomic.Bool
+	cl.Find = func() (Entry, error) {
+		if !up.Load() {
+			return Entry{}, ErrNotRunning
+		}
+		return Entry{Base: f.srv.URL, Token: "tok", PID: 1}, nil
+	}
+	c := connect(t, New(cullSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: t.TempDir()}, cl))
+	c.notify("notifications/channels/report", map[string]any{"event": "activity", "working": true})
+	for deadline := time.Now().Add(5 * time.Second); !strings.Contains(c.logs.String(), "report activity:"); {
+		if time.Now().After(deadline) {
+			t.Fatalf("the activity post never failed: %s", c.logs.String())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	up.Store(true)
+	expectActivity(t, f, channelmcp.ActivityWorking)
+}
