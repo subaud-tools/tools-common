@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.59.0
+
+### Fixed
+- `splitpage`: the tab bar no longer shows a vertical scrollbar at its right end when the system always shows scrollbars (macOS can), which pushed the reload button partly off the page. The tab list scrolls only sideways.
+
 ## 0.58.0
 
 ### Added
