@@ -39,8 +39,25 @@ hooks:
     echo "lefthook hooks installed in $d"
 
 # ---- tools-common ----
-# Files the gate needs that are not committed (built before the gate). tools-common has none.
+# The browser tests use chrome-headless-shell on macOS: the full Chrome app
+# registers with macOS on every launch and flickers in the Dock while they run.
+# An explicit KIT_CHROME wins; elsewhere the tests find Chrome on PATH.
+headless_shell := env_var_or_default("XDG_CACHE_HOME", home_directory() / ".cache") / "tools-common" / "chrome-headless-shell"
+export KIT_CHROME := env_var_or_default("KIT_CHROME", if os() == "macos" { headless_shell / "chrome-headless-shell" } else { "" })
+
+# What the gate needs that is not committed (built before the gate): on macOS,
+# chrome-headless-shell, installed once into the cache behind a fixed-path
+# wrapper. Not a symlink: Chrome finds its data files from the path it was
+# started by, and through a link it exits at once (icudtl.dat not found).
 prepare:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [ "$(uname)" = Darwin ] || exit 0
+    d="{{headless_shell}}"
+    [ -x "$d/chrome-headless-shell" ] && exit 0
+    bin="$(npx -y @puppeteer/browsers install chrome-headless-shell@stable --path "$d/browsers" | tail -1 | cut -d' ' -f2-)"
+    printf '#!/bin/sh\nexec "%s" "$@"\n' "$bin" > "$d/chrome-headless-shell"
+    chmod +x "$d/chrome-headless-shell"
 
 # Slow checks CI runs as their own job: the localweb/page kit's JS suites, run
 # in headless Chrome (KIT_BROWSER=required fails if no browser is found), and
