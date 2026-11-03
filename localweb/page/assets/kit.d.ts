@@ -719,7 +719,7 @@ export interface DraftCallbacks {
   onSelect?(id: string): void;
 }
 
-/** One draft's row, an <li>. */
+/** One draft's row, an <li>: its quote, its words in a box, Edit and Delete. Edit focuses the box with the caret at the end and marks the row `editing` while it has the focus; Escape in the box puts back the words last saved and saves nothing. */
 export function draftRow(o: DraftCallbacks & { draft: DraftListItem; on?: boolean }): HTMLElement;
 
 export interface DraftList {

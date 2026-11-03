@@ -4,7 +4,7 @@ import { buttons, h } from './dom.js';
 import { submitOnEnter } from './enter.js';
 
 // makeRow is one draft ({ id, quote, text, meta }): the item it quotes, its words
-// in a box, and delete. The row marks itself when pressed, so onSelect needn't
+// in a box, edit and delete. Escape in the box puts back the words last saved. The row marks itself when pressed, so onSelect needn't
 // redraw. update takes what the tool now says of the draft without touching
 // words the reader hasn't saved; forget lets the words go unsaved when the row leaves.
 function makeRow({ draft, on, onEdit, onDelete, onSelect }) {
@@ -28,11 +28,30 @@ function makeRow({ draft, on, onEdit, onDelete, onSelect }) {
     save();
     box.blur();
   });
-  box.addEventListener('blur', save);
+  box.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    e.preventDefault();
+    box.value = saved;
+    forget();
+    box.blur();
+  });
+  box.addEventListener('blur', () => {
+    li.classList.remove('editing');
+    save();
+  });
   box.addEventListener('focus', () => {
+    li.classList.add('editing');
     if (!li.classList.contains('on')) select();
   });
-  const foot = buttons([{ label: 'Delete', run: () => {
+  // Edit shows the words as a field with the caret at their end. The class is
+  // set here too: a headless page can withhold the focus event.
+  const startEdit = () => {
+    box.focus();
+    const end = box.value.length;
+    box.setSelectionRange(end, end);
+    li.classList.add('editing');
+  };
+  const foot = buttons([{ label: 'Edit', run: startEdit }, { label: 'Delete', run: () => {
     forget(); // the words go with the draft: its leaving the page must not save them
     if (onDelete) onDelete(id);
   } }]);

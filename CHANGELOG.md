@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.62.0
+
+### Added
+- page kit: `draftRow` (and each `draftList` row) has an Edit button before Delete. It focuses the words with the caret at the end; the row carries class `editing` while the box has the focus. Escape in the box puts back the words last saved, saves nothing and leaves the box. A tool picks it up by moving its tools-common pin.
+
 ## mermaidkit 0.3.0
 
 ### Fixed

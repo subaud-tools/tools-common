@@ -24,6 +24,8 @@ function make(extra = {}) {
 }
 
 const enter = (extra = {}) => new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...extra });
+const escape = () => new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+const button = (row, label) => [...row.querySelectorAll('.kit-btn')].find(b => b.textContent === label);
 
 test('draftList: one row per draft, with its quoted item, words and meta', () => {
   const { rows, box } = make();
@@ -76,7 +78,7 @@ test('draftRow: Enter saves once, and Shift-Enter breaks the line', () => {
 test('draftRow: delete tells the tool, without selecting or saving what was typed', () => {
   const { heard, rows, box } = make();
   box(0).value = 'half typed';
-  rows[0].querySelector('.kit-btn').click();
+  button(rows[0], 'Delete').click();
   blurEl(box(0));
   eq(heard, [['delete', 'd1']]);
 });
@@ -84,7 +86,7 @@ test('draftRow: delete tells the tool, without selecting or saving what was type
 test('draftRow: pressing delete leaves the focus in the box, so a save cannot move the button', () => {
   const { rows } = make();
   const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
-  rows[0].querySelector('.kit-btn').dispatchEvent(press);
+  button(rows[0], 'Delete').dispatchEvent(press);
   assert(press.defaultPrevented, 'the press keeps the focus where it is');
 });
 
@@ -143,7 +145,7 @@ test('redraw: changes the quote, meta and mark of a kept row', () => {
   eq(rows[0].querySelector('.kit-draft-quote').textContent, 'purged daily');
   assert(!rows[0].querySelector('.kit-meta'), 'its meta went');
   eq(rows[1].querySelector('.kit-meta').textContent, 'now with meta');
-  assert(rows[1].lastChild.contains(rows[1].querySelector('.kit-btn')), 'the meta sits above the buttons');
+  assert(rows[1].lastChild.contains(button(rows[1], 'Delete')), 'the meta sits above the buttons');
   eq(rows.map(r => r.classList.contains('on')), [false, true]);
 });
 
@@ -189,6 +191,42 @@ test('draftRow: a row stands alone, with no callbacks given', () => {
   const box = li.querySelector('textarea');
   box.value = 'x';
   box.dispatchEvent(enter());
-  li.querySelector('.kit-btn').click();
+  button(li, 'Edit').click();
+  box.dispatchEvent(escape());
+  button(li, 'Delete').click();
   li.click();
+});
+
+test('draftRow: edit button focuses the words, with the caret at the end', () => {
+  const { rows, box } = make();
+  eq([...rows[0].querySelectorAll('.kit-btn')].map(b => b.textContent), ['Edit', 'Delete']);
+  button(rows[0], 'Edit').click();
+  assert(document.activeElement === box(0), 'the box has the focus');
+  const end = box(0).value.length;
+  eq([box(0).selectionStart, box(0).selectionEnd], [end, end]);
+  assert(rows[0].classList.contains('editing'), 'the row shows it is being edited');
+  blurEl(box(0));
+  assert(!rows[0].classList.contains('editing'), 'and stops when the box loses the focus');
+});
+
+test('draftRow: escape restores the saved words, saves nothing, and leaves the box', () => {
+  const { heard, rows, box } = make();
+  button(rows[0], 'Edit').click();
+  heard.length = 0;
+  box(0).value = 'not this';
+  box(0).dispatchEvent(escape());
+  eq(box(0).value, 'Legal said 72 hours.');
+  assert(document.activeElement !== box(0), 'the focus left the box');
+  blurEl(box(0));
+  eq(heard, []);
+});
+
+test('draftRow: enter still saves after edit', () => {
+  const { heard, rows, box } = make();
+  button(rows[0], 'Edit').click();
+  heard.length = 0;
+  box(0).value = 'Edited.';
+  box(0).dispatchEvent(enter());
+  blurEl(box(0));
+  eq(heard, [['edit', 'd1', 'Edited.']]);
 });
