@@ -25,7 +25,7 @@
 //     says the old session won't finish them, whatever it reached.
 //   - Interrupt: with_agent or working back to sent. The serve that handed them
 //     out has gone, so nobody knows how far they got.
-//   - Release: sent, with_agent or working to no_reply. Court ends a delivery
+//   - Release: sent, with_agent or working to no_reply. The user ends a delivery
 //     that won't finish, and one that never landed is the usual case.
 package threadstore
 

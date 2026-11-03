@@ -23,15 +23,15 @@ function linkTo(l) {
 // threadMessage is one message: who, its words and link, when, the state of one
 // of yours, its text, then whatever attachments(m) draws.
 export function threadMessage(m, attachments) {
-  const court = m.from === 'court';
-  return h('li', { class: `kit-thread-msg ${court ? 'court' : 'agent'}`, 'data-msg': String(m.id) },
+  const user = m.from === 'user';
+  return h('li', { class: `kit-thread-msg ${user ? 'user' : 'agent'}`, 'data-msg': String(m.id) },
     h('div', { class: 'kit-thread-msg-head' },
-      h('b', null, court ? 'You' : 'Agent'),
+      h('b', null, user ? 'You' : 'Agent'),
       m.words || m.link
         ? h('span', null, m.words, m.link ? [m.words ? ' · ' : '', linkTo(m.link)] : null)
         : null,
       h('span', { class: 'kit-meta' }, when(m.at)),
-      court && m.state ? messagePill(m.state, m.stateLine) : null),
+      user && m.state ? messagePill(m.state, m.stateLine) : null),
     m.text ? h('p', { class: 'kit-thread-msg-text' }, m.text) : null,
     attachments ? attachments(m) : null);
 }

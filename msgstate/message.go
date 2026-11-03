@@ -12,7 +12,7 @@ type Message struct {
 	Who    string    `json:"who"`
 	Text   string    `json:"text"`
 	When   time.Time `json:"when"`
-	// State is where a message Court sent stands; a message with no lifecycle
+	// State is where a message the user sent stands; a message with no lifecycle
 	// (the agent's reply, a draft) has none.
 	State   State `json:"state,omitempty"`
 	ReplyTo int64 `json:"reply_to,omitempty"`

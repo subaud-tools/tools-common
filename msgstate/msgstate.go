@@ -1,4 +1,4 @@
-// Package msgstate is the one lifecycle of a message Court sends from a
+// Package msgstate is the one lifecycle of a message the user sends from a
 // family page to an agent: its seven states, the words the page shows for
 // each, and the moves between them. Every tool with page messages (diazo,
 // galley, casebook, sift, cull) uses it rather than keeping its own table,
@@ -63,7 +63,7 @@ var next = map[State][]State{
 	Sent:      {WithAgent},
 	WithAgent: {Working, Answered, Declined, Failed, NoReply},
 	Working:   {Answered, Declined, Failed, NoReply},
-	// A late reply settles it; Court sending it again puts it back to sent.
+	// A late reply settles it; the user sending it again puts it back to sent.
 	NoReply: {Answered, Declined, Failed, Sent},
 }
 

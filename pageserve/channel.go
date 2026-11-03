@@ -55,7 +55,7 @@ type Spec struct {
 	// out).
 	Wake func(body json.RawMessage) (text string, meta map[string]string, ok bool)
 	// Answers names what the human sends, in the channel's log lines:
-	// "Court's answers".
+	// "the user's answers".
 	Answers string
 	// NoPresence: serve has no POST /api/agent/presence (diazo's), so the
 	// loop only waits.
@@ -463,7 +463,7 @@ func (ch *Channel) rest(ctx context.Context, c *Client, at string, fastUntil tim
 }
 
 // refused describes a delivery the tool's Wake refused by its size and its
-// top-level field names, never its values: they carry Court's words.
+// top-level field names, never its values: they carry the user's words.
 func refused(body json.RawMessage) string {
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(body, &fields) != nil {

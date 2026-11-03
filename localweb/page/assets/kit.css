@@ -483,7 +483,7 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-thread-msgs { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .kit-thread-msg { border: 1px solid var(--kit-line); border-radius: 8px; padding: 8px 12px; font-size: 14px; }
 .kit-thread-msg.agent { border-left: 3px solid var(--kit-agent); }
-.kit-thread-msg.court { border-left: 3px solid var(--kit-signal); }
+.kit-thread-msg.user { border-left: 3px solid var(--kit-signal); }
 .kit-thread-msg-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .kit-thread-msg-head .kit-meta { font: 11px var(--kit-mono); color: var(--kit-muted); }
 .kit-thread-msg-text { margin: 4px 0 0; white-space: pre-wrap; }

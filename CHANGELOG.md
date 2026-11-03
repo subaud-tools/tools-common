@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.60.0
+
+### Changed
+- page kit: the thread's message value for the person using the page is `from: 'user'` (was `'court'`), and its class is `kit-thread-msg user`. A tool that passes `'court'` must pass `'user'`. Comments and docs say "the user" instead of a personal name.
+
 ## 0.59.0
 
 ### Fixed

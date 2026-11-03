@@ -491,14 +491,14 @@ export function indexSection(o: IndexSectionOptions): HTMLElement;
 /** One message, as plain values; the caller may carry more on it for attachments. */
 export interface ThreadMessageValue {
   id: number | string;
-  from: 'court' | 'agent';
+  from: 'user' | 'agent';
   /** RFC 3339; anything else shows as it came. */
   at: string;
   /** What the caller says about it, in the head: "your note". */
   words?: string;
   /** A link after the words, opening through the caller. */
   link?: { text: string; href: string; open(): void } | null;
-  /** Where one of Court's stands: a msgstate state, drawn with messagePill. */
+  /** Where one of the user's stands: a msgstate state, drawn with messagePill. */
   state?: string;
   /** The line under the state's pill. */
   stateLine?: string;

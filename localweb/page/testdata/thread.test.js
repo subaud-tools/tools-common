@@ -8,8 +8,8 @@ const noteBox = () => {
 };
 
 test('threadMessage: yours is drawn as You with where it stands', () => {
-  const m = threadMessage({ id: 7, from: 'court', words: 'your note', at: AT, text: 'Why this?', state: 'working', stateLine: 'reading it' });
-  eq([m.tagName, m.className, m.dataset.msg], ['LI', 'kit-thread-msg court', '7']);
+  const m = threadMessage({ id: 7, from: 'user', words: 'your note', at: AT, text: 'Why this?', state: 'working', stateLine: 'reading it' });
+  eq([m.tagName, m.className, m.dataset.msg], ['LI', 'kit-thread-msg user', '7']);
   const head = m.querySelector('.kit-thread-msg-head');
   eq(head.children[0].textContent, 'You');
   eq(head.children[1].textContent, 'your note');
@@ -34,7 +34,7 @@ test('threadMessage: a date it cannot read shows as it came', () => {
 
 test('threadMessage: a link goes after the words and opens through the caller', () => {
   let opened = 0;
-  const m = threadMessage({ id: 1, from: 'court', at: AT, words: 'your note', link: { text: 'DCSN1', href: '#DCSN1', open: () => opened++ } });
+  const m = threadMessage({ id: 1, from: 'user', at: AT, words: 'your note', link: { text: 'DCSN1', href: '#DCSN1', open: () => opened++ } });
   const words = m.querySelector('.kit-thread-msg-head').children[1];
   eq(words.textContent, 'your note · DCSN1');
   const a = words.querySelector('a');
@@ -46,12 +46,12 @@ test('threadMessage: a link goes after the words and opens through the caller', 
 
 test('threadMessage: attachments come from the caller, under its text', () => {
   const shot = document.createElement('figure');
-  const m = threadMessage({ id: 1, from: 'court', at: AT, text: 'see', shot }, v => v.shot);
+  const m = threadMessage({ id: 1, from: 'user', at: AT, text: 'see', shot }, v => v.shot);
   assert(m.lastChild === shot, 'last in the message');
 });
 
 test('thread: its parts in order, with one message each', () => {
-  const t = thread({ id: 'DCSN1', name: 'Offline sends', key: 'a/b/DCSN1', messages: [{ id: 1, from: 'agent', at: AT, text: 'x' }, { id: 2, from: 'court', at: AT, text: 'y' }], note: noteBox() });
+  const t = thread({ id: 'DCSN1', name: 'Offline sends', key: 'a/b/DCSN1', messages: [{ id: 1, from: 'agent', at: AT, text: 'x' }, { id: 2, from: 'user', at: AT, text: 'y' }], note: noteBox() });
   eq([t.className, t.dataset.thread], ['kit-thread', 'DCSN1']);
   eq([...t.children].map(c => c.className), ['kit-label', 'kit-thread-name', 'kit-key kit-thread-key', 'kit-thread-msgs', 'kit-note-line']);
   eq([t.children[0].textContent, t.children[1].textContent], ['Thread', 'Offline sends']);
@@ -59,7 +59,7 @@ test('thread: its parts in order, with one message each', () => {
 });
 
 test('thread: attachments reach each message', () => {
-  const t = thread({ id: 'a', name: 'n', messages: [{ id: 1, from: 'court', at: AT }], attachments: () => document.createElement('figure') });
+  const t = thread({ id: 'a', name: 'n', messages: [{ id: 1, from: 'user', at: AT }], attachments: () => document.createElement('figure') });
   assert(t.querySelector('.kit-thread-msg figure'), 'drawn');
 });
 
