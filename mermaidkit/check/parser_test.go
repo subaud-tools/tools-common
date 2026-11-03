@@ -97,6 +97,14 @@ func TestCheckAPromiseThatNeverSettles(t *testing.T) {
 	}
 }
 
+// A bundle built from the entry before it exported DOMPurify still checks.
+func TestABundleWithoutDOMPurifyStillChecks(t *testing.T) {
+	p := newParser(t, Bundle{JS: []byte("var m = {default: {parse: function () { return Promise.resolve({}); }}};"), Global: "m"})
+	if err := p.Check("graph TD"); err != nil {
+		t.Fatalf("got %v, want nil", err)
+	}
+}
+
 func TestABundleWithoutTheGlobalFailsEveryCheck(t *testing.T) {
 	b, _ := os.ReadFile("testdata/fake-mermaid.js")
 	for _, tc := range []struct{ js, global, want string }{
