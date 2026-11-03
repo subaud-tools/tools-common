@@ -186,7 +186,7 @@ function parts(tabbed) {
     key: 'demo/project/F2',
     messages: [
       { id: 1, from: 'agent', at: '2026-10-30T12:00:00Z', text: 'Measured on the last ten builds.' },
-      { id: 2, from: 'court', at: '2026-10-30T12:05:00Z', words: 'your note', text: 'Which ten?', state: 'working', stateLine: 'reading the runs' },
+      { id: 2, from: 'user', at: '2026-10-30T12:05:00Z', words: 'your note', text: 'Which ten?', state: 'working', stateLine: 'reading the runs' },
     ],
     note: { el: note.el, box: note.box, send() {} },
   });

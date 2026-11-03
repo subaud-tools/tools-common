@@ -491,7 +491,7 @@ export function indexSection(o: IndexSectionOptions): HTMLElement;
 /** One message, as plain values; the caller may carry more on it for attachments. */
 export interface ThreadMessageValue {
   id: number | string;
-  from: 'court' | 'agent';
+  from: 'user' | 'agent';
   /** RFC 3339; anything else shows as it came. */
   at: string;
   /** What the caller says about it, in the head: "your note". */
