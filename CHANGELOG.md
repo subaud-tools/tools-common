@@ -4,6 +4,17 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## mermaidkit 0.3.0
+
+### Fixed
+- `check`: a diagram with a labelled node, a labelled edge or a state transition is no longer refused with "Object has no member 'addHook'". mermaid passes every label through DOMPurify, which has nothing to sanitize with outside a browser; when the bundle exports its DOMPurify (the shared entry does from tools-common 0.61.0) and it reports `isSupported` false, the Parser gives it pass-through methods. A bundle built from an older entry loads and checks as before.
+
+## 0.61.0
+
+### Added
+- page kit: `threadMessage(m, attachments, render)` and `thread({..., render})` take an optional `render(m)` that draws a message's text; its body is `div.kit-thread-msg-text.kit-thread-msg-md`, laid out as normal blocks. With no renderer the thread draws plain text as before.
+- `localweb/page/build/mermaid-entry.ts` also exports mermaid's DOMPurify, for `mermaidkit/check` 0.3.0. A tool picks it up by copying the entry again (its page-build step) and rebuilding its bundle.
+
 ## 0.60.0
 
 ### Changed

@@ -48,6 +48,14 @@ func checkBroken(t *testing.T, p *Parser) {
 
 func TestCheck(t *testing.T) { checkBroken(t, fake(t)) }
 
+// Mermaid sanitizes every label with DOMPurify, which outside a browser has
+// no addHook or sanitize: the Parser gives it pass-through ones.
+func TestCheckALabelledDiagram(t *testing.T) {
+	if err := fake(t).Check("flowchart LR\n  A[Start] --> B[End]"); err != nil {
+		t.Fatalf("labelled diagram: %v", err)
+	}
+}
+
 // The real thing, run against a tool's built bundle:
 // MERMAIDKIT_BUNDLE=../../diazo/internal/serve/assets/mermaid.js MERMAIDKIT_GLOBAL=diazoMermaid.
 func TestCheckWithARealBundle(t *testing.T) {
@@ -59,7 +67,21 @@ func TestCheckWithARealBundle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkBroken(t, newParser(t, Bundle{JS: b, Global: os.Getenv("MERMAIDKIT_GLOBAL")}))
+	p := newParser(t, Bundle{JS: b, Global: os.Getenv("MERMAIDKIT_GLOBAL")})
+	checkBroken(t, p)
+	for _, text := range []string{
+		"flowchart LR\n  A[Start] --> B[End]",
+		"flowchart TD\n  A[Ask] -->|yes| B{Decide?}\n  B -->|no| C[Stop]",
+		"stateDiagram-v2\n  [*] --> Open\n  Open --> Closed: user closes it",
+		"sequenceDiagram\n  A->>B: hello\n  B-->>A: hi",
+	} {
+		if err := p.Check(text); err != nil {
+			t.Errorf("%q: %v", text, err)
+		}
+	}
+	if err := p.Check("flowchart LR\n  A[Start --> B"); err == nil || !strings.Contains(err.Error(), "Parse error on line") {
+		t.Errorf("broken flowchart: %v, want mermaid's parse error", err)
+	}
 }
 
 func TestCheckReasonFromAThrow(t *testing.T) {
@@ -72,6 +94,14 @@ func TestCheckReasonFromAThrow(t *testing.T) {
 func TestCheckAPromiseThatNeverSettles(t *testing.T) {
 	if err := fake(t).Check("hang"); err == nil || !strings.Contains(err.Error(), "did not finish") {
 		t.Fatalf("got %v", err)
+	}
+}
+
+// A bundle built from the entry before it exported DOMPurify still checks.
+func TestABundleWithoutDOMPurifyStillChecks(t *testing.T) {
+	p := newParser(t, Bundle{JS: []byte("var m = {default: {parse: function () { return Promise.resolve({}); }}};"), Global: "m"})
+	if err := p.Check("graph TD"); err != nil {
+		t.Fatalf("got %v, want nil", err)
 	}
 }
 

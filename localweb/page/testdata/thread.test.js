@@ -50,6 +50,33 @@ test('threadMessage: attachments come from the caller, under its text', () => {
   assert(m.lastChild === shot, 'last in the message');
 });
 
+test('threadMessage: with no renderer, the text is plain', () => {
+  const m = threadMessage({ id: 1, from: 'agent', at: AT, text: '**bold**' });
+  const p = m.querySelector('.kit-thread-msg-text');
+  eq([p.tagName, p.className, p.textContent], ['P', 'kit-thread-msg-text', '**bold**']);
+});
+
+test('threadMessage: a renderer draws the text as the caller says', () => {
+  const m = threadMessage({ id: 1, from: 'agent', at: AT, text: '**bold**' }, null, v => {
+    const b = document.createElement('b');
+    b.textContent = v.text.replaceAll('*', '');
+    return b;
+  });
+  const body = m.querySelector('.kit-thread-msg-text');
+  eq([body.tagName, body.className, body.innerHTML], ['DIV', 'kit-thread-msg-text kit-thread-msg-md', '<b>bold</b>']);
+});
+
+test('threadMessage: with a renderer, no text still draws no body', () => {
+  let called = 0;
+  const m = threadMessage({ id: 1, from: 'agent', at: AT, text: '' }, null, () => (called++, document.createElement('div')));
+  eq([m.querySelector('.kit-thread-msg-text'), called], [null, 0]);
+});
+
+test('thread: the renderer reaches each message', () => {
+  const t = thread({ id: 'a', name: 'n', messages: [{ id: 1, from: 'user', at: AT, text: 'x' }, { id: 2, from: 'agent', at: AT, text: 'y' }], render: m => document.createTextNode(`<${m.text}>`) });
+  eq([...t.querySelectorAll('.kit-thread-msg-md')].map(d => d.textContent), ['<x>', '<y>']);
+});
+
 test('thread: its parts in order, with one message each', () => {
   const t = thread({ id: 'DCSN1', name: 'Offline sends', key: 'a/b/DCSN1', messages: [{ id: 1, from: 'agent', at: AT, text: 'x' }, { id: 2, from: 'user', at: AT, text: 'y' }], note: noteBox() });
   eq([t.className, t.dataset.thread], ['kit-thread', 'DCSN1']);

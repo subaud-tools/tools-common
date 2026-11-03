@@ -487,6 +487,8 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-thread-msg-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .kit-thread-msg-head .kit-meta { font: 11px var(--kit-mono); color: var(--kit-muted); }
 .kit-thread-msg-text { margin: 4px 0 0; white-space: pre-wrap; }
+/* a caller's rendered text (thread's render) lays out its own blocks */
+.kit-thread-msg-md { white-space: normal; }
 .kit-thread-ref { font-family: var(--kit-mono); font-size: 13px; }
 .kit-thread .kit-note-line { flex-direction: column; align-items: stretch; }
 
