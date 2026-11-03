@@ -188,7 +188,7 @@ srv, err := localweb.Start(ctx, localweb.Config{
   `codeBlock`, `fold`, `noteField`, and `h`. The `.kit-*` classes are the
   contract and work from static HTML too.
 - **Message pill** (`dom.js`, labels in `msgstate.js`): `messagePill(state,
-  line)` is where a message Court sent stands: a `.kit-pill[data-state]` in the
+  line)` is where a message the user sent stands: a `.kit-pill[data-state]` in the
   state's colour, its label, and the line under it. `msgstate.js`
   (`MESSAGE_STATES`) is generated from the `msgstate` package by
   `go test ./localweb/page -run TestMessageStatesFile -update`, and that test

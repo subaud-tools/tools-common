@@ -52,7 +52,7 @@ func (s *Store) Stuck(ctx context.Context) (map[int64]string, error) {
 	return out, rows.Err()
 }
 
-// Release is Court ending a delivery by hand (a stuck turn): every unsettled
+// Release is the user ending a delivery by hand (a stuck turn): every unsettled
 // message, one still sent included (a stuck delivery is usually one that never
 // landed), lands on no_reply.
 func (s *Store) Release(ctx context.Context, id int64) error {
@@ -157,7 +157,7 @@ func (s *Store) Interrupt(ctx context.Context) ([]Interruption, error) {
 // Resend takes no_reply messages back to sent, the one move msgstate.Allowed
 // draws for them: delivery is tried again, by a new delivery of the same Send,
 // to its scope's owner now. Each message stays in its Send, so the Send still
-// lists what Court sent and a reply stays attributed to it. Any other message is
+// lists what the user sent and a reply stays attributed to it. Any other message is
 // left as it is. It returns how many went.
 func (s *Store) Resend(ctx context.Context, ids []int64) (int, error) {
 	now := ms(s.Now())

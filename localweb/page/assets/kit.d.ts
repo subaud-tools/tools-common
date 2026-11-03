@@ -498,7 +498,7 @@ export interface ThreadMessageValue {
   words?: string;
   /** A link after the words, opening through the caller. */
   link?: { text: string; href: string; open(): void } | null;
-  /** Where one of Court's stands: a msgstate state, drawn with messagePill. */
+  /** Where one of the user's stands: a msgstate state, drawn with messagePill. */
   state?: string;
   /** The line under the state's pill. */
   stateLine?: string;
