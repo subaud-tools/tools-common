@@ -21,8 +21,9 @@ function linkTo(l) {
 }
 
 // threadMessage is one message: who, its words and link, when, the state of one
-// of yours, its text, then whatever attachments(m) draws.
-export function threadMessage(m, attachments) {
+// of yours, its text, then whatever attachments(m) draws. render(m), when
+// given, draws the text (markdown, say) in place of a plain paragraph.
+export function threadMessage(m, attachments, render) {
   const user = m.from === 'user';
   return h('li', { class: `kit-thread-msg ${user ? 'user' : 'agent'}`, 'data-msg': String(m.id) },
     h('div', { class: 'kit-thread-msg-head' },
@@ -32,7 +33,11 @@ export function threadMessage(m, attachments) {
         : null,
       h('span', { class: 'kit-meta' }, when(m.at)),
       user && m.state ? messagePill(m.state, m.stateLine) : null),
-    m.text ? h('p', { class: 'kit-thread-msg-text' }, m.text) : null,
+    m.text
+      ? render
+        ? h('div', { class: 'kit-thread-msg-text kit-thread-msg-md' }, render(m))
+        : h('p', { class: 'kit-thread-msg-text' }, m.text)
+      : null,
     attachments ? attachments(m) : null);
 }
 
@@ -52,7 +57,8 @@ function copyLink(key, target) {
 // thread is the column's content. With no id it holds only the empty words.
 // key, when given, copies a link to #<link> (default the id); readOnly leaves it
 // plain text and draws no note box. note is { el, box, send }: el goes in the
-// column, and Enter in box or the Send note button calls send.
+// column, and Enter in box or the Send note button calls send. attachments and
+// render reach each message, as threadMessage takes them.
 export function thread(o) {
   if (!o.id) return h('div', { class: 'kit-thread' }, h('p', { class: 'kit-empty' }, o.empty));
   const note = o.readOnly ? null : o.note;
@@ -64,7 +70,7 @@ export function thread(o) {
       ? h('p', { class: 'kit-key kit-thread-key' }, o.readOnly ? o.key : copyLink(o.key, o.link ?? o.id))
       : null,
     o.messages?.length
-      ? h('ul', { class: 'kit-thread-msgs' }, o.messages.map(m => threadMessage(m, o.attachments)))
+      ? h('ul', { class: 'kit-thread-msgs' }, o.messages.map(m => threadMessage(m, o.attachments, o.render)))
       : h('p', { class: 'kit-empty' }, 'No messages yet.'),
     note
       ? h('div', { class: 'kit-note-line' }, note.el, buttons([{ label: 'Send note', run: note.send }]))
