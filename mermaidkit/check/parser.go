@@ -30,6 +30,17 @@ const globals = `var window = globalThis; var self = globalThis;
 var console = {log() {}, warn() {}, error() {}, info() {}, debug() {}, trace() {}};
 var setTimeout = function (f) { f(); return 0; }; var clearTimeout = function () {};`
 
+// passThrough stands in for DOMPurify outside a browser. Mermaid sanitizes
+// every label with it, but with no document DOMPurify is a stub with no
+// addHook or sanitize, so any labelled diagram would fail. Parsing never
+// draws, so a label passed through unchanged is safe.
+const passThrough = `(function (p) {
+  if (!p || p.isSupported) return;
+  var none = function () {};
+  p.addHook = none; p.removeHook = none; p.removeHooks = none; p.removeAllHooks = none;
+  p.sanitize = function (s) { return String(s); };
+})`
+
 // Parser parses diagrams with the mermaid bundle it was given. The bundle
 // is loaded into one runtime on the first Check and reused after that; a
 // goja runtime is not safe for concurrent use, so calls take turns.
@@ -91,7 +102,20 @@ func (p *Parser) load() error {
 	g := p.bundle.Global
 	var api goja.Value
 	if m := vm.Get(g); m != nil && !goja.IsUndefined(m) {
-		api = m.ToObject(vm).Get("default")
+		o := m.ToObject(vm)
+		api = o.Get("default")
+		// The shared entry exports mermaid's DOMPurify; a bundle built from
+		// an older entry has none and loads as before.
+		if d := o.Get("DOMPurify"); d != nil && !goja.IsUndefined(d) {
+			fix, err := vm.RunString(passThrough)
+			if err != nil {
+				return fmt.Errorf("mermaid: %w", err)
+			}
+			call, _ := goja.AssertFunction(fix)
+			if _, err := call(goja.Undefined(), d); err != nil {
+				return fmt.Errorf("mermaid: stubbing DOMPurify: %w", err)
+			}
+		}
 	}
 	if api == nil || goja.IsUndefined(api) {
 		return fmt.Errorf("mermaid: the bundle defines no %s.default", g)
