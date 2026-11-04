@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.63.0
+
+### Added
+- page kit: `thread`'s note takes `label`, the words on its button (default `Send note`), so a tool can say `Send`.
+
 ## 0.62.0
 
 ### Added
