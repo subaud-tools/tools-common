@@ -46,10 +46,12 @@ const MetaReport = "report"
 const reportMethod = "notifications/channels/report"
 
 // report hands one report notification to OnReport. With no OnReport it is
-// ignored, as every other notification is. A report that is not
+// ignored, as every other notification is. An event this package doesn't
+// know is ignored silently, so a harness can add events without every older
+// tool complaining. A known event that is not
 // {event: held|landed|turn_ended, report: <token>} (held and landed need the
-// token) or {event: activity, working: true|false} is ignored and logged:
-// there is no one to answer.
+// token) or {event: activity, working: true|false}, or params that aren't
+// an object, is ignored and logged: there is no one to answer.
 func (s *Server) report(params json.RawMessage) {
 	if s.h.OnReport == nil {
 		return
@@ -72,6 +74,8 @@ func (s *Server) report(params json.RawMessage) {
 		}
 	case p.Event == ReportTurnEnded:
 	case (p.Event == ReportHeld || p.Event == ReportLanded) && p.Token != "":
+	case p.Event != ReportHeld && p.Event != ReportLanded && p.Event != ReportActivity:
+		return // an event from a newer harness
 	default:
 		log.Printf("channelmcp: ignored report %s: want event held|landed with a token, turn_ended, or activity with working true|false", params)
 		return

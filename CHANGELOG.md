@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.66.0
+
+### Fixed
+- `channelmcp`: a report whose event the tool doesn't know (one a newer harness added) is ignored without a log line, so pi no longer shows a `[channels] ... stderr` error on every turn in a tool built before the event existed. A malformed held, landed or activity report is still logged.
+
 ## 0.65.0
 
 ### Added
