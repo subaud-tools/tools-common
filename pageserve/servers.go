@@ -6,7 +6,9 @@ package pageserve
 // a new tool on pageserve appears by existing.
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -14,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	tools "github.com/subaud-tools/tools-common"
@@ -146,4 +149,52 @@ func etime(s string) time.Duration {
 		secs = secs*60 + n
 	}
 	return time.Duration(days)*24*time.Hour + time.Duration(secs)*time.Second
+}
+
+// StartTool ensures tool's serve, starting it detached from the binary on
+// PATH the way every tool's channel does.
+func StartTool(tool string) (Entry, error) {
+	exe, err := exec.LookPath(tool)
+	if err != nil {
+		return Entry{}, err
+	}
+	// Run from the tool's state folder, not the caller's: a serve started
+	// from a worktree would outlive the worktree.
+	p := Process{Live: LiveFor(tool), Args: []string{"serve", "--foreground", "--no-open"}, Dir: tools.StateDir(tool)}
+	return p.Ensure(exe)
+}
+
+// StopTool asks tool's serve to exit and waits for it to go.
+func StopTool(ctx context.Context, tool string) error { return Stop(ctx, LiveFor(tool)) }
+
+// RestartTool stops tool's serve, when it runs, then starts it.
+func RestartTool(ctx context.Context, tool string) (Entry, error) {
+	if err := StopTool(ctx, tool); err != nil && !errors.Is(err, ErrNotRunning) {
+		return Entry{}, err
+	}
+	return StartTool(tool)
+}
+
+// StopLeftover sends pid SIGTERM, then SIGKILL when it still runs after 5 s.
+func StopLeftover(pid int) error {
+	// kill(2) reads 0 and below as process groups, -1 as every process.
+	if pid <= 0 {
+		return fmt.Errorf("pageserve: invalid pid %d", pid)
+	}
+	if err := syscall.Kill(pid, syscall.SIGTERM); err != nil {
+		if errors.Is(err, syscall.ESRCH) {
+			return nil
+		}
+		return err
+	}
+	for i := 0; i < 50; i++ {
+		if !tools.PIDAlive(pid) {
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if err := syscall.Kill(pid, syscall.SIGKILL); err != nil && !errors.Is(err, syscall.ESRCH) {
+		return err
+	}
+	return nil
 }

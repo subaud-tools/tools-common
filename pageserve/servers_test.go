@@ -2,10 +2,13 @@ package pageserve
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
+
+	tools "github.com/subaud-tools/tools-common"
 )
 
 // stateRoot points every tool's state folder at a temporary root.
@@ -112,5 +115,53 @@ func TestLeftoversFromPS(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v\nwant %+v", got, want)
+	}
+}
+
+func TestStartToolRunsItsServeFromPATH(t *testing.T) {
+	stateRoot(t)
+	bin := t.TempDir()
+	// A stand-in tool: refuses anything but the detached serve, then
+	// advertises its own pid and lingers.
+	script := `#!/bin/sh
+[ "$*" = "serve --foreground --no-open" ] || exit 2
+mkdir -p "$XDG_STATE_HOME/faketool/live"
+printf '{"url":"u","base":"b","pid":%d}' $$ > "$XDG_STATE_HOME/faketool/live/serve.json"
+exec sleep 5
+`
+	if err := os.WriteFile(filepath.Join(bin, "faketool"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	e, err := StartTool("faketool")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if p, _ := os.FindProcess(e.PID); p != nil {
+			_ = p.Kill()
+		}
+	}()
+	if s := server(t, "faketool"); !s.Up || s.Entry.PID != e.PID || e.PID == 0 {
+		t.Errorf("entry %+v, listed %+v", e, s)
+	}
+}
+
+func TestStopLeftoverEndsTheProcess(t *testing.T) {
+	cmd := exec.Command("sleep", "30")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	// Reaped as it exits, so its pid stops answering, as an orphan's does.
+	go func() { _ = cmd.Wait() }()
+	start := time.Now()
+	if err := StopLeftover(cmd.Process.Pid); err != nil {
+		t.Fatal(err)
+	}
+	if d := time.Since(start); d > 4*time.Second {
+		t.Errorf("took %v: TERM not sent first", d)
+	}
+	if tools.PIDAlive(cmd.Process.Pid) {
+		t.Error("still running")
 	}
 }
