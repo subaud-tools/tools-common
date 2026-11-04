@@ -59,15 +59,36 @@ func TestMalformedReportIsIgnoredAndLogged(t *testing.T) {
 		got = append(got, gotReport{e, token})
 	}}
 	pingAfter(t, h,
-		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"delivered","report":"t7"}}`,
 		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"landed"}}`,
 		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":"landed t7"}`,
 	)
 	if len(got) != 0 {
 		t.Errorf("a malformed report reached OnReport: %+v", got)
 	}
-	if n := strings.Count(logs.String(), "channelmcp: ignored report"); n != 3 {
-		t.Errorf("want 3 logged ignores, got %d:\n%s", n, logs.String())
+	if n := strings.Count(logs.String(), "channelmcp: ignored report"); n != 2 {
+		t.Errorf("want 2 logged ignores, got %d:\n%s", n, logs.String())
+	}
+}
+
+// An event a newer harness sends that this tool doesn't know yet is dropped
+// without a word: a log line would reach the harness's stderr on every turn.
+func TestUnknownReportEventIsIgnoredSilently(t *testing.T) {
+	var logs bytes.Buffer
+	log.SetOutput(&logs)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+	var got []gotReport
+	h := Handler{Name: "m", Version: "1", OnReport: func(e ReportEvent, token string) {
+		got = append(got, gotReport{e, token})
+	}}
+	pingAfter(t, h,
+		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"future_event","working":false}}`,
+		`{"jsonrpc":"2.0","method":"notifications/channels/report","params":{"event":"future_event","report":"t7"}}`,
+	)
+	if len(got) != 0 {
+		t.Errorf("an unknown event reached OnReport: %+v", got)
+	}
+	if logs.Len() != 0 {
+		t.Errorf("an unknown event was logged:\n%s", logs.String())
 	}
 }
 
