@@ -53,6 +53,8 @@ export function createKeys(opts = {}) {
   const target = opts.target || document;
   const now = opts.now || (() => performance.now());
   const list = opts.list;
+  // The page's Esc closers, tried in order before the kit's own Esc.
+  const closers = opts.esc || [];
   const bound = [];
   let pending = [];
   let last = 0;
@@ -82,6 +84,7 @@ export function createKeys(opts = {}) {
     fam('⇧x', 'select range', () => list.toggleRange());
     if (typeof list.focusSearch === 'function') fam('/', 'search', () => list.focusSearch());
   }
+  if (opts.search) fam('/', 'search', () => opts.search());
   fam('?', 'show keys', () => showHelp());
   // Esc with a sheet (or the ? overlay) open is the sheet's; here there is nothing to close.
   fam('Esc', 'close / leave field', () => false);
@@ -101,6 +104,11 @@ export function createKeys(opts = {}) {
     }
     if (sheetOpen()) return; // a sheet is modal: page keys wait
     const el = e.target instanceof Element ? e.target : null;
+    if (chord === 'Esc' && closers.some(c => c.close() === true)) {
+      pending = [];
+      e.preventDefault();
+      return;
+    }
     if (el && el.closest(FIELD)) {
       pending = [];
       if (chord === 'Esc') {
@@ -140,6 +148,8 @@ export function createKeys(opts = {}) {
     const out = new Map();
     for (const b of bound) {
       const g = out.get(b.group) || new Map();
+      // The page's closers are listed in order just above the kit's own Esc.
+      if (b.keys === 'Esc' && b.group === 'family') for (const c of closers) g.set(c.label, [...(g.get(c.label) || []), 'Esc']);
       const row = g.get(b.label) || [];
       row.push(b.keys);
       g.set(b.label, row);
