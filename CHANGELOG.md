@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.64.0
+
+### Added
+- pageserve: `Servers()` lists every family page server on the machine (each tool's state folder with a `live/` folder, up or down), `Leftovers()` finds family serve, daemon and old owned `galley edit` processes no entry names, and `StartTool`, `StopTool`, `RestartTool` and `StopLeftover` act on them by tool name or pid.
+
 ## 0.63.0
 
 ### Added
