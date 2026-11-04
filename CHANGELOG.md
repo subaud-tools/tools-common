@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.65.0
+
+### Added
+- page kit: `createKeys` takes `esc: [{label, close}]`, the page's Esc closers. On Esc, in a text field too, each `close()` is tried in order and the first that returns true takes the key; with none closing, Esc leaves the field as before. While a sheet or the `?` overlay is open, Esc stays the sheet's. The overlay lists each closer's label as an Esc row, in order, above the kit's own. A page passing no closers behaves as before.
+- page kit: `createKeys` takes `search: fn`, binding `/` alone, without the list's j/k/↓/↑/o/↵/x keys. A page that also gives `list.focusSearch` gets a clash error.
+
 ## 0.64.0
 
 ### Added

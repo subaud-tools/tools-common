@@ -182,3 +182,64 @@ test('keys: a key another handler took is left alone', () => {
     eq(list.calls, []);
   } finally { el.removeEventListener('keydown', taker); keys.destroy(); }
 });
+
+test('keys: Esc closers run in order, in a field too, before leaving it', () => {
+  const open = { menu: true, composer: true };
+  const tried = [];
+  const closer = name => ({ label: `close ${name}`, close: () => { tried.push(name); if (!open[name]) return false; open[name] = false; return true; } });
+  const keys = createKeys({ esc: [closer('menu'), closer('composer')] });
+  const input = document.createElement('textarea');
+  fixture().append(input);
+  try {
+    assert(press('Escape').defaultPrevented, 'first Esc closes the menu');
+    eq(tried, ['menu'], 'stops at the first that closes');
+    input.focus();
+    assert(press('Escape', {}, input).defaultPrevented, 'Esc in a field closes the composer');
+    eq(tried, ['menu', 'menu', 'composer']);
+    assert(document.activeElement === input, 'a closer that closed leaves the field focused');
+    assert(press('Escape', {}, input).defaultPrevented, 'nothing open: Esc leaves the field');
+    assert(document.activeElement !== input, 'blurred');
+    assert(!press('Escape').defaultPrevented, 'nothing open, no field: Esc passes');
+  } finally { keys.destroy(); }
+});
+
+test('keys: Esc closers wait while a sheet or the overlay is open', () => {
+  let closed = 0;
+  const keys = createKeys({ esc: [{ label: 'close menu', close: () => { closed++; return true; } }] });
+  try {
+    press('?');
+    press('Escape');
+    assert(!document.querySelector('.kit-keys'), 'the overlay took Esc');
+    eq(closed, 0, 'no closer ran under the overlay');
+    press('Escape');
+    eq(closed, 1, 'then the closer runs');
+  } finally { keys.destroy(); }
+});
+
+test('keys: the overlay lists Esc closers in order', () => {
+  const keys = createKeys({ esc: [{ label: 'close menu', close: () => false }, { label: 'close composer', close: () => false }] });
+  try {
+    press('?');
+    const ov = document.querySelector('.kit-float.kit-keys');
+    const rows = [...ov.querySelectorAll('.kit-keys-row')].filter(r => r.querySelector('kbd').textContent === 'Esc').map(r => r.lastChild.textContent);
+    eq(rows, ['close menu', 'close composer', 'close / leave field']);
+  } finally { keys.destroy(); }
+});
+
+test('keys: search focus without a list binds only /', () => {
+  let searched = 0;
+  const keys = createKeys({ search: () => searched++ });
+  try {
+    assert(press('/').defaultPrevented, '/ handled');
+    eq(searched, 1);
+    for (const k of ['j', 'k', 'ArrowDown', 'ArrowUp', 'Enter', 'o', 'x']) assert(!press(k).defaultPrevented, `${k} passes`);
+    eq(keys.bindings().map(b => b.keys), ['/', '?', 'Esc']);
+  } finally { keys.destroy(); }
+});
+
+test('keys: without esc or search the bindings are as before', () => {
+  const plain = createKeys();
+  try { eq(plain.bindings().map(b => b.keys), ['?', 'Esc']); } finally { plain.destroy(); }
+  const listed = createKeys({ list: { ...fakeList(), focusSearch() {} } });
+  try { eq(listed.bindings().map(b => b.keys), ['j', '↓', 'k', '↑', 'o', '↵', 'x', '⇧x', '/', '?', 'Esc']); } finally { listed.destroy(); }
+});

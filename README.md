@@ -195,6 +195,9 @@ srv, err := localweb.Start(ctx, localweb.Config{
   fails when the two drift.
 - **Keyboard** (`keys.js`): family defaults plus `register`. A clash throws at
   registration. While a text field has focus, only `Esc` and `inField` keys fire.
+  `esc: [{label, close}]` are the page's Esc closers: on Esc, in a field too,
+  each `close()` is tried in order and the first that returns true takes the
+  key; with none, Esc leaves the field. `search: fn` binds `/` without a list.
 - **API** (`api.js`): `createApi()` sends JSON with the page's cookie. Pass
   `{token}` to send `X-Local-Token` instead (non-browser callers).
 - **Stale session:** when the tool's server no longer knows the page's token
