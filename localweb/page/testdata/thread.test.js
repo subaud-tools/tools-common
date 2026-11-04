@@ -140,6 +140,16 @@ test('thread: Enter in the note box sends, and so does its button', () => {
   eq(sent, 2);
 });
 
+test('thread: the note button takes a label', () => {
+  const t = thread({ id: 'a', name: 'n', messages: [], note: { ...noteBox(), send: () => {}, label: 'Send' } });
+  eq(t.querySelector('.kit-note-line .kit-btn').textContent, 'Send');
+});
+
+test('thread: the note button defaults to Send note', () => {
+  const t = thread({ id: 'a', name: 'n', messages: [], note: { ...noteBox(), send: () => {} } });
+  eq(t.querySelector('.kit-note-line .kit-btn').textContent, 'Send note');
+});
+
 test('thread: the column draws messages with their edge', () => {
   const t = thread({ id: 'a', name: 'n', messages: [{ id: 1, from: 'agent', at: AT }] });
   fixture().append(t);

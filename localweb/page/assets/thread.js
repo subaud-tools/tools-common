@@ -56,8 +56,9 @@ function copyLink(key, target) {
 
 // thread is the column's content. With no id it holds only the empty words.
 // key, when given, copies a link to #<link> (default the id); readOnly leaves it
-// plain text and draws no note box. note is { el, box, send }: el goes in the
-// column, and Enter in box or the Send note button calls send. attachments and
+// plain text and draws no note box. note is { el, box, send, label }: el goes in
+// the column, and Enter in box or the note's button (labelled label, default
+// Send note) calls send. attachments and
 // render reach each message, as threadMessage takes them.
 export function thread(o) {
   if (!o.id) return h('div', { class: 'kit-thread' }, h('p', { class: 'kit-empty' }, o.empty));
@@ -73,6 +74,6 @@ export function thread(o) {
       ? h('ul', { class: 'kit-thread-msgs' }, o.messages.map(m => threadMessage(m, o.attachments, o.render)))
       : h('p', { class: 'kit-empty' }, 'No messages yet.'),
     note
-      ? h('div', { class: 'kit-note-line' }, note.el, buttons([{ label: 'Send note', run: note.send }]))
+      ? h('div', { class: 'kit-note-line' }, note.el, buttons([{ label: note.label || 'Send note', run: note.send }]))
       : null);
 }
