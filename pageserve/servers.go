@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -77,10 +78,10 @@ func Servers() ([]Server, error) {
 		tool := n.Name()
 		s := Server{Tool: tool, LogPath: filepath.Join(tools.StateDir(tool), "serve.log")}
 		// Any error is down: an unreadable entry is no server to reach, and
-		// one bad folder must not hide every other row.
-		if e, err := LiveFor(tool).Running(); err == nil {
-			s.Entry, s.Up = e, true
-		}
+		// one bad folder must not hide every other row. The entry is kept
+		// anyway, so Leftovers never offers to kill the pid it names.
+		e, err := LiveFor(tool).Running()
+		s.Entry, s.Up = e, err == nil
 		out = append(out, s)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Tool < out[j].Tool })
@@ -99,13 +100,14 @@ func Leftovers(servers []Server) ([]Leftover, error) {
 
 // parseLeftovers reads ps's "pid etime command" lines: a process is left
 // over when its executable's base name is a listed tool, its first argument
-// is serve, daemon or edit, and no up Server holds its pid.
+// is serve, daemon or an old channel's edit (one with --owner: a terminal's
+// edit is a document someone has open), and no Server's entry names its pid.
 func parseLeftovers(ps string, servers []Server) []Leftover {
 	known := map[string]bool{}
 	held := map[int]bool{}
 	for _, s := range servers {
 		known[s.Tool] = true
-		if s.Up {
+		if s.Entry.PID > 0 {
 			held[s.Entry.PID] = true
 		}
 	}
@@ -124,7 +126,11 @@ func parseLeftovers(ps string, servers []Server) []Leftover {
 			continue
 		}
 		switch f[3] {
-		case "serve", "daemon", "edit":
+		case "serve", "daemon":
+		case "edit":
+			if !slices.Contains(f[4:], "--owner") {
+				continue
+			}
 		default:
 			continue
 		}

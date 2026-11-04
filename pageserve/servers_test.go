@@ -95,11 +95,15 @@ func TestLeftoversFromPS(t *testing.T) {
 		{Tool: "diazo", Up: true, Entry: Entry{PID: 200}},
 		{Tool: "galley", Up: true, Entry: Entry{PID: 300}},
 		{Tool: "cull"},
+		// down, but its entry still names a pid: not a leftover
+		{Tool: "muda", Entry: Entry{PID: 700}},
 	}
 	ps := `    1 06-07:56:53 /sbin/launchd
   200 01:02:03 /Users/me/.local/bin/diazo serve --foreground --no-open
  3692 03-16:49:03 /private/var/folders/T/diazo-probe-bin-kmNA0C/diazo serve
  8102 06-04:45:43 /Users/me/.local/bin/galley edit /doc.md --owner abc
+ 8200 10:00 /Users/me/.local/bin/galley edit /mine.md
+  700 10:00 /Users/me/.local/bin/muda serve --foreground --no-open
   401 00:42 /Users/me/.local/bin/cull daemon
   402 12:00 /Users/me/.local/bin/cull channel
   500 05:00 /opt/homebrew/bin/llama-server serve
