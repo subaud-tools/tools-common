@@ -11,6 +11,7 @@ import { Terminal } from '@xterm/xterm';
 import type { Resize } from '../wire.d.ts';
 import { handleKey } from './keys.ts';
 import { sentText } from './relay.ts';
+import { socketScheme } from './socket.ts';
 import { startTabs } from './tabs.ts';
 
 const fontFamily =
@@ -54,7 +55,7 @@ function socketURL(take: boolean): string {
   for (const [k, v] of pageQuery) q.set(k, v);
   q.set('session', session);
   if (take) q.set('take', '1');
-  return `ws://${location.host}${path}?${q}`;
+  return `${socketScheme(location.protocol)}//${location.host}${path}?${q}`;
 }
 
 const notice = document.getElementById('stopped')!;

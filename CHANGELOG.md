@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.67.0
+
+### Fixed
+- splitpage: the terminal socket opens over `wss:` on a page served over https, and `ws:` otherwise. It was always `ws:`, which a browser blocks on an https page as mixed content, so a split page behind https (a hosted workspace) never connected its terminal.
+
 ## 0.66.0
 
 ### Fixed
