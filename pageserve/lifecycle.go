@@ -110,7 +110,7 @@ func Stop(ctx context.Context, l Live) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.Base+"/api/stop", strings.NewReader("{}"))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.Loopback()+"/api/stop", strings.NewReader("{}"))
 	if err != nil {
 		return err
 	}

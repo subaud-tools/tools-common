@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	tools "github.com/subaud-tools/tools-common"
@@ -192,7 +193,14 @@ func Run(ctx context.Context, o Options) error {
 	if o.OnStart != nil {
 		o.OnStart(ctx, srv.URL)
 	}
-	e := Entry{URL: srv.URL, Base: "http://" + srv.Addr(), Token: srv.Token, PID: os.Getpid(), Version: o.Version, StartedAt: time.Now().UTC()}
+	local := "http://" + srv.Addr()
+	e := Entry{URL: srv.URL, Base: local, Local: local, Token: srv.Token, PID: os.Getpid(), Version: o.Version, StartedAt: time.Now().UTC()}
+	// On a hosted workspace the page is the tool's public origin, which a
+	// proxy forwards to local; callers on the machine keep using local.
+	if public := localweb.PublicOrigin(tool); public != "" {
+		e.Base = public
+		e.URL = public + strings.TrimPrefix(srv.URL, local)
+	}
 	if o.Entry != nil {
 		o.Entry(&e)
 	}

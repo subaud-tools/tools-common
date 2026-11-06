@@ -126,6 +126,8 @@ func TestTheEntryKeysAreTheContract(t *testing.T) {
 			"v,url,base,token,pid,version,stale,started_at"},
 		{"reopened Entry", Entry{V: 1, URL: "u", Base: "b", Token: "t", PID: 1, Version: "0.3.0", StartedAt: at, Reopened: true},
 			"v,url,base,token,pid,version,started_at,reopened"},
+		{"public Entry", Entry{V: 1, URL: "u", Base: "b", Local: "l", Token: "t", PID: 1, Version: "0.3.0", StartedAt: at},
+			"v,url,base,local,token,pid,version,started_at"},
 		{"Session", Session{V: 1, ID: "s", PID: 1}, "v,session,pid"},
 	} {
 		keys, err := topKeys(tc.val)

@@ -21,7 +21,7 @@ package splitpage
 // Tab is one page in the tab bar.
 type Tab struct {
 	ID      string `json:"id"`
-	Address string `json:"address"` // http://127.0.0.1:<port>/...
+	Address string `json:"address"` // http://127.0.0.1:<port>/..., or https://<tool>.<PAGE_PUBLIC_DOMAIN>/...
 	Title   string `json:"title"`
 	Pinned  bool   `json:"pinned"` // can't be closed
 	// Types says the tab's page may type into the terminal: a message

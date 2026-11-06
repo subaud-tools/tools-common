@@ -222,7 +222,7 @@ type answer struct {
 
 // call is one GET with a token.
 func call(e pageserve.Entry, token, path string) (answer, error) {
-	req, err := http.NewRequest(http.MethodGet, e.Base+path, nil)
+	req, err := http.NewRequest(http.MethodGet, e.Loopback()+path, nil)
 	if err != nil {
 		return answer{}, err
 	}
@@ -413,7 +413,9 @@ func stopTakesHeader(_ *testing.T, c *scratch) error {
 		return err
 	}
 	noFollow := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	first, err := noFollow.Get(e.URL)
+	// The page's URL on its loopback server: with PAGE_PUBLIC_DOMAIN set, the
+	// advertised one is the public address a proxy forwards.
+	first, err := noFollow.Get(e.Loopback() + strings.TrimPrefix(e.URL, e.Base))
 	if err != nil {
 		return err
 	}
@@ -421,14 +423,14 @@ func stopTakesHeader(_ *testing.T, c *scratch) error {
 	if len(first.Cookies()) == 0 {
 		return errors.New("the page's URL set no cookie to try the stop with")
 	}
-	req, err := http.NewRequest(http.MethodPost, e.Base+"/api/stop", strings.NewReader("{}"))
+	req, err := http.NewRequest(http.MethodPost, e.Loopback()+"/api/stop", strings.NewReader("{}"))
 	if err != nil {
 		return err
 	}
 	for _, ck := range first.Cookies() {
 		req.AddCookie(ck)
 	}
-	req.Header.Set("Origin", e.Base)
+	req.Header.Set("Origin", e.Loopback())
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
