@@ -59,8 +59,8 @@ type Entry struct {
 	V   int    `json:"v"`
 	URL string `json:"url"` // page URL; a one-page tool's carries ?t= for the first load
 	// Base is the server's origin: http://127.0.0.1:<port>, or the tool's
-	// public origin (https://<tool>.<PAGE_PUBLIC_DOMAIN>) when that setting is
-	// set. Callers on this machine use Loopback, never Base.
+	// public origin (localweb.PublicOrigin: https://<tool>.<PAGE_PUBLIC_DOMAIN>,
+	// or the bare domain for PAGE_PUBLIC_HOME's tool) when that setting is set. Callers on this machine use Loopback, never Base.
 	Base string `json:"base,omitempty"`
 	// Local is the loopback server, http://127.0.0.1:<port>, set or unset
 	// (absent on entries written before 0.68.0, whose Base is it).

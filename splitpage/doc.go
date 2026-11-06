@@ -2,7 +2,8 @@
 // session's terminal on the left (xterm.js over the tool's own websocket), a
 // divider, and on the right a bar of tabs, each one of our own pages on
 // 127.0.0.1 in a frame (on a hosted workspace with PAGE_PUBLIC_DOMAIN set, a
-// tool's public page, https://<tool>.<PAGE_PUBLIC_DOMAIN>).
+// tool's public page, https://<tool>.<PAGE_PUBLIC_DOMAIN>, or the bare domain
+// for the tool PAGE_PUBLIC_HOME names).
 //
 // A tool serves it on localweb: Page as its Assets, Tabs.Handler under its
 // API at /api/split/, and its own terminal websocket under /api/, keeping the

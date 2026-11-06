@@ -64,3 +64,17 @@ func TestCallersReachThePublicServerOnLoopback(t *testing.T) {
 	}
 	wait(t, r)
 }
+
+// The tool PAGE_PUBLIC_HOME names advertises the bare domain.
+func TestTheHomeToolsEntryIsTheBareDomain(t *testing.T) {
+	t.Setenv(localweb.PublicDomainEnv, "ws.example.com")
+	t.Setenv(localweb.PublicHomeEnv, "cull")
+	startRun(t, Options{})
+	e, err := LiveFor("cull").Running()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.Base != "https://ws.example.com" || e.URL != "https://ws.example.com/?t="+e.Token {
+		t.Fatalf("base %q, url %q: want the bare domain", e.Base, e.URL)
+	}
+}

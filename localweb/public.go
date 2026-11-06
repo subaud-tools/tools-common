@@ -14,6 +14,13 @@ import (
 // as on every Mac, nothing changes: pages are on 127.0.0.1 only.
 const PublicDomainEnv = "PAGE_PUBLIC_DOMAIN"
 
+// PublicHomeEnv names the tool whose page is the public domain itself,
+// https://<PAGE_PUBLIC_DOMAIN>, rather than a host of its own: on a hosted
+// workspace, the page the workspace's own address opens. Every other tool
+// keeps https://<tool>.<PAGE_PUBLIC_DOMAIN>. It counts only beside
+// PAGE_PUBLIC_DOMAIN, and only when it is one DNS label.
+const PublicHomeEnv = "PAGE_PUBLIC_HOME"
+
 // label is one DNS label as a tool's host is named: lower-case letters,
 // digits and inner hyphens.
 var label = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
@@ -34,20 +41,34 @@ func PublicDomain() string {
 	return d
 }
 
+// PublicHome is the tool PAGE_PUBLIC_HOME names, lower-cased, when it is one
+// DNS label and PAGE_PUBLIC_DOMAIN is set; "" otherwise.
+func PublicHome() string {
+	h := strings.ToLower(strings.TrimSpace(os.Getenv(PublicHomeEnv)))
+	if PublicDomain() == "" || !label.MatchString(h) {
+		return ""
+	}
+	return h
+}
+
 // PublicOrigin is tool's public page origin, https://<tool>.<PublicDomain()>,
-// or "" when the setting is unset or tool is not a single DNS label.
+// or https://<PublicDomain()> for the tool PublicHome names; "" when the
+// setting is unset or tool is not a single DNS label.
 func PublicOrigin(tool string) string {
 	d := PublicDomain()
 	if d == "" || !label.MatchString(tool) {
 		return ""
 	}
+	if tool == PublicHome() {
+		return "https://" + d
+	}
 	return "https://" + tool + "." + d
 }
 
 // PublicTool names the tool whose public page address holds: https on
-// <tool>.<PublicDomain()>, the tool a single DNS label, with no port and no
-// credentials. Anything else, and every address while the setting is unset,
-// is not one (ok false).
+// <tool>.<PublicDomain()>, the tool a single DNS label, or on the bare domain
+// for the tool PublicHome names, with no port and no credentials. Anything
+// else, and every address while the setting is unset, is not one (ok false).
 func PublicTool(address string) (tool string, ok bool) {
 	d := PublicDomain()
 	if d == "" {
@@ -57,7 +78,12 @@ func PublicTool(address string) (tool string, ok bool) {
 	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" || strings.HasSuffix(u.Host, ":") {
 		return "", false
 	}
-	name, found := strings.CutSuffix(strings.ToLower(u.Hostname()), "."+d)
+	host := strings.ToLower(u.Hostname())
+	if host == d {
+		home := PublicHome()
+		return home, home != ""
+	}
+	name, found := strings.CutSuffix(host, "."+d)
 	if !found || !label.MatchString(name) {
 		return "", false
 	}

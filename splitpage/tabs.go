@@ -83,7 +83,8 @@ func (s *session) changed() {
 
 // localAddress says whether a frame may show address: http on 127.0.0.1 with a
 // port, or on a hosted workspace a tool's public page
-// (https://<tool>.<PAGE_PUBLIC_DOMAIN>, see localweb.PublicTool), our own
+// (https://<tool>.<PAGE_PUBLIC_DOMAIN>, or the bare domain for the tool
+// PAGE_PUBLIC_HOME names; see localweb.PublicTool), our own
 // tools' pages and nothing else.
 func localAddress(address string) bool {
 	if _, ok := localweb.PublicTool(address); ok {

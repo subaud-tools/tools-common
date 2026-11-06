@@ -85,3 +85,26 @@ func TestAPublicTabTakesItsTitleFromTheLoopbackServer(t *testing.T) {
 		t.Errorf("asked the page for %q, want /", asked)
 	}
 }
+
+// With PAGE_PUBLIC_HOME set, a tab on the bare domain is the home tool's page:
+// accepted, and titled from that tool's loopback server.
+func TestATabOnTheHomeToolsBareDomain(t *testing.T) {
+	t.Setenv(localweb.PublicDomainEnv, "ws.example.com")
+	t.Setenv(localweb.PublicHomeEnv, "diazo")
+	t.Setenv("DIAZO_HOME", t.TempDir())
+	page := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("<title>diazo</title>"))
+	}))
+	defer page.Close()
+	e := pageserve.Entry{URL: "https://ws.example.com/?t=x", Base: "https://ws.example.com", Local: page.URL, Token: "x", PID: os.Getpid()}
+	if err := pageserve.LiveFor("diazo").Advertise(e); err != nil {
+		t.Fatal(err)
+	}
+	l, err := NewTabs().Open(OpenRequest{Session: "s", Address: "https://ws.example.com/plan/x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := l.Tabs[0].Title; got != "diazo" {
+		t.Errorf("title = %q, want diazo", got)
+	}
+}
