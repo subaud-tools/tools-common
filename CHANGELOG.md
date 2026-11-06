@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.69.0
+
+### Added
+- `PAGE_PUBLIC_HOME` (`localweb.PublicHomeEnv`): beside `PAGE_PUBLIC_DOMAIN`, it names the one tool whose public page is the bare domain, `https://<domain>`, so a hosted workspace's own address opens that tool. `localweb.PublicHome()` reads it; `PublicOrigin` gives that tool the bare domain and `PublicTool` maps the bare domain back to it, so pageserve's live entry advertises it there and splitpage accepts and titles a tab on it. Every other tool keeps `https://<tool>.<domain>`. With either setting unset nothing changes.
+
 ## 0.68.0
 
 ### Added
