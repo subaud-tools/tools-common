@@ -13,11 +13,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/subaud-tools/tools-common/localweb"
+	"github.com/subaud-tools/tools-common/pageserve"
 )
 
 // Errors the tab calls return; Handler answers them with 400, 404 and 409.
 var (
-	ErrNotLocal = errors.New("splitpage: a tab holds only an http://127.0.0.1:<port> address")
+	ErrNotLocal = errors.New("splitpage: a tab holds only an http://127.0.0.1:<port> address, or https://<tool>.<PAGE_PUBLIC_DOMAIN> when that is set")
 	ErrNoTab    = errors.New("splitpage: no such tab")
 	ErrPinned   = errors.New("splitpage: a pinned tab can't be closed")
 )
@@ -79,8 +82,18 @@ func (s *session) changed() {
 }
 
 // localAddress says whether a frame may show address: http on 127.0.0.1 with a
-// port, our own tools' pages and nothing else.
+// port, or on a hosted workspace a tool's public page
+// (https://<tool>.<PAGE_PUBLIC_DOMAIN>, see localweb.PublicTool), our own
+// tools' pages and nothing else.
 func localAddress(address string) bool {
+	if _, ok := localweb.PublicTool(address); ok {
+		return true
+	}
+	return loopback(address)
+}
+
+// loopback says whether address is http on 127.0.0.1 with a port.
+func loopback(address string) bool {
 	u, err := url.Parse(address)
 	return err == nil && u.Scheme == "http" && u.User == nil && u.Hostname() == "127.0.0.1" && u.Port() != ""
 }
@@ -91,14 +104,24 @@ var titleTag = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
 // pageTitle names a tab opened with no title: the <title> of its server's front
 // page (a family tool's page is titled with the tool's name), read without the
 // address's path or query, so a ?t= token never reaches the label; else the
-// address's host and port.
+// address's host and port. A public page is read from its tool's loopback
+// server, named by the tool's live entry: its public address answers only
+// through the workspace's proxy.
 func pageTitle(address string) string {
 	u, err := url.Parse(address)
 	if err != nil {
 		return ""
 	}
+	front := "http://" + u.Host
+	if tool, ok := localweb.PublicTool(address); ok {
+		e, err := pageserve.LiveFor(tool).Running()
+		if err != nil || !loopback(e.Loopback()) {
+			return u.Host
+		}
+		front = e.Loopback()
+	}
 	c := http.Client{Timeout: time.Second}
-	res, err := c.Get("http://" + u.Host + "/")
+	res, err := c.Get(front + "/")
 	if err == nil {
 		defer func() { _ = res.Body.Close() }()
 		b, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))

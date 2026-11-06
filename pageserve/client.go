@@ -162,7 +162,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any) (in
 		}
 		rd = bytes.NewReader(b)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, e.Base+path, rd)
+	req, err := http.NewRequestWithContext(ctx, method, e.Loopback()+path, rd)
 	if err != nil {
 		return 0, err
 	}

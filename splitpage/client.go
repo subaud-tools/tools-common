@@ -15,7 +15,8 @@ import (
 // clientTimeout bounds one call to a page server on this machine.
 const clientTimeout = 10 * time.Second
 
-// Open asks the page server at base (http://127.0.0.1:<port>) to open address
+// Open asks the page server at base (http://127.0.0.1:<port>, its entry's
+// Loopback even when PAGE_PUBLIC_DOMAIN is set) to open address
 // as a tab in session's page, authenticating with token, and returns the
 // session's tabs.
 func Open(base, token, session, address, title string) (TabList, error) {

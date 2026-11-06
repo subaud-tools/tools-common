@@ -56,9 +56,15 @@ func future(v int) bool { return v > Version }
 type Entry struct {
 	// V is the schema generation — see Version. Absent on every entry written
 	// before this field existed, which reads as generation 1.
-	V     int    `json:"v"`
-	URL   string `json:"url"`            // page URL; a one-page tool's carries ?t= for the first load
-	Base  string `json:"base,omitempty"` // http://127.0.0.1:<port>
+	V   int    `json:"v"`
+	URL string `json:"url"` // page URL; a one-page tool's carries ?t= for the first load
+	// Base is the server's origin: http://127.0.0.1:<port>, or the tool's
+	// public origin (https://<tool>.<PAGE_PUBLIC_DOMAIN>) when that setting is
+	// set. Callers on this machine use Loopback, never Base.
+	Base string `json:"base,omitempty"`
+	// Local is the loopback server, http://127.0.0.1:<port>, set or unset
+	// (absent on entries written before 0.68.0, whose Base is it).
+	Local string `json:"local,omitempty"`
 	Token string `json:"token,omitempty"`
 	// Room is the entry's file name without .json (and galley's websocket
 	// gate); a one-page tool's is ServeRoom.
@@ -76,6 +82,15 @@ type Entry struct {
 	// Reopened: a tab was open when the previous serve went away, so this
 	// one opened the page again (casebook's; set through Options.Entry).
 	Reopened bool `json:"reopened,omitempty"`
+}
+
+// Loopback is the address a caller on this machine reaches the server at:
+// Local, or Base on an entry written before Local existed.
+func (e Entry) Loopback() string {
+	if e.Local != "" {
+		return e.Local
+	}
+	return e.Base
 }
 
 // Live is a tool's directory of entries: one JSON file per running page,

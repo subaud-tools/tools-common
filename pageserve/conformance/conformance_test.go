@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/subaud-tools/tools-common/localweb"
 )
 
 func scratchServer(t *testing.T) Server {
@@ -14,6 +16,13 @@ func scratchServer(t *testing.T) Server {
 // A server built only from pageserve passes, with no code of its own for the
 // rules.
 func TestAServerBuiltOnlyFromPageservePasses(t *testing.T) {
+	Check(t, scratchServer(t))
+}
+
+// With PAGE_PUBLIC_DOMAIN set the entry advertises a public address no test
+// can reach, and every rule still reaches the server on its loopback address.
+func TestAServerOnAPublicDomainPasses(t *testing.T) {
+	t.Setenv(localweb.PublicDomainEnv, "ws.example.com")
 	Check(t, scratchServer(t))
 }
 

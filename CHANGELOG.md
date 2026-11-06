@@ -4,6 +4,14 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.68.0
+
+### Added
+- Public page addresses on a hosted workspace, from one setting: with `PAGE_PUBLIC_DOMAIN` set (to the workspace's `<ws>.<domain>`), pageserve advertises a tool's page at `https://<tool>.<domain>`: the entry's `url` (token and all) and `base` are public, and a new `local` key keeps the loopback server, `http://127.0.0.1:<port>`, written whether the setting is set or not. `Entry.Loopback()` is the address callers on the machine use (`local`, or `base` on an older entry); the channel's `Client`, `Stop` and `conformance` call through it. `localweb.PublicDomain()`, `PublicOrigin(tool)` and `PublicTool(address)` read the setting.
+- splitpage: with the setting set, a tab may hold `https://<tool>.<domain>` (one DNS label, no port) beside a loopback address; any other public address is refused. A public tab opened with no title is named from its tool's loopback server, found through the tool's live entry. The relay takes a public tab's messages from its own origin only.
+
+With `PAGE_PUBLIC_DOMAIN` unset nothing changes.
+
 ## 0.67.0
 
 ### Fixed

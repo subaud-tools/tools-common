@@ -54,3 +54,13 @@ test('a send never runs a command by itself', () => {
     assert.equal(sentText({ type: 'send', text }, origin, lesson), want, JSON.stringify(text));
   }
 });
+
+// On a hosted workspace a tab holds a tool's public page: its frame's messages
+// come from that origin, and only from it.
+test("a send from a public tab's own origin gives its text, and from a sibling host nothing", () => {
+  const plan: Tab = { id: 'tab-2', address: 'https://diazo.ws.example.com/plan/x', title: 'Plan', pinned: false, types: true };
+  assert.equal(sentText({ type: 'send', text: 'go' }, 'https://diazo.ws.example.com', plan), 'go');
+  for (const o of ['https://proj.ws.example.com', 'http://diazo.ws.example.com', 'https://diazo.ws.example.com:8443', 'https://diazo.xws.example.com']) {
+    assert.equal(sentText({ type: 'send', text: 'go' }, o, plan), null, o);
+  }
+});
