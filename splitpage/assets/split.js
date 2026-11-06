@@ -13888,6 +13888,11 @@ function sentText(data, origin, tab) {
   return trimmed === "" ? null : trimmed;
 }
 
+// socket.ts
+function socketScheme(protocol) {
+  return protocol === "https:" ? "wss:" : "ws:";
+}
+
 // tabs.ts
 var api = "/api/split/";
 function startTabs(session2) {
@@ -14031,7 +14036,7 @@ function socketURL(take) {
   for (const [k3, v3] of pageQuery) q2.set(k3, v3);
   q2.set("session", session);
   if (take) q2.set("take", "1");
-  return `ws://${location.host}${path}?${q2}`;
+  return `${socketScheme(location.protocol)}//${location.host}${path}?${q2}`;
 }
 var notice = document.getElementById("stopped");
 var noticeText = document.getElementById("stopped-text");
