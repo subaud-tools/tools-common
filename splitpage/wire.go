@@ -31,6 +31,9 @@ type Tab struct {
 	// origin's: any page at that origin can reach the tab's window and post as
 	// it, so open no untrusted page of that origin beside a tab that types.
 	Types bool `json:"types"`
+	// New says the tab was opened behind (OpenRequest.Behind) and hasn't
+	// shown since: the page marks it until it is first shown.
+	New bool `json:"new,omitempty"`
 }
 
 // TabList is a session's tabs, in bar order, and the one that shows ("" when
@@ -42,13 +45,16 @@ type TabList struct {
 }
 
 // OpenRequest is POST /api/split/open: open Address as a tab and show it, or
-// show the tab that already has it.
+// show the tab that already has it. With Behind, the tab is added (marked New)
+// and the tab that shows keeps showing, and an address already open is left as
+// it is; into a bar with nothing showing, it shows.
 type OpenRequest struct {
 	Session string `json:"session"`
 	Address string `json:"address"`
 	Title   string `json:"title"`
 	Pinned  bool   `json:"pinned,omitempty"`
 	Types   bool   `json:"types,omitempty"`
+	Behind  bool   `json:"behind,omitempty"`
 }
 
 // SelectRequest is POST /api/split/select: show tab ID.

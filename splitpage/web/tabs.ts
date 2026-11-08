@@ -35,9 +35,13 @@ export function startTabs(session: string): TabsView {
     el.className = 'tab';
     el.setAttribute('role', 'tab');
     el.dataset.id = tab.id;
+    // A tab opened behind is marked until it first shows.
+    const dot = document.createElement('span');
+    dot.className = 'tab-new';
+    dot.setAttribute('aria-label', 'Not seen yet');
     const label = document.createElement('span');
     label.className = 'tab-title';
-    el.append(label);
+    el.append(dot, label);
     if (!tab.pinned) {
       const close = document.createElement('button');
       close.type = 'button';
@@ -94,6 +98,8 @@ export function startTabs(session: string): TabsView {
       el.title = where.origin + where.pathname;
       const on = tab.id === list.selected;
       el.classList.toggle('selected', on);
+      // Shown is seen: the mark goes as the tab shows, before the server says so.
+      el.classList.toggle('new', tab.new === true && !on);
       el.setAttribute('aria-selected', String(on));
       bar.append(el); // in the server's order
       let f = shown.get(tab.id);

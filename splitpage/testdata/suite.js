@@ -210,6 +210,43 @@ if (restart) {
     assert(doc().querySelectorAll('#frames iframe').length === 1, 'the closed frame is gone');
   });
 
+  test('a tab opened behind never shows, and is marked until it is shown', async () => {
+    const behind = `${two}?behind`;
+    // Every class change on any frame, from before the open: the new frame
+    // must never be the shown one, not even for a moment.
+    const flashed = [];
+    const watch = new (win().MutationObserver)((records) => {
+      for (const r of records) {
+        const f = r.type === 'attributes' ? r.target : null;
+        if (f?.classList.contains('shown') && f.getAttribute('src') === behind) flashed.push(f.dataset.id);
+        for (const n of r.addedNodes ?? []) {
+          if (n.classList?.contains('shown') && n.getAttribute('src') === behind) flashed.push(n.dataset.id);
+        }
+      }
+    });
+    watch.observe(doc().getElementById('frames'), { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+    const res = await post('/api/split/open', { session, address: behind, title: 'Behind', behind: true });
+    assert(res.ok, `open behind: ${res.status}`);
+    const list = await res.json();
+    const id = list.tabs.find((t) => t.address === behind).id;
+    assert(list.selected === first, `selected ${list.selected}, want ${first}`);
+    await until(() => barTab(id), 'the behind tab in the bar');
+    await sleep(100);
+    watch.disconnect();
+    assert(flashed.length === 0, 'the behind tab showed');
+    assert(shownFrame()?.dataset.id === first, 'the shown tab changed');
+    assert(barTab(id).classList.contains('new'), 'the behind tab is not marked new');
+    const dot = barTab(id).querySelector('.tab-new');
+    assert(dot && win().getComputedStyle(dot).display !== 'none', 'the behind tab has no dot');
+    assert(!barTab(first).classList.contains('new'), 'the shown tab is marked new');
+    barTab(id).click();
+    assert(!barTab(id).classList.contains('new'), 'the clicked tab is still marked new');
+    await until(async () => (await tabs()).tabs.find((t) => t.id === id)?.new !== true, 'the server clears new');
+    assert(!barTab(id).classList.contains('new'), 'the mark came back');
+    barTab(id).querySelector('.tab-close').click();
+    await until(() => !barTab(id) && shownFrame()?.dataset.id === first, 'the behind tab closes');
+  });
+
   test('the reload button reloads a tab whose address has a # part', async () => {
     const res = await post('/api/split/open', { session, address: `${one}#/decide`, title: 'Hash' });
     assert(res.ok, `open hash: ${res.status}`);

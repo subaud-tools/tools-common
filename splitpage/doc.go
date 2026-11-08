@@ -11,6 +11,8 @@
 // its base is the server's loopback address (pageserve's Entry.Loopback),
 // never a public one.
 //
-// A tab opened with Types may type into the terminal (lwc's lesson does), and
-// Config.Script adds a tool's own module to the page.
+// A tab opened with Types may type into the terminal (lwc's lesson does), a
+// tab opened Behind joins the bar without showing, marked New until it first
+// shows (lwc's file tabs beside its pinned lesson), and Config.Script adds a
+// tool's own module to the page.
 package splitpage

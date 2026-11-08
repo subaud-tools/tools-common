@@ -13916,9 +13916,12 @@ function startTabs(session2) {
     el2.className = "tab";
     el2.setAttribute("role", "tab");
     el2.dataset.id = tab.id;
+    const dot = document.createElement("span");
+    dot.className = "tab-new";
+    dot.setAttribute("aria-label", "Not seen yet");
     const label = document.createElement("span");
     label.className = "tab-title";
-    el2.append(label);
+    el2.append(dot, label);
     if (!tab.pinned) {
       const close = document.createElement("button");
       close.type = "button";
@@ -13969,6 +13972,7 @@ function startTabs(session2) {
       el2.title = where.origin + where.pathname;
       const on3 = tab.id === list.selected;
       el2.classList.toggle("selected", on3);
+      el2.classList.toggle("new", tab.new === true && !on3);
       el2.setAttribute("aria-selected", String(on3));
       bar.append(el2);
       let f = shown.get(tab.id);
