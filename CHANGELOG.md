@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.70.1
+
+### Fixed
+- splitpage builds for Windows again. Since 0.68.0 it imported pageserve, which is unix-only (`Setpgid`, `Flock`, `Kill`), to title a public tab from its tool's live entry, so any program importing splitpage failed to build for Windows. That lookup is now unix-only: on Windows a public tab opened with no title is named by its host (public addresses belong to hosted workspaces, which run on Linux). A test cross-builds splitpage for windows/amd64, so CI on Linux catches a unix-only import from now on. Nothing changes on Linux or macOS.
+
 ## 0.70.0
 
 ### Added

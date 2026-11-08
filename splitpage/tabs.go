@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/subaud-tools/tools-common/localweb"
-	"github.com/subaud-tools/tools-common/pageserve"
 )
 
 // Errors the tab calls return; Handler answers them with 400, 404 and 409.
@@ -115,11 +114,11 @@ func pageTitle(address string) string {
 	}
 	front := "http://" + u.Host
 	if tool, ok := localweb.PublicTool(address); ok {
-		e, err := pageserve.LiveFor(tool).Running()
-		if err != nil || !loopback(e.Loopback()) {
+		local, ok := liveLoopback(tool)
+		if !ok || !loopback(local) {
 			return u.Host
 		}
-		front = e.Loopback()
+		front = local
 	}
 	c := http.Client{Timeout: time.Second}
 	res, err := c.Get(front + "/")
