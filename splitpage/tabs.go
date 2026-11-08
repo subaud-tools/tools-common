@@ -136,7 +136,9 @@ func pageTitle(address string) string {
 }
 
 // Open opens r.Address as a tab and shows it, or shows the tab already open
-// at that address.
+// at that address. With r.Behind it adds the tab, marked New, and leaves the
+// tab that shows (in one change, so the page never shows the new tab), and an
+// address already open is left as it is; a bar with nothing showing shows it.
 func (t *Tabs) Open(r OpenRequest) (TabList, error) {
 	if !localAddress(r.Address) {
 		return TabList{}, ErrNotLocal
@@ -149,15 +151,22 @@ func (t *Tabs) Open(r OpenRequest) (TabList, error) {
 	s := t.get(r.Session)
 	for _, tb := range s.list.Tabs {
 		if tb.Address == r.Address {
-			s.list.Selected = tb.ID
+			if r.Behind {
+				return copyList(s.list), nil
+			}
+			s.show(tb.ID)
 			s.changed()
 			return copyList(s.list), nil
 		}
 	}
 	t.next++
 	tb := Tab{ID: "tab-" + strconv.Itoa(t.next), Address: r.Address, Title: r.Title, Pinned: r.Pinned, Types: r.Types}
+	behind := r.Behind && s.list.Selected != ""
+	tb.New = behind
 	s.list.Tabs = append(s.list.Tabs, tb)
-	s.list.Selected = tb.ID
+	if !behind {
+		s.list.Selected = tb.ID
+	}
 	s.changed()
 	return copyList(s.list), nil
 }
@@ -190,7 +199,7 @@ func (t *Tabs) Select(name, id string) (TabList, error) {
 	if s.index(id) < 0 {
 		return TabList{}, ErrNoTab
 	}
-	s.list.Selected = id
+	s.show(id)
 	s.changed()
 	return copyList(s.list), nil
 }
@@ -212,15 +221,24 @@ func (t *Tabs) Close(name, id string) (TabList, error) {
 	if s.list.Selected == id {
 		switch {
 		case i < len(s.list.Tabs):
-			s.list.Selected = s.list.Tabs[i].ID
+			s.show(s.list.Tabs[i].ID)
 		case i > 0:
-			s.list.Selected = s.list.Tabs[i-1].ID
+			s.show(s.list.Tabs[i-1].ID)
 		default:
 			s.list.Selected = ""
 		}
 	}
 	s.changed()
 	return copyList(s.list), nil
+}
+
+// show makes tab id the one that shows, which clears its New mark. Callers
+// hold mu.
+func (s *session) show(id string) {
+	s.list.Selected = id
+	if i := s.index(id); i >= 0 {
+		s.list.Tabs[i].New = false
+	}
 }
 
 func (s *session) index(id string) int {

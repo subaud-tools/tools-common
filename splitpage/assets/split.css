@@ -332,6 +332,17 @@ body {
   box-shadow: inset 0 2px 0 #3b6fd8;
   margin-bottom: -1px;
 }
+.tab-new {
+  display: none;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3b6fd8;
+}
+.tab.new .tab-new {
+  display: block;
+}
 .tab-title {
   overflow: hidden;
   text-overflow: ellipsis;

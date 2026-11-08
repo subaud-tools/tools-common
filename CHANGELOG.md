@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.70.0
+
+### Added
+- splitpage: `OpenRequest.Behind` (`behind` on `POST /api/split/open`) opens a tab without showing it: the tab joins the bar and the tab that shows keeps showing, in one change, so the page never draws the new tab, not even for a moment. The new tab carries `Tab.New` (`new`) until it first shows (`Select`, a click on the page, or `Close` showing it as a neighbour), and the page marks it with a dot. An address already open is left as it is, and into a bar with nothing showing the tab shows. The client takes it as an option: `Open(base, token, session, address, title, splitpage.Behind())`. A caller that doesn't set it behaves as before.
+
 ## 0.69.0
 
 ### Added

@@ -110,6 +110,113 @@ func TestOpenAnOpenAddressSelectsIt(t *testing.T) {
 	}
 }
 
+// A tab opened behind joins the bar without changing which tab shows, marked
+// new until it is first shown; an address already open stays as it was.
+func TestOpenBehindKeepsTheShownTab(t *testing.T) {
+	srv := serveTabs(t)
+	lesson := open(t, srv, "s1", pageA, true)
+	code, l := post(t, srv, "open", OpenRequest{Session: "s1", Address: pageB, Title: "File", Behind: true})
+	if code != http.StatusOK {
+		t.Fatalf("open behind: %d", code)
+	}
+	if got := addresses(l); len(got) != 2 || got[1] != pageB {
+		t.Fatalf("tabs = %v", got)
+	}
+	if l.Selected != lesson.Selected {
+		t.Fatalf("selected %q, want the shown tab %q", l.Selected, lesson.Selected)
+	}
+	if l.Tabs[0].New || !l.Tabs[1].New {
+		t.Fatalf("new = %v, %v; want false, true", l.Tabs[0].New, l.Tabs[1].New)
+	}
+	// Opened behind again, after the user moved to it and back: still not shown.
+	post(t, srv, "select", SelectRequest{Session: "s1", ID: l.Tabs[1].ID})
+	post(t, srv, "select", SelectRequest{Session: "s1", ID: lesson.Selected})
+	code, l = post(t, srv, "open", OpenRequest{Session: "s1", Address: pageB, Title: "File", Behind: true})
+	if code != http.StatusOK || len(l.Tabs) != 2 || l.Selected != lesson.Selected {
+		t.Fatalf("open an open address behind: %d %+v", code, l)
+	}
+	if l.Tabs[1].New {
+		t.Fatalf("a tab already seen is marked new again: %+v", l.Tabs[1])
+	}
+}
+
+// Showing a tab clears its new mark: Select, or Close showing it as a neighbour.
+func TestShowingATabClearsNew(t *testing.T) {
+	tabs := NewTabs()
+	lesson, _ := tabs.Open(OpenRequest{Session: "s", Address: pageA, Title: "Lesson", Pinned: true})
+	l, _ := tabs.Open(OpenRequest{Session: "s", Address: pageB, Title: "File", Behind: true})
+	file := l.Tabs[1].ID
+	l, err := tabs.Select("s", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.Tabs[1].New {
+		t.Fatal("select left the tab marked new")
+	}
+	_, _ = tabs.Select("s", lesson.Selected)
+	l, _ = tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4003/", Title: "Three", Behind: true})
+	third := l.Tabs[2].ID
+	_, _ = tabs.Select("s", file)
+	l, err = tabs.Close("s", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.Selected != third || l.Tabs[1].New {
+		t.Fatalf("after closing the shown tab: selected %q, tabs %+v", l.Selected, l.Tabs)
+	}
+}
+
+// With nothing showing, a tab opened behind shows: an empty bar has no tab to
+// keep showing.
+func TestOpenBehindIntoAnEmptyBarShowsIt(t *testing.T) {
+	l, err := NewTabs().Open(OpenRequest{Session: "s", Address: pageA, Title: "A", Behind: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.Selected != l.Tabs[0].ID || l.Tabs[0].New {
+		t.Fatalf("open behind into an empty bar: %+v", l)
+	}
+}
+
+// Opening behind is one change, so the page draws once and never shows the
+// new tab.
+func TestStreamSendsOneListForAnOpenBehind(t *testing.T) {
+	srv := serveTabs(t)
+	lesson := open(t, srv, "s1", pageA, true)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/api/split/stream?session=s1", nil)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = res.Body.Close() }()
+	events := make(chan TabList, 8)
+	go func() {
+		sc := bufio.NewScanner(res.Body)
+		for sc.Scan() {
+			if data, ok := strings.CutPrefix(sc.Text(), "data: "); ok {
+				var l TabList
+				if json.Unmarshal([]byte(data), &l) == nil {
+					events <- l
+				}
+			}
+		}
+		close(events)
+	}()
+	<-events // the list now
+	post(t, srv, "open", OpenRequest{Session: "s1", Address: pageB, Title: "File", Behind: true})
+	got := <-events
+	if len(got.Tabs) != 2 || got.Selected != lesson.Selected {
+		t.Fatalf("after open behind: %+v", got)
+	}
+	select {
+	case more := <-events:
+		t.Fatalf("a second event after one open behind: %+v", more)
+	case <-time.After(200 * time.Millisecond):
+	}
+}
+
 func TestOpenKeepsTypes(t *testing.T) {
 	srv := serveTabs(t)
 	code, l := post(t, srv, "open", OpenRequest{Session: "s1", Address: pageA, Title: "Lesson", Pinned: true, Types: true})

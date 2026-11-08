@@ -133,6 +133,21 @@ body {
   margin-bottom: -1px;
 }
 
+/* The mark on a tab opened behind, until it first shows: a dot in the
+   selected tab's accent. */
+.tab-new {
+  display: none;
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3b6fd8;
+}
+
+.tab.new .tab-new {
+  display: block;
+}
+
 .tab-title {
   overflow: hidden;
   text-overflow: ellipsis;

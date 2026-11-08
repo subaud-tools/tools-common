@@ -13,6 +13,7 @@ export interface OpenRequest {
   title: string;
   pinned?: boolean;
   types?: boolean;
+  behind?: boolean;
 }
 
 export interface SelectRequest {
@@ -37,6 +38,7 @@ export interface Tab {
   title: string;
   pinned: boolean;
   types: boolean;
+  new?: boolean;
 }
 
 export type ResizeType = 'resize';

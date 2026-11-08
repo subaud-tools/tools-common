@@ -15,12 +15,23 @@ import (
 // clientTimeout bounds one call to a page server on this machine.
 const clientTimeout = 10 * time.Second
 
+// OpenOption changes how Open opens its tab.
+type OpenOption func(*OpenRequest)
+
+// Behind opens the tab without showing it (OpenRequest.Behind): the tab that
+// shows keeps showing, and the new tab is marked until it is first shown.
+func Behind() OpenOption { return func(r *OpenRequest) { r.Behind = true } }
+
 // Open asks the page server at base (http://127.0.0.1:<port>, its entry's
 // Loopback even when PAGE_PUBLIC_DOMAIN is set) to open address
 // as a tab in session's page, authenticating with token, and returns the
-// session's tabs.
-func Open(base, token, session, address, title string) (TabList, error) {
-	body, err := json.Marshal(OpenRequest{Session: session, Address: address, Title: title})
+// session's tabs. With no options the tab shows.
+func Open(base, token, session, address, title string, opts ...OpenOption) (TabList, error) {
+	r := OpenRequest{Session: session, Address: address, Title: title}
+	for _, o := range opts {
+		o(&r)
+	}
+	body, err := json.Marshal(r)
 	if err != nil {
 		return TabList{}, err
 	}

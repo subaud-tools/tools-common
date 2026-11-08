@@ -44,3 +44,20 @@ func TestOpenClientWithoutTheTokenFails(t *testing.T) {
 		t.Fatalf("Open without the token: %v, want a 401 error", err)
 	}
 }
+
+func TestOpenClientBehindKeepsTheShownTab(t *testing.T) {
+	tabs := NewTabs()
+	srv := httptest.NewServer(tokenGate("secret", tabs.Handler()))
+	defer srv.Close()
+	first, err := Open(srv.URL, "secret", "s1", pageA, "Lesson")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, err := Open(srv.URL, "secret", "s1", pageB, "File", Behind())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Tabs) != 2 || l.Selected != first.Selected || !l.Tabs[1].New {
+		t.Fatalf("Open behind = %+v", l)
+	}
+}
