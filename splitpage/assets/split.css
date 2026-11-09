@@ -523,8 +523,8 @@ body.narrow #tabs-panel {
 body.narrow #term {
   display: block;
 }
-body.narrow[data-view=pages] #term,
-body.narrow[data-view=terminal] #tabs-panel {
+body.narrow:not([data-view=terminal]) #term,
+body.narrow:not([data-view=pages]) #tabs-panel {
   display: none;
 }
 /*! Bundled license information:

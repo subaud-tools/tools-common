@@ -13,11 +13,12 @@ export interface TabsView {
 }
 
 // changed hears each list the page shows, with the one it showed before:
-// null until the page has heard the server's first list, so a reload's tabs
-// are not taken for tabs just opened.
+// null on the server's first list, so a reload's tabs are not taken for tabs
+// just opened, and never called before it. again says the server sent the
+// same list as its last.
 export function startTabs(
   session: string,
-  changed: (prev: TabList | null, next: TabList) => void,
+  changed: (prev: TabList | null, next: TabList, again: boolean) => void,
 ): TabsView {
   const bar = document.getElementById('tab-list')!;
   const frames = document.getElementById('frames')!;
@@ -27,6 +28,7 @@ export function startTabs(
   const shown = new Map<string, HTMLIFrameElement>();
   let current: TabList = { session, tabs: [], selected: '' };
   let heard = false;
+  let last: string | null = null; // the stream's last list, as sent
 
   const call = async (name: string, body: object): Promise<void> => {
     const res = await fetch(api + name, {
@@ -81,7 +83,7 @@ export function startTabs(
     return el;
   };
 
-  function render(list: TabList): void {
+  function render(list: TabList, again = false, streamed = false): void {
     const tabs = list.tabs ?? [];
     const prev = current;
     current = { ...list, tabs };
@@ -125,7 +127,7 @@ export function startTabs(
     }
     empty.hidden = tabs.length > 0;
     reload.disabled = list.selected === '';
-    changed(heard ? prev : null, current);
+    if (heard || streamed) changed(heard ? prev : null, current, again);
   }
 
   reload.addEventListener('click', () => {
@@ -144,8 +146,15 @@ export function startTabs(
 
   const stream = new EventSource(`${api}stream?session=${encodeURIComponent(session)}`);
   stream.onmessage = (ev) => {
-    render(JSON.parse(ev.data as string) as TabList);
+    const data = ev.data as string;
+    const again = last === data;
+    last = data;
+    render(JSON.parse(data) as TabList, again, true);
     heard = true;
+  };
+  // A stream that reconnects sends its list again: that is no open.
+  stream.onerror = () => {
+    last = null;
   };
   render(current);
   const from = (source: MessageEventSource | null): Tab | undefined => {

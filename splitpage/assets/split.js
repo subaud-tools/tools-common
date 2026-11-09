@@ -13906,11 +13906,12 @@ function firstView(tabs2) {
   return tabs2 > 0 ? "pages" : "terminal";
 }
 function termShows(s15) {
-  return s15.narrow ? s15.view === "terminal" : s15.layout !== "term-closed";
+  return s15.narrow ? s15.known && s15.view === "terminal" : s15.layout !== "term-closed";
 }
-function tabChange(prev, next) {
+function tabChange(prev, next, again = false) {
   const change = { front: false, first: false, behind: false, last: false };
   if (prev === null) return change;
+  if (again) return { ...change, front: next.selected !== "" };
   const was = new Set((prev.tabs ?? []).map((t) => t.id));
   const now = new Set((next.tabs ?? []).map((t) => t.id));
   const added = [...now].filter((id) => !was.has(id));
@@ -13964,6 +13965,7 @@ function startTabs(session2, changed) {
   const shown = /* @__PURE__ */ new Map();
   let current = { session: session2, tabs: [], selected: "" };
   let heard = false;
+  let last = null;
   const call = async (name, body2) => {
     const res = await fetch(api + name, {
       method: "POST",
@@ -14010,7 +14012,7 @@ function startTabs(session2, changed) {
     frames.append(el2);
     return el2;
   };
-  function render(list) {
+  function render(list, again = false, streamed = false) {
     const tabs2 = list.tabs ?? [];
     const prev = current;
     current = { ...list, tabs: tabs2 };
@@ -14051,7 +14053,7 @@ function startTabs(session2, changed) {
     }
     empty.hidden = tabs2.length > 0;
     reload.disabled = list.selected === "";
-    changed(heard ? prev : null, current);
+    if (heard || streamed) changed(heard ? prev : null, current, again);
   }
   reload.addEventListener("click", () => {
     const tab = current.tabs?.find((t) => t.id === current.selected);
@@ -14065,8 +14067,14 @@ function startTabs(session2, changed) {
   });
   const stream = new EventSource(`${api}stream?session=${encodeURIComponent(session2)}`);
   stream.onmessage = (ev) => {
-    render(JSON.parse(ev.data));
+    const data = ev.data;
+    const again = last === data;
+    last = data;
+    render(JSON.parse(data), again, true);
     heard = true;
+  };
+  stream.onerror = () => {
+    last = null;
   };
   render(current);
   const from = (source) => {
@@ -14143,7 +14151,8 @@ var state = {
   layout: storedLayout(stored(() => sessionStorage, layoutKey)),
   narrow: narrowMedia.matches,
   view: "terminal",
-  dot: false
+  dot: false,
+  known: false
 };
 var keptWidth = storedWidth(stored(() => localStorage, widthAt));
 if (keptWidth !== null) body.style.setProperty("--term-width", `${keptWidth}px`);
@@ -14155,12 +14164,12 @@ var showTerminal = document.getElementById("show-terminal");
 var showPages = document.getElementById("show-pages");
 function draw() {
   body.dataset.layout = state.layout;
-  body.dataset.view = state.view;
+  body.dataset.view = state.known || !state.narrow ? state.view : "";
   body.classList.toggle("narrow", state.narrow);
-  showTerminal.classList.toggle("on", state.view === "terminal");
-  showTerminal.setAttribute("aria-selected", String(state.view === "terminal"));
-  showPages.classList.toggle("on", state.view === "pages");
-  showPages.setAttribute("aria-selected", String(state.view === "pages"));
+  showTerminal.classList.toggle("on", body.dataset.view === "terminal");
+  showTerminal.setAttribute("aria-selected", String(body.dataset.view === "terminal"));
+  showPages.classList.toggle("on", body.dataset.view === "pages");
+  showPages.setAttribute("aria-selected", String(body.dataset.view === "pages"));
   showPages.classList.toggle("new", state.dot);
   const left = state.layout === "tabs-closed" ? "Bring the tabs back" : "Close the terminal: the tabs fill the window";
   const right = state.layout === "term-closed" ? "Bring the terminal back" : "Close the tabs: the terminal fills the window";
@@ -14373,9 +14382,9 @@ showTerminal.addEventListener("click", () => apply(show(state, "terminal")));
 showPages.addEventListener("click", () => apply(show(state, "pages")));
 narrowMedia.addEventListener("change", () => apply({ ...state, narrow: narrowMedia.matches }));
 draw();
-var tabs = startTabs(session, (prev, next) => {
-  if (prev === null) apply({ ...state, view: firstView(next.tabs?.length ?? 0) });
-  else apply(afterTabs(state, tabChange(prev, next)));
+var tabs = startTabs(session, (prev, next, again) => {
+  if (prev === null) apply({ ...state, view: firstView(next.tabs?.length ?? 0), known: true });
+  else apply(afterTabs(state, tabChange(prev, next, again)));
 });
 startTerminal();
 startDivider();

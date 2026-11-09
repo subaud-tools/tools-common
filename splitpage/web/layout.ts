@@ -13,6 +13,7 @@ export interface State {
   narrow: boolean; // the window is the page kit's narrow width or less
   view: View; // the side a narrow page shows
   dot: boolean; // a tab opened behind that Pages hasn't shown yet
+  known: boolean; // the page has heard its tabs, so a narrow page knows its side
 }
 
 // The page kit's narrow width.
@@ -61,8 +62,10 @@ export function firstView(tabs: number): View {
   return tabs > 0 ? 'pages' : 'terminal';
 }
 
+// termShows says the terminal shows. A narrow page shows neither side until
+// it has heard its tabs: it may open on Pages.
 export function termShows(s: State): boolean {
-  return s.narrow ? s.view === 'terminal' : s.layout !== 'term-closed';
+  return s.narrow ? s.known && s.view === 'terminal' : s.layout !== 'term-closed';
 }
 
 // What a new tab list did to the tabs.
@@ -74,10 +77,13 @@ export interface Change {
 }
 
 // tabChange compares the list the page showed with the next one. prev is
-// null for the first list the page hears, which changes nothing.
-export function tabChange(prev: TabList | null, next: TabList): Change {
+// null for the first list the page hears, which changes nothing. again says
+// the server sent the same list it sent last: an address already showing,
+// opened in front again (the only call that changes nothing in the list).
+export function tabChange(prev: TabList | null, next: TabList, again = false): Change {
   const change = { front: false, first: false, behind: false, last: false };
   if (prev === null) return change;
+  if (again) return { ...change, front: next.selected !== '' };
   const was = new Set((prev.tabs ?? []).map((t) => t.id));
   const now = new Set((next.tabs ?? []).map((t) => t.id));
   const added = [...now].filter((id) => !was.has(id));

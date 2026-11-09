@@ -46,6 +46,11 @@ async function post(path, body) {
   });
 }
 
+async function tabs_(s) {
+  const res = await fetch(`/api/split/tabs?session=${s}`);
+  return res.json();
+}
+
 async function tabs() {
   const res = await fetch(`/api/split/tabs?session=${session}`);
   return res.json();
@@ -254,6 +259,35 @@ if (phone) {
   test('a new window with a tab opens on Pages', async () => {
     await load();
     await until(onPages, 'a new window with a tab opens on Pages');
+  });
+
+  test('a narrow load with a tab never shows, fits or focuses the terminal, and says no size', async () => {
+    await until(() => split().canSend(), 'the replay is written');
+    await sleep(300);
+    const n = (await resizes()).length;
+    // Watch from the moment the page's script has drawn the narrow page.
+    let terminalShowed = false;
+    let watching = true;
+    const watch = () => {
+      const d = doc();
+      if (d?.body?.classList.contains('narrow') && d.getElementById('term').getBoundingClientRect().width > 0) {
+        terminalShowed = true;
+      }
+      if (watching) setTimeout(watch, 0);
+    };
+    const loaded = new Promise((r) => frame.addEventListener('load', r, { once: true }));
+    win().location.reload();
+    watch();
+    await loaded;
+    await pageReady();
+    await until(onPages, 'the page settles on Pages');
+    await until(() => split().canSend(), 'the replay is written');
+    await sleep(300);
+    watching = false;
+    assert(!terminalShowed, 'the terminal showed before Pages');
+    assert(!doc().activeElement?.classList.contains('xterm-helper-textarea'), 'the terminal took the focus');
+    const got = (await resizes()).slice(n);
+    assert(got.length === 0, `resizes while Pages shows: ${JSON.stringify(got)}`);
   });
 
   test('narrow keeps the wide layout as it was, and widening to 1280px brings it back', async () => {
@@ -691,6 +725,19 @@ if (phone) {
     res = await post('/api/split/open', { session: xs, address: `${two}?front`, title: 'Front' });
     assert(res.ok, `open front: ${res.status}`);
     await until(() => splitOpen() && near(rect('term').width, w0), 'a tab opened in front opens the tabs');
+  });
+
+  test('an agent opening the tab that already shows opens closed tabs', async () => {
+    const w0 = rect('term').width;
+    const list = await tabs_(xs);
+    const address = list.tabs.find((t) => t.id === list.selected).address;
+    closeTabs().click();
+    await until(tabsClosed, 'the tabs close');
+    await sleep(200);
+    const res = await post('/api/split/open', { session: xs, address, title: 'Again' });
+    assert(res.ok, `open again: ${res.status}`);
+    assert((await res.json()).selected === list.selected, 'the open made a new tab');
+    await until(() => splitOpen() && near(rect('term').width, w0), 'opening the shown tab again opens the tabs');
   });
 
   test('closing the last tab closes the tabs, a reload keeps them closed, and the first tab opens them', async () => {

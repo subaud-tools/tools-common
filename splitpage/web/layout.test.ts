@@ -16,7 +16,7 @@ import {
   widthKey,
 } from './layout.ts';
 
-const wide: State = { layout: 'split', narrow: false, view: 'terminal', dot: false };
+const wide: State = { layout: 'split', narrow: false, view: 'terminal', dot: false, known: true };
 const narrow: State = { ...wide, narrow: true };
 const tab = (id: string): Tab => ({ id, address: `http://127.0.0.1:1/${id}`, title: id, pinned: false, types: false });
 const list = (selected: string, ...ids: string[]): TabList => ({ session: 's', tabs: ids.map(tab), selected });
@@ -63,6 +63,17 @@ test('the terminal shows unless it is closed, or Pages shows on a narrow screen'
   assert.equal(termShows({ ...wide, layout: 'term-closed' }), false);
   assert.equal(termShows({ ...narrow, view: 'terminal', layout: 'term-closed' }), true);
   assert.equal(termShows({ ...narrow, view: 'pages' }), false);
+});
+
+test('a narrow page shows no terminal until it has heard its tabs', () => {
+  assert.equal(termShows({ ...narrow, view: 'terminal', known: false }), false);
+  assert.equal(termShows({ ...wide, known: false }), true);
+});
+
+test('the server saying the same list again is a tab opened in front again', () => {
+  assert.deepEqual(tabChange(list('a', 'a'), list('a', 'a'), true), { ...none, front: true });
+  assert.deepEqual(tabChange(list(''), list(''), true), none);
+  assert.deepEqual(tabChange(null, list('a', 'a'), true), none);
 });
 
 test('a new window on a narrow screen opens on Pages when there is a tab', () => {

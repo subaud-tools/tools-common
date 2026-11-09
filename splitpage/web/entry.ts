@@ -122,6 +122,7 @@ let state: State = {
   narrow: narrowMedia.matches,
   view: 'terminal',
   dot: false,
+  known: false,
 };
 const keptWidth = storedWidth(stored(() => localStorage, widthAt));
 if (keptWidth !== null) body.style.setProperty('--term-width', `${keptWidth}px`);
@@ -136,12 +137,13 @@ const showPages = document.getElementById('show-pages') as HTMLButtonElement;
 
 function draw(): void {
   body.dataset.layout = state.layout;
-  body.dataset.view = state.view;
+  // A narrow page shows neither side until it has heard its tabs.
+  body.dataset.view = state.known || !state.narrow ? state.view : '';
   body.classList.toggle('narrow', state.narrow);
-  showTerminal.classList.toggle('on', state.view === 'terminal');
-  showTerminal.setAttribute('aria-selected', String(state.view === 'terminal'));
-  showPages.classList.toggle('on', state.view === 'pages');
-  showPages.setAttribute('aria-selected', String(state.view === 'pages'));
+  showTerminal.classList.toggle('on', body.dataset.view === 'terminal');
+  showTerminal.setAttribute('aria-selected', String(body.dataset.view === 'terminal'));
+  showPages.classList.toggle('on', body.dataset.view === 'pages');
+  showPages.setAttribute('aria-selected', String(body.dataset.view === 'pages'));
   showPages.classList.toggle('new', state.dot);
   const left = state.layout === 'tabs-closed' ? 'Bring the tabs back' : 'Close the terminal: the tabs fill the window';
   const right = state.layout === 'term-closed' ? 'Bring the terminal back' : 'Close the tabs: the terminal fills the window';
@@ -394,9 +396,9 @@ narrowMedia.addEventListener('change', () => apply({ ...state, narrow: narrowMed
 draw();
 // A tab opened in front, or the first, opens closed tabs; closing the last
 // closes them. The first list the page hears picks a narrow page's side.
-const tabs = startTabs(session, (prev, next) => {
-  if (prev === null) apply({ ...state, view: firstView(next.tabs?.length ?? 0) });
-  else apply(afterTabs(state, tabChange(prev, next)));
+const tabs = startTabs(session, (prev, next, again) => {
+  if (prev === null) apply({ ...state, view: firstView(next.tabs?.length ?? 0), known: true });
+  else apply(afterTabs(state, tabChange(prev, next, again)));
 });
 startTerminal();
 startDivider();
