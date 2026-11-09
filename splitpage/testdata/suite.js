@@ -10,6 +10,7 @@ const clip = q.get('clip');
 const send = q.get('send');
 const elsewhere = q.get('elsewhere'); // send.html on another origin
 const restart = q.get('restart') === '1';
+const phone = q.get('phone') === '1';
 const session = 's1';
 const frame = document.getElementById('page');
 
@@ -161,7 +162,109 @@ async function pageReady() {
   await until(() => doc()?.readyState === 'complete' && split()?.socket, 'the page connects');
 }
 
-if (restart) {
+if (phone) {
+  // A narrow page shows one side at a time, full width. The page starts wide
+  // (run.html's 1200px) to leave a closed side and a width narrow must keep.
+  const showTerminal = () => doc().getElementById('show-terminal');
+  const showPages = () => doc().getElementById('show-pages');
+  const shows = (id) => {
+    const r = rect(id);
+    return r.width > 0 && r.height > 0;
+  };
+  const onTerminal = () => near(rect('term').width, pageWidth()) && rect('tabs-panel').width === 0;
+  const onPages = () => near(rect('tabs-panel').width, pageWidth()) && rect('term').width === 0;
+  const dotShows = () => {
+    const dot = showPages().querySelector('.switch-new');
+    return dot.getBoundingClientRect().width > 0 && win().getComputedStyle(dot).display !== 'none';
+  };
+  const wideKeys = () =>
+    JSON.stringify([Object.entries(win().sessionStorage).sort(), Object.entries(win().localStorage).sort()]);
+  let kept;
+
+  test('wide: the tabs closed at a width of 400', async () => {
+    await pageReady();
+    await post('/api/test/release');
+    await until(() => split().canSend(), 'the replay is written');
+    drag(400);
+    await until(() => near(rect('term').width, 400), 'the divider drags');
+    closeTabs().click();
+    await until(tabsClosed, 'the tabs close');
+    kept = wideKeys();
+  });
+
+  test('at 390px the switch shows, the divider does not, and with no tab the terminal fills the width', async () => {
+    // A phone lays a page out at its own width only when the page says so.
+    const viewport = doc().querySelector('meta[name="viewport"]')?.content ?? '';
+    assert(viewport.includes('width=device-width'), `viewport: ${JSON.stringify(viewport)}`);
+    frame.style.width = '390px';
+    frame.style.height = '844px';
+    await until(() => shows('switch') && !shows('divider'), 'the page goes narrow');
+    assert(pageWidth() === 390, `page width ${pageWidth()}`);
+    assert(onTerminal(), `terminal ${rect('term').width}, tabs ${rect('tabs-panel').width}`);
+    await load(); // a new window with no tab
+    await sleep(200);
+    assert(shows('switch') && !shows('divider') && onTerminal(), 'a new window with no tab opens on Terminal');
+  });
+
+  test('each switch button shows its side, and only Terminal says a size', async () => {
+    await until(() => split().canSend(), 'the replay is written');
+    await sleep(300);
+    const n = (await resizes()).length;
+    showPages().click();
+    await until(onPages, 'Pages shows, full width');
+    await sleep(300);
+    assert((await resizes()).length === n, 'a resize while Pages shows');
+    showTerminal().click();
+    await until(onTerminal, 'Terminal shows, full width');
+    await until(async () => (await resizes()).length > n, 'a resize as Terminal shows');
+    await sleep(300);
+    const got = (await resizes()).slice(n);
+    assert(got.length === 1 && fitsPanel(got[0]), `resizes as Terminal shows: ${JSON.stringify(got)}`);
+  });
+
+  test('a tab opened in front switches to Pages, and one opened behind puts a dot on Pages', async () => {
+    let res = await post('/api/split/open', { session, address: one, title: 'One' });
+    assert(res.ok, `open one: ${res.status}`);
+    await until(onPages, 'a tab opened in front switches to Pages');
+    showTerminal().click();
+    await until(onTerminal, 'Terminal shows');
+    assert(!dotShows(), 'a dot before any tab opened behind');
+    res = await post('/api/split/open', { session, address: two, title: 'Two', behind: true });
+    assert(res.ok, `open two: ${res.status}`);
+    const behind = (await res.json()).tabs.find((t) => t.address === two).id;
+    await until(() => barTab(behind), 'the behind tab in the bar');
+    await until(dotShows, 'a tab opened behind puts a dot on Pages');
+    assert(onTerminal(), 'a tab opened behind switched to Pages');
+    showPages().click();
+    await until(onPages, 'Pages shows');
+    assert(!dotShows(), 'the dot stays once Pages shows');
+  });
+
+  test('typed text switches to Terminal', async () => {
+    await until(() => split().canSend(), 'the replay is written');
+    const res = await post('/api/split/open', { session, address: send, title: 'Types', types: true });
+    const typer = (await res.json()).selected;
+    await until(onPages, 'Pages shows');
+    const before = await input();
+    await tell(typer, { post: { type: 'send', text: 'switched' } });
+    await until(onTerminal, 'typed text switches to Terminal');
+    await until(async () => (await input()).slice(before.length) === 'switched', 'the text is typed');
+  });
+
+  test('a new window with a tab opens on Pages', async () => {
+    await load();
+    await until(onPages, 'a new window with a tab opens on Pages');
+  });
+
+  test('narrow keeps the wide layout as it was, and widening to 1280px brings it back', async () => {
+    assert(wideKeys() === kept, `narrow wrote ${wideKeys()}, was ${kept}`);
+    frame.style.width = '1280px';
+    frame.style.height = '700px';
+    await until(() => !shows('switch') && pageWidth() === 1280 && tabsClosed(), 'the tabs are closed again at 1280px');
+    closeTerm().click();
+    await until(() => splitOpen() && near(rect('term').width, 400), `the split at ${rect('term').width}, want 400`);
+  });
+} else if (restart) {
   test('holds input until the replay is written', async () => {
     await pageReady();
     await until(() => split().socket.readyState === WebSocket.OPEN, 'the socket opens');

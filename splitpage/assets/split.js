@@ -13879,6 +13879,7 @@ function handleKey(ev, send) {
 }
 
 // layout.ts
+var narrowQuery = "(max-width: 640px)";
 var edge = 120;
 var layoutKey = "splitpage.layout";
 function widthKey(host, path) {
@@ -14137,9 +14138,10 @@ function keep(storage, key, value) {
 }
 var body = document.body;
 var widthAt = widthKey(location.host, location.pathname);
+var narrowMedia = matchMedia(narrowQuery);
 var state = {
   layout: storedLayout(stored(() => sessionStorage, layoutKey)),
-  narrow: false,
+  narrow: narrowMedia.matches,
   view: "terminal",
   dot: false
 };
@@ -14149,8 +14151,17 @@ var termShown = () => {
 };
 var closeTerm = document.getElementById("close-term");
 var closeTabs = document.getElementById("close-tabs");
+var showTerminal = document.getElementById("show-terminal");
+var showPages = document.getElementById("show-pages");
 function draw() {
   body.dataset.layout = state.layout;
+  body.dataset.view = state.view;
+  body.classList.toggle("narrow", state.narrow);
+  showTerminal.classList.toggle("on", state.view === "terminal");
+  showTerminal.setAttribute("aria-selected", String(state.view === "terminal"));
+  showPages.classList.toggle("on", state.view === "pages");
+  showPages.setAttribute("aria-selected", String(state.view === "pages"));
+  showPages.classList.toggle("new", state.dot);
   const left = state.layout === "tabs-closed" ? "Bring the tabs back" : "Close the terminal: the tabs fill the window";
   const right = state.layout === "term-closed" ? "Bring the terminal back" : "Close the tabs: the terminal fills the window";
   closeTerm.title = left;
@@ -14358,6 +14369,9 @@ function startDivider() {
   closeTerm.addEventListener("click", () => apply({ ...state, layout: arrow(state.layout, "left") }));
   closeTabs.addEventListener("click", () => apply({ ...state, layout: arrow(state.layout, "right") }));
 }
+showTerminal.addEventListener("click", () => apply(show(state, "terminal")));
+showPages.addEventListener("click", () => apply(show(state, "pages")));
+narrowMedia.addEventListener("change", () => apply({ ...state, narrow: narrowMedia.matches }));
 draw();
 var tabs = startTabs(session, (prev, next) => {
   if (prev === null) apply({ ...state, view: firstView(next.tabs?.length ?? 0) });

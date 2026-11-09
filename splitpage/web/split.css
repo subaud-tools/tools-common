@@ -295,3 +295,82 @@ body:not([data-layout='split']) #grip button:hover {
 #tabs-empty[hidden] {
   display: none;
 }
+
+/* Narrow (the page kit's 640px): no divider, and a switch at the top shows
+   one side at a time, full width. The wide layout's rules above are kept for
+   when the window widens again; these win while it is narrow. */
+#switch {
+  display: none;
+}
+
+body.narrow {
+  flex-direction: column;
+}
+
+body.narrow #switch {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: #e8eaee;
+  border-bottom: 1px solid #c9ced6;
+}
+
+#switch button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  border: 1px solid #c9ced6;
+  border-radius: 8px;
+  background: #d5d9e0;
+  color: #444;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#switch button.on {
+  color: #111;
+  font-weight: 600;
+  background: #fff;
+  box-shadow: inset 0 -2px 0 #3b6fd8;
+}
+
+/* A tab opened behind, until Pages shows: the tab bar's dot. */
+.switch-new {
+  display: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3b6fd8;
+}
+
+#show-pages.new .switch-new {
+  display: block;
+}
+
+body.narrow #divider {
+  display: none;
+}
+
+body.narrow #term,
+body.narrow #tabs-panel {
+  display: flex;
+  flex: 1;
+  width: auto;
+  max-width: none;
+  height: auto;
+  min-height: 0;
+}
+
+body.narrow #term {
+  display: block;
+}
+
+body.narrow[data-view='pages'] #term,
+body.narrow[data-view='terminal'] #tabs-panel {
+  display: none;
+}

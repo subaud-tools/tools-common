@@ -81,9 +81,16 @@ func profileDir(t *testing.T) string {
 func TestBrowserPage(t *testing.T)      { runSuite(t, true) }
 func TestBrowserNoRestart(t *testing.T) { runSuite(t, false) }
 
+// TestBrowserPhone runs the suite's phone tests: the page framed at 390 x 844,
+// a phone's width, and widened again to 1280.
+func TestBrowserPhone(t *testing.T) { runSuiteAt(t, false, true) }
+
 // runSuite serves the page, offering a restart and a take or neither, and runs
 // the suite.
-func runSuite(t *testing.T, restart bool) {
+func runSuite(t *testing.T, restart bool) { runSuiteAt(t, restart, false) }
+
+// runSuiteAt runs the suite, its phone tests if phone.
+func runSuiteAt(t *testing.T, restart, phone bool) {
 	chrome := needChrome(t)
 	t.Setenv("XDG_STATE_HOME", t.TempDir()) // localweb remembers its port there
 
@@ -152,6 +159,9 @@ func runSuite(t *testing.T, restart bool) {
 		"send": {framed("send.html")}, "elsewhere": {framed("send.html")}}
 	if restart {
 		q.Set("restart", "1")
+	}
+	if phone {
+		q.Set("phone", "1")
 	}
 	run := "http://" + srv.Addr() + "/test/run.html?" + q.Encode()
 

@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>__TITLE__</title>
 <link rel="stylesheet" href="split.css">
 </head>
-<body data-socket="__SOCKET__" data-session="__SESSION__" data-restart="__RESTART__" data-take="__TAKE__" data-script="__SCRIPT__" data-layout="split">
+<body data-socket="__SOCKET__" data-session="__SESSION__" data-restart="__RESTART__" data-take="__TAKE__" data-script="__SCRIPT__" data-layout="split" data-view="terminal">
+<div id="switch" role="tablist" aria-label="Show">
+  <button id="show-terminal" type="button" role="tab">Terminal</button>
+  <button id="show-pages" type="button" role="tab"><span class="switch-new" aria-label="A page not seen yet"></span>Pages</button>
+</div>
 <div id="term">
   <div id="stopped" hidden>
     <span id="stopped-text"></span>

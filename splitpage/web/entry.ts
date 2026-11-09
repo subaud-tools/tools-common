@@ -17,7 +17,9 @@ import {
   edge,
   firstView,
   layoutKey,
+  narrowQuery,
   released,
+  show,
   type State,
   storedLayout,
   storedWidth,
@@ -114,9 +116,10 @@ function keep(storage: () => Storage, key: string, value: string): void {
 // divider's width is kept per page address.
 const body = document.body;
 const widthAt = widthKey(location.host, location.pathname);
+const narrowMedia = matchMedia(narrowQuery);
 let state: State = {
   layout: storedLayout(stored(() => sessionStorage, layoutKey)),
-  narrow: false,
+  narrow: narrowMedia.matches,
   view: 'terminal',
   dot: false,
 };
@@ -128,9 +131,18 @@ let termShown = (): void => {};
 
 const closeTerm = document.getElementById('close-term') as HTMLButtonElement;
 const closeTabs = document.getElementById('close-tabs') as HTMLButtonElement;
+const showTerminal = document.getElementById('show-terminal') as HTMLButtonElement;
+const showPages = document.getElementById('show-pages') as HTMLButtonElement;
 
 function draw(): void {
   body.dataset.layout = state.layout;
+  body.dataset.view = state.view;
+  body.classList.toggle('narrow', state.narrow);
+  showTerminal.classList.toggle('on', state.view === 'terminal');
+  showTerminal.setAttribute('aria-selected', String(state.view === 'terminal'));
+  showPages.classList.toggle('on', state.view === 'pages');
+  showPages.setAttribute('aria-selected', String(state.view === 'pages'));
+  showPages.classList.toggle('new', state.dot);
   const left = state.layout === 'tabs-closed' ? 'Bring the tabs back' : 'Close the terminal: the tabs fill the window';
   const right = state.layout === 'term-closed' ? 'Bring the terminal back' : 'Close the tabs: the terminal fills the window';
   closeTerm.title = left;
@@ -372,6 +384,12 @@ function startDivider(): void {
   closeTerm.addEventListener('click', () => apply({ ...state, layout: arrow(state.layout, 'left') }));
   closeTabs.addEventListener('click', () => apply({ ...state, layout: arrow(state.layout, 'right') }));
 }
+
+// Narrow, a switch shows one side at a time; the page goes narrow and wide
+// again as the window changes.
+showTerminal.addEventListener('click', () => apply(show(state, 'terminal')));
+showPages.addEventListener('click', () => apply(show(state, 'pages')));
+narrowMedia.addEventListener('change', () => apply({ ...state, narrow: narrowMedia.matches }));
 
 draw();
 // A tab opened in front, or the first, opens closed tabs; closing the last
