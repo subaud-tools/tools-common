@@ -81,9 +81,16 @@ func profileDir(t *testing.T) string {
 func TestBrowserPage(t *testing.T)      { runSuite(t, true) }
 func TestBrowserNoRestart(t *testing.T) { runSuite(t, false) }
 
+// TestBrowserPhone runs the suite's phone tests: the page framed at 390 x 844,
+// a phone's width, and widened again to 1280.
+func TestBrowserPhone(t *testing.T) { runSuiteAt(t, false, true) }
+
 // runSuite serves the page, offering a restart and a take or neither, and runs
 // the suite.
-func runSuite(t *testing.T, restart bool) {
+func runSuite(t *testing.T, restart bool) { runSuiteAt(t, restart, false) }
+
+// runSuiteAt runs the suite, its phone tests if phone.
+func runSuiteAt(t *testing.T, restart, phone bool) {
 	chrome := needChrome(t)
 	t.Setenv("XDG_STATE_HOME", t.TempDir()) // localweb remembers its port there
 
@@ -114,6 +121,10 @@ func runSuite(t *testing.T, restart bool) {
 	api.HandleFunc("POST /api/test/release", func(http.ResponseWriter, *http.Request) { term.release() })
 	api.HandleFunc("POST /api/test/stop", func(http.ResponseWriter, *http.Request) { term.closeNewest(CloseStopped) })
 	api.HandleFunc("POST /api/test/replace", func(http.ResponseWriter, *http.Request) { term.closeNewest(CloseReplaced) })
+	api.HandleFunc("GET /api/test/resizes", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(term.sizes())
+	})
 	api.HandleFunc("GET /api/test/queries", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(term.queries())
@@ -148,6 +159,9 @@ func runSuite(t *testing.T, restart bool) {
 		"send": {framed("send.html")}, "elsewhere": {framed("send.html")}}
 	if restart {
 		q.Set("restart", "1")
+	}
+	if phone {
+		q.Set("phone", "1")
 	}
 	run := "http://" + srv.Addr() + "/test/run.html?" + q.Encode()
 
@@ -196,6 +210,7 @@ type stubTerminal struct {
 	input    strings.Builder
 	conns    []*wsConn
 	query    []string // each connection's raw query, in order
+	resizes  []json.RawMessage
 	held     chan struct{}
 	released bool
 }
@@ -213,6 +228,13 @@ func (s *stubTerminal) release() {
 		s.released = true
 		close(s.held)
 	}
+}
+
+// sizes is every resize frame the page sent, on any connection, in order.
+func (s *stubTerminal) sizes() []json.RawMessage {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]json.RawMessage{}, s.resizes...)
 }
 
 func (s *stubTerminal) queries() []string {
@@ -263,7 +285,10 @@ func (s *stubTerminal) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		switch op {
-		case opText: // a resize: the stub has no size to keep
+		case opText: // a resize: kept for the suite to read
+			s.mu.Lock()
+			s.resizes = append(s.resizes, json.RawMessage(data))
+			s.mu.Unlock()
 		case opBinary:
 			s.mu.Lock()
 			s.input.Write(data)

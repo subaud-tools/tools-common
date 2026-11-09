@@ -270,12 +270,75 @@ body {
   cursor: pointer;
 }
 #divider {
+  position: relative;
+  z-index: 5;
   flex: none;
   width: 6px;
   height: 100%;
   background: #444;
   cursor: col-resize;
   touch-action: none;
+}
+#grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#grip button {
+  box-sizing: border-box;
+  width: 22px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #666;
+  border-radius: 4px;
+  background: #2a2a2a;
+  color: #eee;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+#grip button:hover {
+  background: #555;
+}
+body[data-layout=split] #term {
+  max-width: calc(100% - 126px);
+}
+body[data-layout=term-closed] #term,
+body[data-layout=tabs-closed] #tabs-panel,
+body[data-layout=term-closed] #close-term,
+body[data-layout=tabs-closed] #close-tabs {
+  display: none;
+}
+body[data-layout=tabs-closed] #term {
+  flex: 1;
+  width: auto;
+}
+body:not([data-layout=split]) #divider {
+  cursor: default;
+}
+body[data-layout=term-closed] #grip {
+  left: 0;
+  transform: translate(0, -50%);
+}
+body[data-layout=tabs-closed] #grip {
+  left: auto;
+  right: 0;
+  transform: translate(0, -50%);
+}
+body:not([data-layout=split]) #grip button {
+  width: 28px;
+  height: 64px;
+  font-size: 14px;
+  color: #fff;
+  background: #3b6fd8;
+  border-color: #2c58b3;
+}
+body:not([data-layout=split]) #grip button:hover {
+  background: #2c58b3;
 }
 #divider:hover,
 #divider.dragging {
@@ -398,6 +461,70 @@ body {
   text-align: center;
 }
 #tabs-empty[hidden] {
+  display: none;
+}
+#switch {
+  display: none;
+}
+body.narrow {
+  flex-direction: column;
+}
+body.narrow #switch {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: #e8eaee;
+  border-bottom: 1px solid #c9ced6;
+}
+#switch button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  border: 1px solid #c9ced6;
+  border-radius: 8px;
+  background: #d5d9e0;
+  color: #444;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+#switch button.on {
+  color: #111;
+  font-weight: 600;
+  background: #fff;
+  box-shadow: inset 0 -2px 0 #3b6fd8;
+}
+.switch-new {
+  display: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3b6fd8;
+}
+#show-pages.new .switch-new {
+  display: block;
+}
+body.narrow #divider {
+  display: none;
+}
+body.narrow #term,
+body.narrow #tabs-panel {
+  display: flex;
+  flex: 1;
+  width: auto;
+  max-width: none;
+  height: auto;
+  min-height: 0;
+}
+body.narrow #term {
+  display: block;
+}
+body.narrow:not([data-view=terminal]) #term,
+body.narrow:not([data-view=pages]) #tabs-panel {
   display: none;
 }
 /*! Bundled license information:

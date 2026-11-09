@@ -4,6 +4,16 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.71.0
+
+### Added
+- splitpage: either side of the split can be closed, so the other fills the window. The divider has two arrows: ◀ closes the terminal, ▶ the tabs. A drag let go within 120px of an edge closes the side next to that edge. The closed side leaves a 28 × 64px handle in the accent color at the window's edge, inside the window, that opens the split at the width it had. Only one side closes at a time. A closed side lasts for the browser tab (`sessionStorage`: a reload keeps it, a new window opens split), and the divider's width is kept per page address (`localStorage`).
+- splitpage: a closed side comes back by itself: text typed from a tab opened with `types` (lwc's Send to Claude) opens the terminal, then types as before; a tab opened in front opens the tabs, and so does any tab when there were none. Closing the last tab closes the tabs.
+- splitpage: at 640px wide or less the page has no divider: a **Terminal | Pages** switch shows one side at a time, full width, entering and leaving as the window changes. A new window opens on Pages when there is a tab, else on Terminal. Typed text switches to Terminal, a tab opened in front (or the first tab) switches to Pages, and a tab opened behind puts a dot on Pages until Pages shows. Narrow never changes the wide layout's closed side or width. The page now says `width=device-width`, so a phone lays it out at its own width.
+
+### Changed
+- splitpage: while the terminal is closed (or Pages shows), the page neither fits the terminal nor sends a resize, so the program keeps its size and output; as the terminal shows again it is fitted and its real size is sent once. `window.splitPage`, its `fit` and `#term` keep their shape. Nothing changes in the Go API or the wire.
+
 ## 0.70.1
 
 ### Fixed
