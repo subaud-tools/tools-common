@@ -106,6 +106,56 @@ async function tell(id, cmd) {
   }
 }
 
+// Geometry of the page's parts, as drawn.
+const rect = (id) => doc().getElementById(id).getBoundingClientRect();
+const pageWidth = () => doc().documentElement.clientWidth;
+const near = (a, b) => Math.abs(a - b) < 1;
+const resizes = async () => (await fetch('/api/test/resizes')).json();
+const closeTerm = () => doc().getElementById('close-term'); // ◀
+const closeTabs = () => doc().getElementById('close-tabs'); // ▶
+
+// termClosed and tabsClosed say one side is gone and the other fills the
+// window beside the divider, which sits at the window's edge.
+function termClosed() {
+  const d = rect('divider');
+  return rect('term').width === 0 && d.left === 0 && near(rect('tabs-panel').width, pageWidth() - d.width);
+}
+function tabsClosed() {
+  const d = rect('divider');
+  return rect('tabs-panel').width === 0 && near(d.right, pageWidth()) && near(rect('term').width, pageWidth() - d.width);
+}
+const splitOpen = () => rect('term').width > 0 && rect('tabs-panel').width > 0;
+
+// assertHandle checks the way back: a 28 x 64 tab, inside the window.
+function assertHandle(el) {
+  const r = el.getBoundingClientRect();
+  assert(r.width === 28 && r.height === 64, `handle ${r.width} x ${r.height}`);
+  assert(r.left >= 0 && r.right <= pageWidth(), `handle at ${r.left}..${r.right} of ${pageWidth()}`);
+  assert(win().getComputedStyle(el).visibility === 'visible', 'the handle is hidden');
+}
+
+// drag moves the divider to x and lets go there.
+function drag(x) {
+  const divider = doc().getElementById('divider');
+  const at = (type, cx) =>
+    divider.dispatchEvent(new PointerEvent(type, { pointerId: 1, clientX: cx, clientY: 100, bubbles: true }));
+  at('pointerdown', divider.getBoundingClientRect().left);
+  at('pointermove', x);
+  at('pointerup', x);
+}
+
+// fitsPanel says a resize frame is the terminal's real size: the size xterm
+// has, whose cells fill the terminal's panel.
+function fitsPanel(size) {
+  const s = doc().querySelector('#term .xterm-screen').getBoundingClientRect();
+  const t = rect('term');
+  const term = split().term;
+  return (
+    size.cols === term.cols && size.rows === term.rows &&
+    s.width <= t.width && t.width - s.width < 40 && s.height <= t.height && t.height - s.height < 40
+  );
+}
+
 // pageReady waits for the page in the frame to have connected its terminal.
 async function pageReady() {
   await until(() => doc()?.readyState === 'complete' && split()?.socket, 'the page connects');
@@ -440,6 +490,146 @@ if (restart) {
     p = await newQuery(n, 'the reloaded page connects');
     assert(!p.has('take'), `a reload took the session: ${p}`);
     assert(p.get('session') === 'x', `the reload lost its session: ${p}`);
+  });
+  // Closing a side. The page is on session x from here.
+  const xs = 'x';
+
+  test('each arrow closes its side, the other fills the window, and the handle brings it back', async () => {
+    await until(() => split().canSend(), 'the replay is written');
+    await until(splitOpen, 'the split shows');
+    const w0 = rect('term').width;
+    closeTerm().click();
+    await until(termClosed, 'the terminal closes and the tabs fill the window');
+    assertHandle(closeTabs());
+    assert(rect('close-term').width === 0, 'the closing arrow still shows');
+    closeTabs().click();
+    await until(() => splitOpen() && near(rect('term').width, w0), `the split opens at ${w0}`);
+    closeTabs().click();
+    await until(tabsClosed, 'the tabs close and the terminal fills the window');
+    assertHandle(closeTerm());
+    closeTerm().click();
+    await until(() => splitOpen() && near(rect('term').width, w0), `the split opens again at ${w0}`);
+  });
+
+  test('a drag let go within 120px of an edge closes that side, and 200px away it does not', async () => {
+    const w0 = rect('term').width;
+    drag(60);
+    await until(termClosed, 'a drag to 60px closes the terminal');
+    closeTabs().click();
+    await until(() => splitOpen() && near(rect('term').width, w0), `the handle opens the split at ${w0}`);
+    drag(pageWidth() - 60);
+    await until(tabsClosed, 'a drag to 60px from the right closes the tabs');
+    closeTerm().click();
+    await until(() => splitOpen() && near(rect('term').width, w0), `the handle opens the split at ${w0}`);
+    drag(200);
+    await sleep(100);
+    assert(splitOpen() && near(rect('term').width, 200), `a drag to 200px: terminal ${rect('term').width}`);
+    drag(w0);
+    await until(() => near(rect('term').width, w0), 'the divider goes back');
+  });
+
+  test('no resize reaches the terminal while it is closed, and one with its real size when it opens', async () => {
+    await until(() => split().canSend(), 'the replay is written');
+    await sleep(300); // the last test's drag has said its size
+    let n = (await resizes()).length;
+    const rows = split().term.rows;
+    closeTerm().click();
+    await until(termClosed, 'the terminal closes');
+    frame.style.height = '600px';
+    split().fit();
+    await sleep(300);
+    assert((await resizes()).length === n, `resizes while closed: ${JSON.stringify((await resizes()).slice(n))}`);
+    assert(split().term.rows === rows, `the closed terminal was fitted: ${split().term.rows} rows, was ${rows}`);
+    closeTabs().click();
+    await until(async () => (await resizes()).length > n, 'a resize when the terminal opens');
+    await sleep(300);
+    let got = (await resizes()).slice(n);
+    assert(got.length === 1, `resizes on opening: ${JSON.stringify(got)}`);
+    assert(got[0].rows < rows && fitsPanel(got[0]), `the resize on opening: ${JSON.stringify(got[0])}, was ${rows} rows`);
+    // Opening at the size it had still says its size, once.
+    frame.style.height = '';
+    await until(() => split().term.rows === rows, 'the terminal grows back');
+    await sleep(200);
+    n = (await resizes()).length;
+    closeTerm().click();
+    await until(termClosed, 'the terminal closes again');
+    closeTabs().click();
+    await until(async () => (await resizes()).length > n, 'a resize when the terminal opens again');
+    await sleep(300);
+    got = (await resizes()).slice(n);
+    assert(got.length === 1 && got[0].rows === rows && fitsPanel(got[0]), `resizes on opening again: ${JSON.stringify(got)}`);
+  });
+
+  test('typed text from a tab that types opens a closed terminal', async () => {
+    await until(() => split().canSend(), 'the replay is written');
+    const res = await post('/api/split/open', { session: xs, address: send, title: 'Types', types: true });
+    assert(res.ok, `open send: ${res.status}`);
+    const typer = (await res.json()).selected;
+    closeTerm().click();
+    await until(termClosed, 'the terminal closes');
+    const before = await input();
+    await tell(typer, { post: { type: 'send', text: 'opened' } });
+    await until(() => splitOpen(), 'the terminal opens');
+    await until(async () => (await input()).slice(before.length) === 'opened', 'the text is typed');
+    barTab(typer).querySelector('.tab-close').click();
+    await until(() => !barTab(typer), 'the send tab closes');
+  });
+
+  test('a tab opened in front opens closed tabs, and one opened behind with other tabs does not', async () => {
+    const w0 = rect('term').width;
+    closeTabs().click();
+    await until(tabsClosed, 'the tabs close');
+    let res = await post('/api/split/open', { session: xs, address: `${one}?behind`, title: 'Behind', behind: true });
+    assert(res.ok, `open behind: ${res.status}`);
+    const behind = (await res.json()).tabs.find((t) => t.address === `${one}?behind`).id;
+    await until(() => barTab(behind), 'the behind tab in the bar');
+    await sleep(200);
+    assert(tabsClosed(), 'a tab opened behind opened the tabs');
+    res = await post('/api/split/open', { session: xs, address: `${two}?front`, title: 'Front' });
+    assert(res.ok, `open front: ${res.status}`);
+    await until(() => splitOpen() && near(rect('term').width, w0), 'a tab opened in front opens the tabs');
+  });
+
+  test('closing the last tab closes the tabs, a reload keeps them closed, and the first tab opens them', async () => {
+    while (bar().length > 0) {
+      const count = bar().length;
+      bar()[0].querySelector('.tab-close').click();
+      await until(() => bar().length < count, 'a tab closes');
+    }
+    await until(tabsClosed, 'closing the last tab closes the tabs');
+    await load();
+    await sleep(300);
+    assert(tabsClosed(), 'a reload opened the tabs');
+    const res = await post('/api/split/open', { session: xs, address: `${one}?first`, title: 'First', behind: true });
+    assert(res.ok, `open first: ${res.status}`);
+    await until(splitOpen, 'the first tab, even behind, opens the tabs');
+  });
+
+  test('a reload keeps a closed terminal, and opening it sends its real size', async () => {
+    await until(() => split().canSend(), 'the replay is written');
+    closeTerm().click();
+    await until(termClosed, 'the terminal closes');
+    const n = (await resizes()).length;
+    await load();
+    await until(() => split().canSend(), 'the reloaded page has its replay');
+    await sleep(300);
+    assert(termClosed(), 'a reload opened the terminal');
+    assert((await resizes()).length === n, `resizes from a closed terminal: ${JSON.stringify((await resizes()).slice(n))}`);
+    closeTabs().click();
+    await until(async () => (await resizes()).length > n, 'a resize when the terminal opens');
+    await sleep(300);
+    const got = (await resizes()).slice(n);
+    assert(got.length === 1 && fitsPanel(got[0]), `resizes on opening: ${JSON.stringify(got)}`);
+  });
+
+  test('a new window opens split at the remembered width', async () => {
+    drag(420);
+    await until(() => near(rect('term').width, 420), 'the divider drags');
+    closeTerm().click();
+    await until(termClosed, 'the terminal closes');
+    win().sessionStorage.clear(); // what a new window starts with
+    await load();
+    await until(() => splitOpen() && near(rect('term').width, 420), `a new window at ${rect('term').width}, want 420`);
   });
 } else {
   test('without a Script nothing extra loads', async () => {

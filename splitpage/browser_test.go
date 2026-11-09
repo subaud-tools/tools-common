@@ -114,6 +114,10 @@ func runSuite(t *testing.T, restart bool) {
 	api.HandleFunc("POST /api/test/release", func(http.ResponseWriter, *http.Request) { term.release() })
 	api.HandleFunc("POST /api/test/stop", func(http.ResponseWriter, *http.Request) { term.closeNewest(CloseStopped) })
 	api.HandleFunc("POST /api/test/replace", func(http.ResponseWriter, *http.Request) { term.closeNewest(CloseReplaced) })
+	api.HandleFunc("GET /api/test/resizes", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(term.sizes())
+	})
 	api.HandleFunc("GET /api/test/queries", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(term.queries())
@@ -196,6 +200,7 @@ type stubTerminal struct {
 	input    strings.Builder
 	conns    []*wsConn
 	query    []string // each connection's raw query, in order
+	resizes  []json.RawMessage
 	held     chan struct{}
 	released bool
 }
@@ -213,6 +218,13 @@ func (s *stubTerminal) release() {
 		s.released = true
 		close(s.held)
 	}
+}
+
+// sizes is every resize frame the page sent, on any connection, in order.
+func (s *stubTerminal) sizes() []json.RawMessage {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]json.RawMessage{}, s.resizes...)
 }
 
 func (s *stubTerminal) queries() []string {
@@ -263,7 +275,10 @@ func (s *stubTerminal) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		switch op {
-		case opText: // a resize: the stub has no size to keep
+		case opText: // a resize: kept for the suite to read
+			s.mu.Lock()
+			s.resizes = append(s.resizes, json.RawMessage(data))
+			s.mu.Unlock()
 		case opBinary:
 			s.mu.Lock()
 			s.input.Write(data)

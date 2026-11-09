@@ -13878,6 +13878,65 @@ function handleKey(ev, send) {
   return false;
 }
 
+// layout.ts
+var edge = 120;
+var layoutKey = "splitpage.layout";
+function widthKey(host, path) {
+  return `splitpage.width ${host}${path}`;
+}
+function storedLayout(v3) {
+  return v3 === "term-closed" || v3 === "tabs-closed" ? v3 : "split";
+}
+function storedWidth(v3) {
+  if (v3 === null || !/^\d+$/.test(v3)) return null;
+  const n = Number(v3);
+  return n >= edge ? n : null;
+}
+function arrow(layout, dir) {
+  if (dir === "left") return layout === "tabs-closed" ? "split" : "term-closed";
+  return layout === "term-closed" ? "split" : "tabs-closed";
+}
+function released(x, total, divider) {
+  if (x < edge) return "term-closed";
+  if (total - divider - x < edge) return "tabs-closed";
+  return null;
+}
+function firstView(tabs2) {
+  return tabs2 > 0 ? "pages" : "terminal";
+}
+function termShows(s15) {
+  return s15.narrow ? s15.view === "terminal" : s15.layout !== "term-closed";
+}
+function tabChange(prev, next) {
+  const change = { front: false, first: false, behind: false, last: false };
+  if (prev === null) return change;
+  const was = new Set((prev.tabs ?? []).map((t) => t.id));
+  const now = new Set((next.tabs ?? []).map((t) => t.id));
+  const added = [...now].filter((id) => !was.has(id));
+  const moved = next.selected !== "" && next.selected !== prev.selected;
+  change.front = moved && (added.includes(next.selected) || now.has(prev.selected));
+  change.first = was.size === 0 && now.size > 0;
+  change.behind = added.length > 0 && !change.front && !change.first;
+  change.last = was.size > 0 && now.size === 0;
+  return change;
+}
+function afterTabs(s15, c) {
+  if (c.last) return s15.narrow ? { ...s15, view: "terminal" } : { ...s15, layout: "tabs-closed" };
+  if (c.front || c.first) {
+    if (s15.narrow) return show(s15, "pages");
+    return s15.layout === "tabs-closed" ? { ...s15, layout: "split" } : s15;
+  }
+  if (c.behind && s15.narrow && s15.view === "terminal") return { ...s15, dot: true };
+  return s15;
+}
+function afterTyped(s15) {
+  if (s15.narrow) return { ...s15, view: "terminal" };
+  return s15.layout === "term-closed" ? { ...s15, layout: "split" } : s15;
+}
+function show(s15, view) {
+  return { ...s15, view, dot: view === "pages" ? false : s15.dot };
+}
+
 // relay.ts
 function sentText(data, origin, tab) {
   if (!tab?.types || origin !== new URL(tab.address).origin) return null;
@@ -13895,7 +13954,7 @@ function socketScheme(protocol) {
 
 // tabs.ts
 var api = "/api/split/";
-function startTabs(session2) {
+function startTabs(session2, changed) {
   const bar = document.getElementById("tab-list");
   const frames = document.getElementById("frames");
   const empty = document.getElementById("tabs-empty");
@@ -13903,11 +13962,12 @@ function startTabs(session2) {
   const buttons = /* @__PURE__ */ new Map();
   const shown = /* @__PURE__ */ new Map();
   let current = { session: session2, tabs: [], selected: "" };
-  const call = async (name, body) => {
+  let heard = false;
+  const call = async (name, body2) => {
     const res = await fetch(api + name, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session: session2, ...body })
+      body: JSON.stringify({ session: session2, ...body2 })
     });
     if (res.ok) render(await res.json());
   };
@@ -13951,6 +14011,7 @@ function startTabs(session2) {
   };
   function render(list) {
     const tabs2 = list.tabs ?? [];
+    const prev = current;
     current = { ...list, tabs: tabs2 };
     const ids = new Set(tabs2.map((t) => t.id));
     for (const [id, el2] of buttons) {
@@ -13989,6 +14050,7 @@ function startTabs(session2) {
     }
     empty.hidden = tabs2.length > 0;
     reload.disabled = list.selected === "";
+    changed(heard ? prev : null, current);
   }
   reload.addEventListener("click", () => {
     const tab = current.tabs?.find((t) => t.id === current.selected);
@@ -14001,7 +14063,10 @@ function startTabs(session2) {
     }
   });
   const stream = new EventSource(`${api}stream?session=${encodeURIComponent(session2)}`);
-  stream.onmessage = (ev) => render(JSON.parse(ev.data));
+  stream.onmessage = (ev) => {
+    render(JSON.parse(ev.data));
+    heard = true;
+  };
   render(current);
   const from = (source) => {
     if (source === null) return void 0;
@@ -14019,7 +14084,6 @@ var encoder = new TextEncoder();
 var closeNoSession = 4404;
 var closeReplaced = 4409;
 var closeStopped = 4410;
-var minPanel = 120;
 var pageQuery = new URLSearchParams(location.search);
 pageQuery.delete("t");
 var takeOnLoad = pageQuery.get("take") === "1";
@@ -14058,6 +14122,49 @@ function sayServerGone() {
   serverGone = true;
   showNotice("The page’s server has stopped.");
 }
+function stored(storage, key) {
+  try {
+    return storage().getItem(key);
+  } catch {
+    return null;
+  }
+}
+function keep(storage, key, value) {
+  try {
+    storage().setItem(key, value);
+  } catch {
+  }
+}
+var body = document.body;
+var widthAt = widthKey(location.host, location.pathname);
+var state = {
+  layout: storedLayout(stored(() => sessionStorage, layoutKey)),
+  narrow: false,
+  view: "terminal",
+  dot: false
+};
+var keptWidth = storedWidth(stored(() => localStorage, widthAt));
+if (keptWidth !== null) body.style.setProperty("--term-width", `${keptWidth}px`);
+var termShown = () => {
+};
+var closeTerm = document.getElementById("close-term");
+var closeTabs = document.getElementById("close-tabs");
+function draw() {
+  body.dataset.layout = state.layout;
+  const left = state.layout === "tabs-closed" ? "Bring the tabs back" : "Close the terminal: the tabs fill the window";
+  const right = state.layout === "term-closed" ? "Bring the terminal back" : "Close the tabs: the terminal fills the window";
+  closeTerm.title = left;
+  closeTerm.setAttribute("aria-label", left);
+  closeTabs.title = right;
+  closeTabs.setAttribute("aria-label", right);
+}
+function apply(next) {
+  const was = termShows(state);
+  if (next.layout !== state.layout) keep(() => sessionStorage, layoutKey, next.layout);
+  state = next;
+  draw();
+  if (!was && termShows(state)) termShown();
+}
 function startTerminal() {
   const term = new Dl({
     fontFamily,
@@ -14078,8 +14185,13 @@ function startTerminal() {
     term.loadAddon(webgl);
   } catch {
   }
-  fit.fit();
-  term.focus();
+  const fitShown = () => {
+    if (termShows(state)) fit.fit();
+  };
+  if (termShows(state)) {
+    fit.fit();
+    term.focus();
+  }
   let ws3;
   let replayed = false;
   const canSend = () => replayed && ws3.readyState === WebSocket.OPEN;
@@ -14087,7 +14199,7 @@ function startTerminal() {
     if (canSend()) ws3.send(encoder.encode(data));
   };
   const sendSize = () => {
-    if (ws3.readyState === WebSocket.OPEN) {
+    if (termShows(state) && ws3.readyState === WebSocket.OPEN) {
       const msg = { type: "resize", cols: term.cols, rows: term.rows };
       ws3.send(JSON.stringify(msg));
     }
@@ -14123,10 +14235,21 @@ function startTerminal() {
     }
     return true;
   });
-  new ResizeObserver(() => fit.fit()).observe(document.getElementById("term"));
+  new ResizeObserver(fitShown).observe(document.getElementById("term"));
+  termShown = () => {
+    let said = false;
+    const heard = term.onResize(() => {
+      said = true;
+    });
+    fit.fit();
+    heard.dispose();
+    if (!said) sendSize();
+    term.focus();
+  };
   addEventListener("message", (ev) => {
     const text = sentText(ev.data, ev.origin, tabs.from(ev.source));
     if (text !== null) {
+      apply(afterTyped(state));
       term.paste(text);
       term.focus();
     }
@@ -14143,7 +14266,7 @@ function startTerminal() {
       });
     };
     socket.onclose = (ev) => void closed(ev);
-    Object.assign(window, { splitPage: { term, socket, canSend, tabs, fit: () => fit.fit() } });
+    Object.assign(window, { splitPage: { term, socket, canSend, tabs, fit: fitShown } });
   };
   const closed = async (ev) => {
     if (serverGone) return;
@@ -14197,8 +14320,13 @@ function startTerminal() {
 function startDivider() {
   const divider = document.getElementById("divider");
   let dragging = false;
+  let from = "";
+  let dragged = null;
   divider.addEventListener("pointerdown", (ev) => {
+    if (state.layout !== "split" || ev.target.closest("button")) return;
     dragging = true;
+    from = body.style.getPropertyValue("--term-width");
+    dragged = null;
     try {
       divider.setPointerCapture(ev.pointerId);
     } catch {
@@ -14207,18 +14335,34 @@ function startDivider() {
   });
   divider.addEventListener("pointermove", (ev) => {
     if (!dragging) return;
-    const most = document.body.clientWidth - divider.offsetWidth - minPanel;
-    const width = Math.min(Math.max(ev.clientX, minPanel), most);
-    document.body.style.setProperty("--term-width", `${width}px`);
+    const most = body.clientWidth - divider.offsetWidth - edge;
+    dragged = Math.min(Math.max(ev.clientX, edge), most);
+    body.style.setProperty("--term-width", `${dragged}px`);
   });
-  const end = () => {
+  const end = (ev, letGo) => {
+    if (!dragging) return;
     dragging = false;
     divider.classList.remove("dragging");
+    if (dragged === null) return;
+    const closes = letGo ? released(ev.clientX, body.clientWidth, divider.offsetWidth) : null;
+    if (closes === null) {
+      keep(() => localStorage, widthAt, String(Math.round(dragged)));
+      return;
+    }
+    if (from) body.style.setProperty("--term-width", from);
+    else body.style.removeProperty("--term-width");
+    apply({ ...state, layout: closes });
   };
-  divider.addEventListener("pointerup", end);
-  divider.addEventListener("pointercancel", end);
+  divider.addEventListener("pointerup", (ev) => end(ev, true));
+  divider.addEventListener("pointercancel", (ev) => end(ev, false));
+  closeTerm.addEventListener("click", () => apply({ ...state, layout: arrow(state.layout, "left") }));
+  closeTabs.addEventListener("click", () => apply({ ...state, layout: arrow(state.layout, "right") }));
 }
-var tabs = startTabs(session);
+draw();
+var tabs = startTabs(session, (prev, next) => {
+  if (prev === null) apply({ ...state, view: firstView(next.tabs?.length ?? 0) });
+  else apply(afterTabs(state, tabChange(prev, next)));
+});
 startTerminal();
 startDivider();
 if (script !== "") {

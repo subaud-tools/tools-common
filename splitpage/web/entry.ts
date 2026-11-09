@@ -10,6 +10,21 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
 import type { Resize } from '../wire.d.ts';
 import { handleKey } from './keys.ts';
+import {
+  afterTabs,
+  afterTyped,
+  arrow,
+  edge,
+  firstView,
+  layoutKey,
+  released,
+  type State,
+  storedLayout,
+  storedWidth,
+  tabChange,
+  termShows,
+  widthKey,
+} from './layout.ts';
 import { sentText } from './relay.ts';
 import { socketScheme } from './socket.ts';
 import { startTabs } from './tabs.ts';
@@ -21,7 +36,6 @@ const encoder = new TextEncoder();
 const closeNoSession = 4404;
 const closeReplaced = 4409;
 const closeStopped = 4410;
-const minPanel = 120;
 
 // What the tool filled in (splitpage.Config). The page is authenticated by
 // localweb's cookie, so no address here carries a token. A page opened with
@@ -80,6 +94,61 @@ function sayServerGone(): void {
   showNotice('The page’s server has stopped.');
 }
 
+// A browser that keeps no storage (or refuses it) still shows the page.
+function stored(storage: () => Storage, key: string): string | null {
+  try {
+    return storage().getItem(key);
+  } catch {
+    return null;
+  }
+}
+function keep(storage: () => Storage, key: string, value: string): void {
+  try {
+    storage().setItem(key, value);
+  } catch {
+    // not kept: the page still works for this load
+  }
+}
+
+// The layout (layout.ts): a closed side lasts for the browser tab, and the
+// divider's width is kept per page address.
+const body = document.body;
+const widthAt = widthKey(location.host, location.pathname);
+let state: State = {
+  layout: storedLayout(stored(() => sessionStorage, layoutKey)),
+  narrow: false,
+  view: 'terminal',
+  dot: false,
+};
+const keptWidth = storedWidth(stored(() => localStorage, widthAt));
+if (keptWidth !== null) body.style.setProperty('--term-width', `${keptWidth}px`);
+// termShown fits the terminal and says its size, once, as it shows again:
+// set by startTerminal.
+let termShown = (): void => {};
+
+const closeTerm = document.getElementById('close-term') as HTMLButtonElement;
+const closeTabs = document.getElementById('close-tabs') as HTMLButtonElement;
+
+function draw(): void {
+  body.dataset.layout = state.layout;
+  const left = state.layout === 'tabs-closed' ? 'Bring the tabs back' : 'Close the terminal: the tabs fill the window';
+  const right = state.layout === 'term-closed' ? 'Bring the terminal back' : 'Close the tabs: the terminal fills the window';
+  closeTerm.title = left;
+  closeTerm.setAttribute('aria-label', left);
+  closeTabs.title = right;
+  closeTabs.setAttribute('aria-label', right);
+}
+
+// apply moves the page to next: it keeps a changed layout, draws it, and fits
+// the terminal if it has just come back.
+function apply(next: State): void {
+  const was = termShows(state);
+  if (next.layout !== state.layout) keep(() => sessionStorage, layoutKey, next.layout);
+  state = next;
+  draw();
+  if (!was && termShows(state)) termShown();
+}
+
 function startTerminal(): void {
   const term = new Terminal({
     fontFamily,
@@ -104,8 +173,15 @@ function startTerminal(): void {
   } catch {
     // no WebGL here: xterm's DOM renderer still draws
   }
-  fit.fit();
-  term.focus();
+  // A closed terminal is never fitted and never says a size: the program
+  // keeps its own until the terminal shows again.
+  const fitShown = (): void => {
+    if (termShows(state)) fit.fit();
+  };
+  if (termShows(state)) {
+    fit.fit();
+    term.focus();
+  }
 
   let ws: WebSocket;
   // xterm answers any terminal queries in the kept output as it writes them, and
@@ -117,7 +193,7 @@ function startTerminal(): void {
     if (canSend()) ws.send(encoder.encode(data));
   };
   const sendSize = (): void => {
-    if (ws.readyState === WebSocket.OPEN) {
+    if (termShows(state) && ws.readyState === WebSocket.OPEN) {
       const msg: Resize = { type: 'resize', cols: term.cols, rows: term.rows };
       ws.send(JSON.stringify(msg));
     }
@@ -155,13 +231,27 @@ function startTerminal(): void {
     }
     return true;
   });
-  new ResizeObserver(() => fit.fit()).observe(document.getElementById('term')!);
+  new ResizeObserver(fitShown).observe(document.getElementById('term')!);
+  termShown = (): void => {
+    // A fit that changes the size says it (onResize); one that doesn't still
+    // says it once, since nothing was said while closed.
+    let said = false;
+    const heard = term.onResize(() => {
+      said = true;
+    });
+    fit.fit();
+    heard.dispose();
+    if (!said) sendSize();
+    term.focus();
+  };
 
   // A tab opened with types (lwc's lesson) types into the terminal as a paste
-  // does, with no Enter: the user reads it and sends it.
+  // does, with no Enter: the user reads it and sends it. A closed terminal
+  // opens first.
   addEventListener('message', (ev) => {
     const text = sentText(ev.data, ev.origin, tabs.from(ev.source));
     if (text !== null) {
+      apply(afterTyped(state));
       term.paste(text);
       term.focus();
     }
@@ -182,7 +272,7 @@ function startTerminal(): void {
     // What the browser tests read and wait on.
     // fit sizes the terminal to its panel again: a tool's script that pads the
     // terminal (lwc's first-run note) calls it.
-    Object.assign(window, { splitPage: { term, socket, canSend, tabs, fit: () => fit.fit() } });
+    Object.assign(window, { splitPage: { term, socket, canSend, tabs, fit: fitShown } });
   };
 
   const closed = async (ev: CloseEvent): Promise<void> => {
@@ -240,8 +330,14 @@ function startTerminal(): void {
 function startDivider(): void {
   const divider = document.getElementById('divider')!;
   let dragging = false;
+  let from = ''; // the width before the drag, kept if the drag closes a side
+  let dragged: number | null = null;
   divider.addEventListener('pointerdown', (ev) => {
+    // The arrows are buttons, and a closed side's divider doesn't drag.
+    if (state.layout !== 'split' || (ev.target as Element).closest('button')) return;
     dragging = true;
+    from = body.style.getPropertyValue('--term-width');
+    dragged = null;
     try {
       divider.setPointerCapture(ev.pointerId);
     } catch {
@@ -251,19 +347,39 @@ function startDivider(): void {
   });
   divider.addEventListener('pointermove', (ev) => {
     if (!dragging) return;
-    const most = document.body.clientWidth - divider.offsetWidth - minPanel;
-    const width = Math.min(Math.max(ev.clientX, minPanel), most);
-    document.body.style.setProperty('--term-width', `${width}px`);
+    const most = body.clientWidth - divider.offsetWidth - edge;
+    dragged = Math.min(Math.max(ev.clientX, edge), most);
+    body.style.setProperty('--term-width', `${dragged}px`);
   });
-  const end = (): void => {
+  // Let go within edge of an edge, the drag closes that side and the split
+  // keeps the width it had; anywhere else the new width is kept.
+  const end = (ev: PointerEvent, letGo: boolean): void => {
+    if (!dragging) return;
     dragging = false;
     divider.classList.remove('dragging');
+    if (dragged === null) return;
+    const closes = letGo ? released(ev.clientX, body.clientWidth, divider.offsetWidth) : null;
+    if (closes === null) {
+      keep(() => localStorage, widthAt, String(Math.round(dragged)));
+      return;
+    }
+    if (from) body.style.setProperty('--term-width', from);
+    else body.style.removeProperty('--term-width');
+    apply({ ...state, layout: closes });
   };
-  divider.addEventListener('pointerup', end);
-  divider.addEventListener('pointercancel', end);
+  divider.addEventListener('pointerup', (ev) => end(ev, true));
+  divider.addEventListener('pointercancel', (ev) => end(ev, false));
+  closeTerm.addEventListener('click', () => apply({ ...state, layout: arrow(state.layout, 'left') }));
+  closeTabs.addEventListener('click', () => apply({ ...state, layout: arrow(state.layout, 'right') }));
 }
 
-const tabs = startTabs(session);
+draw();
+// A tab opened in front, or the first, opens closed tabs; closing the last
+// closes them. The first list the page hears picks a narrow page's side.
+const tabs = startTabs(session, (prev, next) => {
+  if (prev === null) apply({ ...state, view: firstView(next.tabs?.length ?? 0) });
+  else apply(afterTabs(state, tabChange(prev, next)));
+});
 startTerminal();
 startDivider();
 // The tool's own script (Config.Script), from its own assets, once

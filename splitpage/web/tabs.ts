@@ -12,7 +12,13 @@ export interface TabsView {
   from(source: MessageEventSource | null): Tab | undefined;
 }
 
-export function startTabs(session: string): TabsView {
+// changed hears each list the page shows, with the one it showed before:
+// null until the page has heard the server's first list, so a reload's tabs
+// are not taken for tabs just opened.
+export function startTabs(
+  session: string,
+  changed: (prev: TabList | null, next: TabList) => void,
+): TabsView {
   const bar = document.getElementById('tab-list')!;
   const frames = document.getElementById('frames')!;
   const empty = document.getElementById('tabs-empty')!;
@@ -20,6 +26,7 @@ export function startTabs(session: string): TabsView {
   const buttons = new Map<string, HTMLElement>();
   const shown = new Map<string, HTMLIFrameElement>();
   let current: TabList = { session, tabs: [], selected: '' };
+  let heard = false;
 
   const call = async (name: string, body: object): Promise<void> => {
     const res = await fetch(api + name, {
@@ -76,6 +83,7 @@ export function startTabs(session: string): TabsView {
 
   function render(list: TabList): void {
     const tabs = list.tabs ?? [];
+    const prev = current;
     current = { ...list, tabs };
     const ids = new Set(tabs.map((t) => t.id));
     for (const [id, el] of buttons) {
@@ -117,6 +125,7 @@ export function startTabs(session: string): TabsView {
     }
     empty.hidden = tabs.length > 0;
     reload.disabled = list.selected === '';
+    changed(heard ? prev : null, current);
   }
 
   reload.addEventListener('click', () => {
@@ -134,7 +143,10 @@ export function startTabs(session: string): TabsView {
   });
 
   const stream = new EventSource(`${api}stream?session=${encodeURIComponent(session)}`);
-  stream.onmessage = (ev) => render(JSON.parse(ev.data as string) as TabList);
+  stream.onmessage = (ev) => {
+    render(JSON.parse(ev.data as string) as TabList);
+    heard = true;
+  };
   render(current);
   const from = (source: MessageEventSource | null): Tab | undefined => {
     if (source === null) return undefined;
