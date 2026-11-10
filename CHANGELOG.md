@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.73.0
+
+### Added
+- localweb/page: `nextLine` takes `done`, the words for what the answer did (`Sent` unless given), so a page whose answers wait as drafts until Send can say so (cull: `Saved as a draft`). Pages that pass nothing are unchanged.
+
 ## 0.72.0
 
 ### Added

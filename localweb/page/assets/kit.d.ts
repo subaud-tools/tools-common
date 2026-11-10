@@ -809,7 +809,7 @@ export interface NeedsPill {
 export function needsPill(o: { items: NeedsItem[]; open(id: string): void }): NeedsPill;
 
 /** The line after an answer: how many are left and a button naming next, which calls open. With none left it says so, with no button. It never moves the page. */
-export function nextLine(o: { left: number; next?: NeedsItem | null; open(id: string): void }): HTMLElement;
+export function nextLine(o: { left: number; next?: NeedsItem | null; open(id: string): void; done?: string }): HTMLElement;
 
 /** Shows el with its answer control on screen: the element marked data-answer, else a text box in it. On an el too tall for the screen the control wins. A text box is focused. */
 export function arrive(el: Element): void;

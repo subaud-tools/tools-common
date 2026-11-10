@@ -91,6 +91,11 @@ test('nextLine: with none left it says so and has no button', () => {
   assert(!l.querySelector('button'), 'no button at zero');
 });
 
+test('nextLine: done names what the answer did', () => {
+  eq(nextLine({ left: 2, done: 'Saved as a draft', next: { id: 'S1', label: 'x' }, open() {} }).querySelector('.kit-next-words').textContent, '✓ Saved as a draft. 2 more need you.');
+  eq(nextLine({ left: 0, done: 'Saved as a draft', open() {} }).textContent, '✓ Saved as a draft. Nothing else needs you.');
+});
+
 const page = control => {
   const box = document.createElement('div');
   box.style.cssText = 'height:200px;overflow:auto';
