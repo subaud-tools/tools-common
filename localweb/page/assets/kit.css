@@ -655,3 +655,12 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-needs-row > * { grid-column: 1; }
 .kit-next { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .kit-next-words { font: 12px var(--kit-mono); color: var(--kit-muted); }
+
+/* rendered markdown (prose.js): a document's or a card's text */
+.kit-prose { font-size: 15px; line-height: 1.65; }
+.kit-prose > :first-child { margin-top: 0; }
+.kit-prose > :last-child { margin-bottom: 0; }
+.kit-prose h1 { font-size: 24px; margin: 0 0 16px; }
+.kit-prose h2 { font-size: 18px; margin: 32px 0 4px; }
+.kit-prose h3 { font-size: 15px; margin: 24px 0 4px; }
+.kit-prose pre:not(.mermaid) { font: 12px var(--kit-mono); overflow: auto; background: var(--kit-card); padding: 8px; border-radius: 6px; }

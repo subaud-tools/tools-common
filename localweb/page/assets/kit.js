@@ -23,3 +23,4 @@ export * from './elsewhere.js';
 export * from './frontpage.js';
 export * from './remembered.js';
 export * from './needs.js';
+export * from './prose.js';

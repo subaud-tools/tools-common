@@ -93,7 +93,7 @@ func TestKitReexportsAll(t *testing.T) {
 }
 
 func TestImportsStayInKit(t *testing.T) {
-	ok := regexp.MustCompile(`^\./[a-z]+\.js$`)
+	ok := regexp.MustCompile(`^\./(?:[a-z]+|vendor/[a-z]+\.esm)\.js$`)
 	es, _ := fs.ReadDir(FS(), ".")
 	for _, e := range es {
 		if !strings.HasSuffix(e.Name(), ".js") {
@@ -102,7 +102,7 @@ func TestImportsStayInKit(t *testing.T) {
 		for _, m := range specRE.FindAllStringSubmatch(read(t, e.Name()), -1) {
 			spec := m[1] + m[2]
 			if !ok.MatchString(spec) {
-				t.Errorf("%s imports %q; kit assets import only ./<module>.js", e.Name(), spec)
+				t.Errorf("%s imports %q; kit assets import only ./<module>.js or ./vendor/<name>.esm.js", e.Name(), spec)
 			}
 		}
 	}

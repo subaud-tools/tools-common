@@ -1,4 +1,4 @@
-import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, needsPill, nextLine, arrive } from '/_kit/kit.js';
+import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, needsPill, nextLine, arrive, renderMarkdown } from '/_kit/kit.js';
 
 const MARK = `<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14161d"/><path d="M13 22H28M13 32H26M13 42H28" stroke="#9aa0ab" stroke-width="3.6" stroke-linecap="round"/><path d="M13 22H28" stroke="#d98f66" stroke-width="3.6" stroke-linecap="round"/><path d="M33 17V47" stroke="#d98f66" stroke-width="2.4"/><rect x="38" y="18" width="14" height="28" rx="3" fill="none" stroke="#d98f66" stroke-width="2.4"/></svg>`;
 const mark = () => {
@@ -211,6 +211,7 @@ function parts(tabbed) {
     indexSection({ name: 'Later', rows: [], empty: 'Nothing for later.' }));
   frontPage(f);
   needsDemo(f);
+  proseDemo(f);
   return f;
 }
 
@@ -260,6 +261,24 @@ function needsDemo(f) {
     nextLine({ left: 1, next: items[1], open }),
     nextLine({ left: 0, open }),
     reply);
+}
+
+// Card and document text as markdown: what the text says is the tool's own.
+function proseDemo(f) {
+  const doc = h('div', { class: 'kit-prose' });
+  doc.innerHTML = renderMarkdown([
+    '### Rendered text',
+    'Paragraphs, **bold**, `code`, [a link](https://subaud.tools) and a list:',
+    '',
+    '- raw HTML such as <b>this</b> shows as text',
+    '- a [script link](javascript:alert(1)) is only its words',
+    '',
+    '| Build | Minutes |',
+    '|---|---|',
+    '| cold | 14 |',
+    '| cached | 3 |',
+  ].join('\n'));
+  f.centre.append(h('div', { class: 'kit-label' }, 'markdown (renderMarkdown)'), doc);
 }
 
 // Which ones are chosen is the tool's own, and so is the redraw after a press.

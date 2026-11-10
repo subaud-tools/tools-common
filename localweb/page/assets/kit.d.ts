@@ -813,3 +813,16 @@ export function nextLine(o: { left: number; next?: NeedsItem | null; open(id: st
 
 /** Shows el with its answer control on screen: the element marked data-answer, else a text box in it. On an el too tall for the screen the control wins. A text box is focused. */
 export function arrive(el: Element): void;
+
+// ---- prose.js
+
+/** A heading's id: its text, lower case, words joined by hyphens, markup and entities dropped. */
+export function slug(text: string): string;
+
+export interface RenderMarkdownOptions {
+  /** `## ` and `### ` headings get ids from their text (slug). Default true; false for text drawn more than once on a page (a card's). */
+  headingIds?: boolean;
+}
+
+/** GitHub-flavoured markdown as HTML, safe to set as innerHTML: raw HTML comes out as text, a link goes only to http(s) or a #fragment, a mermaid fence is left as <pre class="mermaid"> for the page's renderer, and a leading header block (front matter) is not drawn. marked is vendored at /_kit/vendor/marked.esm.js. */
+export function renderMarkdown(src: string, o?: RenderMarkdownOptions): string;
