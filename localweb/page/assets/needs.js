@@ -72,10 +72,11 @@ export function needsPill({ items, open }) {
 
 // nextLine is what follows an answer: how many are left, and a button naming
 // next ({ id, label }) that calls open. With none left it says so, with no
-// button. It never moves the page itself.
-export function nextLine({ left, next, open }) {
+// button. done names what the answer did ('Sent' unless given: a page whose
+// answers wait as drafts says so). It never moves the page itself.
+export function nextLine({ left, next, open, done = 'Sent' }) {
   return h('div', { class: 'kit-next', role: 'status' },
-    h('span', { class: 'kit-next-words' }, left > 0 ? `✓ Sent. ${left} more ${left === 1 ? 'needs' : 'need'} you.` : '✓ Sent. Nothing else needs you.'),
+    h('span', { class: 'kit-next-words' }, left > 0 ? `✓ ${done}. ${left} more ${left === 1 ? 'needs' : 'need'} you.` : `✓ ${done}. Nothing else needs you.`),
     left > 0 && next
       ? h('button', { class: 'kit-needs', type: 'button', onclick: () => open(next.id) }, `Next: ${next.label} →`)
       : null);
