@@ -664,3 +664,48 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-prose h2 { font-size: 18px; margin: 32px 0 4px; }
 .kit-prose h3 { font-size: 15px; margin: 24px 0 4px; }
 .kit-prose pre:not(.mermaid) { font: 12px var(--kit-mono); overflow: auto; background: var(--kit-card); padding: 8px; border-radius: 6px; }
+
+/* a card's markdown (decision.js): its paragraphs sit in the card's flow */
+.kit-md > :first-child { margin-top: 0; }
+.kit-md > :last-child { margin-bottom: 0; }
+.kit-md pre:not(.mermaid) { font: 12px var(--kit-mono); overflow: auto; background: var(--kit-bg); padding: 8px; border-radius: 6px; }
+
+/* a decision card (decision.js): the question, the problem, options side by
+   side (stacked on a phone), the recommendation, calls, evidence folded last */
+.kit-decision-title { margin: 0 0 12px; font-size: 18px; }
+.kit-decision-example { color: var(--kit-muted); margin: 0 0 12px; }
+.kit-options { display: grid; grid-template-columns: repeat(var(--option-count, 1), minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 600px) { .kit-options { grid-template-columns: minmax(0, 1fr); } }
+.kit-option {
+  border: 1px solid var(--kit-line); border-radius: 8px; padding: 12px; min-width: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.kit-option.chosen { border-color: var(--kit-ok); }
+.kit-option.picked { border-color: var(--kit-signal); background: var(--kit-signal-soft); }
+.kit-option-head { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 8px; row-gap: 4px; }
+.kit-option-head .kit-pill { grid-column: 2; justify-self: start; }
+.kit-option-id { font: 700 12px var(--kit-mono); }
+.kit-option-title { font-weight: 600; }
+.kit-option .kit-btns { flex-wrap: wrap; gap: 8px; }
+.kit-pill.kit-was { font-family: var(--kit-mono); }
+.kit-option-facts .kit-label, .kit-call-facts .kit-label, .kit-next-step .kit-label { margin: 8px 0 2px; }
+.kit-option-facts p, .kit-call-facts p, .kit-next-step p { margin: 0; font-size: 14px; }
+.kit-option-facts .kit-md > p + p, .kit-call-facts .kit-md > p + p { margin-top: 8px; }
+.kit-option-facts details { margin-top: 8px; font-size: 14px; }
+.kit-since { margin-top: 16px; font-size: 14px; }
+.kit-since ul { margin: 4px 0; padding-left: 16px; }
+.kit-since .kit-meta { font: 12px var(--kit-mono); color: var(--kit-muted); }
+.kit-rec { margin-top: 16px; }
+.kit-rec p { margin: 4px 0; }
+.kit-next-step { margin-top: 8px; }
+.kit-calls { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.kit-calls > .kit-label { margin-bottom: -4px; }
+.kit-call { border-left: 2px solid var(--kit-agent); padding-left: 12px; }
+.kit-call.reversed .kit-call-facts { color: var(--kit-muted); }
+.kit-call-name { font-size: 14px; }
+.kit-call .kit-btns { margin-top: 8px; flex-wrap: wrap; gap: 8px; }
+.kit-evidence { margin: 4px 0; padding-left: 16px; font-size: 14px; }
+.kit-source { word-break: break-all; }
+.kit-output { font: 12px var(--kit-mono); white-space: pre-wrap; margin: 4px 0; }
+.kit-evidence-fold { margin-top: 16px; }
+.kit-decision .kit-card-body > .kit-btns { margin-top: 12px; flex-wrap: wrap; gap: 8px; }

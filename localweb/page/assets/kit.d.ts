@@ -826,3 +826,125 @@ export interface RenderMarkdownOptions {
 
 /** GitHub-flavoured markdown as HTML, safe to set as innerHTML: raw HTML comes out as text, a link goes only to http(s) or a #fragment, a mermaid fence is left as <pre class="mermaid"> for the page's renderer, and a leading header block (front matter) is not drawn. marked is vendored at /_kit/vendor/marked.esm.js. */
 export function renderMarkdown(src: string, o?: RenderMarkdownOptions): string;
+
+// ---- decision.js
+
+/** Card text: a string is markdown (renderMarkdown, no heading ids); a Node is drawn as it is, so a caller keeps plain text. */
+export type CardText = string | Node;
+
+/** One evidence entry: what it shows and where it comes from. */
+export interface EvidenceEntry {
+  text: string;
+  /** The run, job, file, resource or bill line it names. A web address is a link. */
+  source?: string;
+  /** Where source's words link to, when they aren't an address themselves. */
+  url?: string;
+  /** A command's output, folded under the entry. */
+  output?: string;
+}
+
+export interface EvidenceListOptions {
+  /** Draws a source that isn't a web address as the caller's own link (a file it can open); null leaves it as code. */
+  source?(source: string): Node | null;
+}
+
+/** The entries as a list: a web source or url is a link, o.source draws others, else code; output folds. null for none. */
+export function evidenceList(entries: EvidenceEntry[] | null | undefined, o?: EvidenceListOptions): HTMLUListElement | null;
+
+export interface OptionValue {
+  id: string;
+  title: string;
+  /** Folded under What it includes. */
+  includes?: CardText;
+  /** Under Also needs. */
+  pullsIn?: CardText;
+  recommended?: boolean;
+  chosen?: boolean;
+  /** Was the reader's choice before the card was reopened. */
+  was?: boolean;
+  /** The reader's pick, not sent yet. */
+  picked?: boolean;
+  /** The caller's visual (a mockup frame, a diagram, a table), under the head. */
+  visual?: Node | Node[] | null;
+  /** Buttons, or a Node drawn as it is (fields and buttons of the caller's). */
+  actions?: Button[] | Node | null;
+  /** No actions. */
+  readOnly?: boolean;
+}
+
+/** One option: id, title and pills, the visual, Also needs, What it includes (folded), then its actions. */
+export function optionBlock(o: OptionValue): HTMLElement;
+
+export interface CallValue {
+  /** Heads the row, when given (the call's question or name). */
+  name?: CardText;
+  took: CardText;
+  instead: CardText;
+  why: CardText;
+  reversed?: boolean;
+  /** A Reverse button (Reversed and off once reversed); none without it. */
+  onReverse?: () => void;
+  /** More buttons after Reverse, in its row. */
+  actions?: Button[];
+  /** No buttons. */
+  readOnly?: boolean;
+}
+
+/** One of the agent's calls: Took, Instead of and Why, then Reverse and the caller's buttons. */
+export function callRow(o: CallValue): HTMLElement;
+
+export interface DecisionHead {
+  /** The crumb: the card's id or where it is. */
+  crumb?: Node | string | (Node | string)[];
+  /** A string is a grey pill; a Node (the caller's pill, in its tone) is drawn as it is. */
+  state?: Node | string | null;
+  /** After the state on the header's line. */
+  after?: (Node | null)[];
+  /** The card's key, at the header's end. */
+  key?: string;
+}
+
+export interface DecisionCardOptions {
+  /** The card is section#card-<id>[data-card=<id>]. */
+  id?: string;
+  /** Its left edge: signal while it needs the reader, agent while it is the agent's. */
+  edge?: 'signal' | 'agent' | 'wait' | '';
+  /** More classes on the card. */
+  class?: string;
+  head?: DecisionHead;
+  /** One sentence ending in a question mark, the card's title. */
+  question?: Node | string;
+  /** Above the example (a test under way, and what it waits on). */
+  lead?: (Node | null | false | undefined)[];
+  /** The problem, with its example, in plain words. */
+  example?: CardText;
+  /** Between the example and the options: reopened, with the agent, waiting, a revision line. */
+  notes?: (Node | null | false | undefined)[];
+  /** Each drawn with optionBlock (readOnly carried down), or a Node as it is. None leaves the options out. */
+  options?: (OptionValue | Node)[];
+  /** Under the options: the caller's choose bar. */
+  bar?: Node | null;
+  /** Under the options: one dated line per later post of the card (pull request opened, merged, verified). */
+  since?: { at: string; text: string }[];
+  /** Option <option> · why, with the recommendation's own evidence listed under it, unfolded. */
+  recommendation?: { option: string; why?: CardText; evidence?: EvidenceEntry[] } | null;
+  /** What happens next: what the reader sees after choosing, and how it is proved. */
+  next?: CardText;
+  /** The agent's calls on this card, each a callRow. */
+  calls?: CallValue[];
+  /** The card's evidence, folded last with its count. */
+  evidence?: EvidenceEntry[];
+  /** As evidenceList's source. */
+  source?(source: string): Node | null;
+  /** After the evidence: depends-on lines, the reader's note. */
+  after?: (Node | null | false | undefined)[];
+  /** The questions row: buttons, or a Node. */
+  questions?: Button[] | Node | null;
+  /** Last: a waiting line, a note box. */
+  foot?: (Node | null | false | undefined)[];
+  /** Leaves out the bar, the questions, foot and every button: the card as a record. */
+  readOnly?: boolean;
+}
+
+/** A decision card: header and question; lead, example, notes; options and bar; Since then; recommendation; what happens next; calls; evidence folded; after, questions, foot. The caller passes every pill, note and press: the card knows no tool's states. */
+export function decisionCard(o: DecisionCardOptions): HTMLElement;
