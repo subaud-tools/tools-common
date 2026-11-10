@@ -62,7 +62,7 @@ Server rules:
 | Server (tools-common pin) | No idle exit | Kept token | Stale mark | Tab reuse | Build header | Skill |
 |---|---|---|---|---|---|---|
 | diazo 0.52.0 (0.45.1) | conforms | conforms | conforms | conforms | conforms | conforms |
-| sift, in tackle (0.40.0) | `Idle: 8h` | new each start | none | none | none | conforms |
+| sift 0.9.0, in tackle (0.71.0) | conforms | conforms | conforms | conforms | conforms | conforms |
 | cull, in tackle (0.40.0) | `Idle: 8h` | new each start | none | none | none | no skills command |
 | casebook 0.24.0 (0.33.0) | `Idle: 8h`, `Busy` | new each start | none | none, counts its own streams | none | no skills command |
 | galley 0.22.0 (0.33.0) | own server, through its PLAN1 | own server, through its PLAN1 | own server, through its PLAN1 | own server, through its PLAN1 | own server, through its PLAN1 | own command over `skills.Install` |
@@ -75,7 +75,7 @@ Page rules:
 | Page | Frame and thread | Top bar | Card header | Stage track | Drafts | Message states |
 |---|---|---|---|---|---|---|
 | diazo | conforms | conforms | conforms | conforms | conforms | conforms |
-| sift | needs adopting from 0.41.0 | uses `bar` | uses `card` | needs adopting from 0.41.0 | needs adopting from 0.41.0 | uses `msgstate` |
+| sift | conforms | conforms | conforms | conforms | conforms | conforms |
 | cull | needs adopting from 0.41.0 | uses `bar` | uses `card` | needs adopting from 0.41.0 | needs adopting from 0.41.0 | uses `msgstate` |
 | casebook | needs adopting from 0.41.0 | uses `bar` | uses `card` | needs adopting from 0.41.0 | needs adopting from 0.41.0 | uses `msgstate` |
 | galley | through its PLAN2 | through its PLAN2 | through its PLAN2 | through its PLAN2 | through its PLAN2 | uses `msgstate` |
