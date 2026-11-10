@@ -23,3 +23,6 @@ export * from './elsewhere.js';
 export * from './frontpage.js';
 export * from './remembered.js';
 export * from './needs.js';
+export * from './prose.js';
+export * from './decision.js';
+export * from './record.js';

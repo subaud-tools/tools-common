@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -13,13 +14,27 @@ import (
 )
 
 // manifest is every file the kit ships; each task that adds an asset adds it here.
-var manifest = []string{"kit.css", "kit.js", "kit.d.ts", "boot.js", "theme.js", "keys.js", "api.js", "live.js", "dom.js", "selection.js", "sheet.js", "share.js", "share.css", "msgstate.js", "tip.js", "frame.js", "index.js", "thread.js", "track.js", "drafts.js", "elsewhere.js", "frontpage.js", "tabs.js", "draftlist.js", "remembered.js"}
+var manifest = []string{"kit.css", "kit.js", "kit.d.ts", "boot.js", "theme.js", "keys.js", "api.js", "live.js", "dom.js", "selection.js", "sheet.js", "share.js", "share.css", "msgstate.js", "tip.js", "frame.js", "index.js", "thread.js", "track.js", "drafts.js", "elsewhere.js", "frontpage.js", "tabs.js", "draftlist.js", "remembered.js", "prose.js", "decision.js", "record.js", "vendor/marked.esm.js", "vendor/LICENSE.marked"}
 
 func TestFSEmbedsAssets(t *testing.T) {
 	for _, name := range manifest {
 		if _, err := fs.ReadFile(FS(), name); err != nil {
 			t.Errorf("%s: %v", name, err)
 		}
+	}
+}
+
+// markedVersion is the marked the kit vendors under assets/vendor/: the one
+// diazo's web/package.json names, so diazo's page renders the same on the kit.
+const markedVersion = "18.1.1"
+
+func TestVendoredMarkedVersion(t *testing.T) {
+	b, err := fs.ReadFile(FS(), "vendor/marked.esm.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := " * marked v" + markedVersion + " - a markdown parser\n"; !strings.Contains(string(b), want) {
+		t.Errorf("vendor/marked.esm.js is not marked %s (want the header line %q)", markedVersion, want)
 	}
 }
 

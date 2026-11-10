@@ -15,6 +15,8 @@ import (
 // tool, testdata/buildtool: copied into its build/ as a tool's build copies
 // them, its packages installed with npm ci, then its eslint config (the base,
 // imported by a relative path) and its probe (on the scaffolding) are run.
+// Its record bundle (record-bundle.mjs) builds the demo's record entry with the
+// kit inlined, and the file written from it opens from disk in headless Chrome.
 // It needs node and the network, so it runs with the JS suites: only when
 // KIT_BROWSER is set (just verify-slow, CI's browser job), and with
 // KIT_BROWSER=required a missing npm fails.
@@ -34,12 +36,12 @@ func buildTool(t *testing.T) string {
 	if err := os.CopyFS(dir, os.DirFS("testdata/buildtool")); err != nil {
 		t.Fatal(err)
 	}
-	// The two files a tool without diagrams copies (mermaid-entry.ts is for
-	// one that builds a mermaid bundle).
+	// The files a tool without diagrams copies (mermaid-entry.ts is for one
+	// that builds a mermaid bundle), with record-bundle.mjs.
 	if err := os.MkdirAll(filepath.Join(dir, "build"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []string{"eslint.base.mjs", "probe.mjs"} {
+	for _, f := range []string{"eslint.base.mjs", "probe.mjs", "record-bundle.mjs"} {
 		b, err := os.ReadFile(filepath.Join("build", f))
 		if err != nil {
 			t.Fatal(err)
@@ -178,4 +180,66 @@ try { base({ root: '/r', testFiles: [], maxTestFiles: 24 }); } catch (e) { conso
 			t.Fatalf("probe: %v\n%s", err, out)
 		}
 	})
+}
+
+// recordData is what the record file carries: not the demo page's own data,
+// so the page drawn says it read the file.
+const recordData = `{"title":"read from the file","summary":"F2 came from disk.","cards":[{"id":"F2","state":"decided","question":"Should galley pin its Node version?","example":"Cold installs: **14 minutes**.","options":[{"id":"A","title":"Pin Node 22","pullsIn":"One file.","recommended":true,"chosen":true}],"since":[{"at":"2026-11-05","text":"Merged </script> safely"}],"recommendation":{"option":"A","why":"Saves time."},"calls":[{"name":"Which version","took":"Node 22","instead":"Node 20","why":"Last green run.","reversed":true}],"messages":[{"id":1,"from":"user","at":"2026-11-02T10:00:00Z","text":"Why 22?"}]}]}`
+
+// TestRecordFileFromDisk builds the demo's record entry with record-bundle.mjs
+// in the scratch tool, writes one HTML file with the bundle and the data
+// inlined, as a tool does, and opens it from disk: no server, no /_kit/.
+func TestRecordFileFromDisk(t *testing.T) {
+	dir := buildTool(t)
+	assets, err := filepath.Abs("assets")
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, err := filepath.Abs(filepath.Join("demo", "record-entry.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const script = `import { recordBundle } from './build/record-bundle.mjs';
+const [entry, kitDir] = process.argv.slice(1);
+const out = await recordBundle({ entry, outdir: 'out', kitDir });
+console.log(JSON.stringify(out));`
+	if out, err := runIn(t, dir, nil, "node", "--input-type=module", "-e", script, entry, assets); err != nil {
+		t.Fatalf("record-bundle.mjs: %v\n%s", err, out)
+	}
+	js, err := os.ReadFile(filepath.Join(dir, "out", "record.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	css, err := os.ReadFile(filepath.Join(dir, "out", "record.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(js), "/_kit/") {
+		t.Fatal("record.js still loads from /_kit/; the kit should be inlined")
+	}
+	if !strings.Contains(string(css), ".kit-rec-tab") || !strings.Contains(string(css), "--kit-bg") {
+		t.Fatal("record.css lacks the kit's stylesheet")
+	}
+	inline := strings.NewReplacer("</script", `<\/script`)
+	page := "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>record</title><style>" + string(css) + "</style></head><body>" +
+		"<div class=\"kit-page\" id=\"app\"></div>" +
+		"<script>addEventListener('error', e => { document.body.dataset.err = String(e.message); });</script>" +
+		"<script type=\"application/json\" id=\"kit-record\">" + strings.ReplaceAll(recordData, "<", `\u003c`) + "</script>" +
+		"<script type=\"module\">" + inline.Replace(string(js)) + "</script></body></html>\n"
+	file := filepath.Join(dir, "record.html")
+	if err := os.WriteFile(file, []byte(page), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dom, err := dumpDOM(t, "file://"+file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`data-ok="1"`, "read from the file", `class="kit-rec-tab`, "Should galley pin its Node version?", "Merged &lt;/script&gt; safely", "Why 22?", ">reversed<"} {
+		if !strings.Contains(dom, want) {
+			t.Errorf("the record file from disk lacks %q", want)
+		}
+	}
+	if strings.Contains(dom, "data-err=") {
+		t.Errorf("the record file threw:\n%s", dom)
+	}
 }

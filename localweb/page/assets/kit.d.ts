@@ -813,3 +813,259 @@ export function nextLine(o: { left: number; next?: NeedsItem | null; open(id: st
 
 /** Shows el with its answer control on screen: the element marked data-answer, else a text box in it. On an el too tall for the screen the control wins. A text box is focused. */
 export function arrive(el: Element): void;
+
+// ---- prose.js
+
+/** A heading's id: its text, lower case, words joined by hyphens, markup and entities dropped. */
+export function slug(text: string): string;
+
+export interface RenderMarkdownOptions {
+  /** `## ` and `### ` headings get ids from their text (slug). Default true; false for text drawn more than once on a page (a card's). */
+  headingIds?: boolean;
+}
+
+/** GitHub-flavoured markdown as HTML, safe to set as innerHTML: raw HTML comes out as text, a link goes only to http(s) or a #fragment, a mermaid fence is left as <pre class="mermaid"> for the page's renderer, and a leading header block (front matter) is not drawn. marked is vendored at /_kit/vendor/marked.esm.js. */
+export function renderMarkdown(src: string, o?: RenderMarkdownOptions): string;
+
+// ---- decision.js
+
+/** Card text: a string is markdown (renderMarkdown, no heading ids); a Node is drawn as it is, so a caller keeps plain text. */
+export type CardText = string | Node;
+
+/** One evidence entry: what it shows and where it comes from. */
+export interface EvidenceEntry {
+  text: string;
+  /** The run, job, file, resource or bill line it names. A web address is a link. */
+  source?: string;
+  /** Where source's words link to, when they aren't an address themselves: only http(s) or a #fragment; any other url is shown as code. */
+  url?: string;
+  /** A command's output, folded under the entry. */
+  output?: string;
+}
+
+export interface EvidenceListOptions {
+  /** Draws a source that isn't a web address as the caller's own link (a file it can open); null leaves it as code. */
+  source?(source: string): Node | null;
+}
+
+/** The entries as a list: a web source or url is a link, o.source draws others, else code; output folds. null for none. */
+export function evidenceList(entries: EvidenceEntry[] | null | undefined, o?: EvidenceListOptions): HTMLUListElement | null;
+
+export interface OptionValue {
+  id: string;
+  title: string;
+  /** Folded under What it includes. */
+  includes?: CardText;
+  /** Under Also needs. */
+  pullsIn?: CardText;
+  recommended?: boolean;
+  chosen?: boolean;
+  /** Was the reader's choice before the card was reopened. */
+  was?: boolean;
+  /** The reader's pick, not sent yet. */
+  picked?: boolean;
+  /** The caller's visual (a mockup frame, a diagram, a table), under the head. */
+  visual?: Node | Node[] | null;
+  /** Buttons, or a Node drawn as it is (fields and buttons of the caller's). */
+  actions?: Button[] | Node | null;
+  /** No actions. */
+  readOnly?: boolean;
+}
+
+/** One option: id, title and pills, the visual, Also needs, What it includes (folded), then its actions. */
+export function optionBlock(o: OptionValue): HTMLElement;
+
+export interface CallValue {
+  /** Heads the row, when given (the call's question or name); read-only, a reversed one says so beside it. */
+  name?: Node | string;
+  took: CardText;
+  instead: CardText;
+  why: CardText;
+  reversed?: boolean;
+  /** A Reverse button (Reversed and off once reversed); none without it. */
+  onReverse?: () => void;
+  /** More buttons after Reverse, in its row. */
+  actions?: Button[];
+  /** Listed unfolded between the facts and the buttons. */
+  evidence?: EvidenceEntry[];
+  /** As evidenceList's source. */
+  source?(source: string): Node | null;
+  /** No buttons. */
+  readOnly?: boolean;
+}
+
+/** One of the agent's calls: Took, Instead of and Why, its evidence, then Reverse and the caller's buttons. Listed on a decision card it has the agent's rule at its left; alone (a call's own card) it has none. */
+export function callRow(o: CallValue): HTMLElement;
+
+export interface DecisionHead {
+  /** The crumb: the card's id or where it is. */
+  crumb?: Node | string | (Node | string)[];
+  /** A string is a grey pill; a Node (the caller's pill, in its tone) is drawn as it is. */
+  state?: Node | string | null;
+  /** After the state on the header's line. */
+  after?: (Node | null)[];
+  /** The card's key, at the header's end. */
+  key?: string;
+}
+
+export interface DecisionCardOptions {
+  /** The card is section#card-<id>[data-card=<id>]. */
+  id?: string;
+  /** Its left edge: signal while it needs the reader, agent while it is the agent's. */
+  edge?: 'signal' | 'agent' | 'wait' | '';
+  /** More classes on the card. */
+  class?: string;
+  head?: DecisionHead;
+  /** One sentence ending in a question mark, the card's title. */
+  question?: Node | string;
+  /** Above the example (a test under way, and what it waits on). */
+  lead?: (Node | null | false | undefined)[];
+  /** The problem, with its example, in plain words. */
+  example?: CardText;
+  /** Between the example and the options: reopened, with the agent, waiting, a revision line. */
+  notes?: (Node | null | false | undefined)[];
+  /** Each drawn with optionBlock (readOnly carried down), or a Node as it is. None leaves the options out. */
+  options?: (OptionValue | Node)[];
+  /** Under the options: the caller's choose bar. */
+  bar?: Node | null;
+  /** Under the options: one dated line per later post of the card (pull request opened, merged, verified). */
+  since?: { at: string; text: string }[];
+  /** Option <option> · why, with the recommendation's own evidence listed under it, unfolded. */
+  recommendation?: { option: string; why?: CardText; evidence?: EvidenceEntry[] } | null;
+  /** What happens next: what the reader sees after choosing, and how it is proved. */
+  next?: CardText;
+  /** The agent's calls on this card, each a callRow. */
+  calls?: CallValue[];
+  /** The card's evidence, folded last with its count. */
+  evidence?: EvidenceEntry[];
+  /** As evidenceList's source. */
+  source?(source: string): Node | null;
+  /** After the evidence: depends-on lines, the reader's note. */
+  after?: (Node | null | false | undefined)[];
+  /** The questions row: buttons, or a Node. */
+  questions?: Button[] | Node | null;
+  /** Last: a waiting line, a note box. */
+  foot?: (Node | null | false | undefined)[];
+  /** Leaves out the bar, the questions, foot and every button: the card as a record. */
+  readOnly?: boolean;
+}
+
+/** A decision card: header and question; lead, example, notes; options and bar; Since then; recommendation; what happens next; calls; evidence folded; after, questions, foot. The caller passes every pill, note and press: the card knows no tool's states. */
+export function decisionCard(o: DecisionCardOptions): HTMLElement;
+
+// ---- record.js
+
+/** Text split into plain runs and the ids in known, each its own piece. An id is capitals then digits (DCSN1, F2, F-002). */
+export function idPieces(text: string, known: Set<string>): (string | { id: string })[];
+
+/** Makes each id in known a link in root's text, outside code, pre, links and a card's header: link(id) draws it, by default <a class="kit-ref" href="#id">. */
+export function linkIds(root: Element, known: Set<string>, link?: (id: string) => Node): void;
+
+/** One searchable part of a record: a section of a tab, and its text. */
+export interface RecordEntry {
+  tab: string;
+  id: string;
+  label: string;
+  text: string;
+}
+
+export interface RecordHit {
+  tab: string;
+  id: string;
+  label: string;
+  /** The words around the first match, with … where cut. */
+  snippet: string;
+}
+
+/** The entries holding q (any case); nothing for an empty q. */
+export function searchHits(entries: RecordEntry[], q: string, max?: number): RecordHit[];
+
+/** Takes every control out of el: .kit-btns, .kit-note-line, .kit-sendbar, textarea, and whatever more (a selector) names. Returns el. */
+export function readOnly<T extends Element>(el: T, more?: string): T;
+
+export interface RecordCardOptions<M extends ThreadMessageValue> {
+  /** The card's name for search (data-sec). */
+  label: string;
+  /** Its one edge in the record; none leaves it without. */
+  edge?: 'signal' | 'agent' | 'wait' | '';
+  /** Its thread, drawn under its body; none, no thread. */
+  messages?: M[];
+  /** Draws one message; default threadMessage with attachments and render. */
+  message?: (m: M) => Node;
+  attachments?: ThreadAttachments<M>;
+  render?: ThreadRender<M>;
+  /** More to take out, as readOnly's more. */
+  more?: string;
+}
+
+/** A card as a record shows it: read-only, named for search, with its thread under it. Returns el. */
+export function recordCard<T extends HTMLElement, M extends ThreadMessageValue>(el: T, o: RecordCardOptions<M>): T;
+
+/** What a record file carries in <script type="application/json" id=id>, and the file itself as parsed (without the theme the page set), for a Download of it. null on a served page. Read it before anything is drawn. */
+export function embeddedData<T = unknown>(id: string): { data: T; self: string } | null;
+
+/** One tab of a record. */
+export interface RecordTab {
+  id: string;
+  label: string;
+  /** Shown after the label: "3 files". */
+  count?: string;
+}
+
+/** A section of a tab, for the index. */
+export interface RecordSection {
+  id: string;
+  label: string;
+  depth?: number;
+}
+
+export interface RecordPageOptions {
+  /** The page's .kit-app, after its bar: the band and the three columns go in it. */
+  root: HTMLElement;
+  /** The tool's name: each column's fold is remembered under it. */
+  name: string;
+  tabs: RecordTab[];
+  /** Each tab's content, drawn once; every [data-sec] element in it is a part search reads. */
+  draw(tab: RecordTab): { el: Node; secs?: RecordSection[] };
+  /** The search box's words; false for no search. Default "Search the record". */
+  search?: string | false;
+  /** Ids turned into links in every tab's text: passing it links ids on every pane. A caller that wants links only on some panes leaves it out and calls linkIds itself on those. */
+  known?: Set<string>;
+  /** Draws one such link. */
+  link?: (id: string) => Node;
+  /** Draws the band; find is the search (null with none), select(tab) shows a tab. Default the tabs as a stage track with their counts, then find. */
+  band?(o: { tabs: RecordTab[]; open: string; find: HTMLElement | null; select(tab: string): void }): Node;
+  /** Draws the index; default the open tab's sections. */
+  index?(open: string, selected: string | null): Node | null;
+  /** Draws the thread column: the selected card's, else the open tab's. */
+  thread?(open: string, selected: string | null): Node | null;
+  /** Where a link goes; default a tab by its id, a card (#F2) by card-F2, else the element with that id. */
+  target?(hash: string): { tab: string; id: string } | null;
+  /** Hears each tab shown, with the element shown in it. */
+  onShow?(tab: string, at: string | null): void;
+  /** Whether a hashchange is the page's to follow; false ignores it (the address has moved on to another page). Default always. The first draw doesn't ask. */
+  route?(): boolean;
+  /** Writes the address (#id) for a search hit or a tab pressed. Default history.pushState. */
+  go?(hash: string): void;
+}
+
+export interface RecordPage {
+  band: HTMLElement;
+  index: HTMLElement;
+  main: HTMLElement;
+  thread: HTMLElement;
+  find: HTMLElement | null;
+  /** Each tab's section.kit-rec-tab, by id. */
+  panes: Map<string, HTMLElement>;
+  /** Shows a tab, at an element in it (a card-<id> selects that card). */
+  show(tab: string, at?: string | null): void;
+  open(): string;
+  selected(): string | null;
+  /** Draws the band, the index and the thread again. */
+  redraw(): void;
+  /** Lets go of the address, the window and the page's listeners. */
+  stop(): void;
+}
+
+/** A Record: every card of a piece of work read-only in one page, in tabs with counts, searchable, a link to a card opening its tab with its thread. What each tab holds is the tool's. */
+export function recordPage(o: RecordPageOptions): RecordPage;

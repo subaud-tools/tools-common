@@ -1,4 +1,5 @@
-import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, needsPill, nextLine, arrive } from '/_kit/kit.js';
+import { demoRecord, DEMO } from './record.js';
+import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
 
 const MARK = `<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14161d"/><path d="M13 22H28M13 32H26M13 42H28" stroke="#9aa0ab" stroke-width="3.6" stroke-linecap="round"/><path d="M13 22H28" stroke="#d98f66" stroke-width="3.6" stroke-linecap="round"/><path d="M33 17V47" stroke="#d98f66" stroke-width="2.4"/><rect x="38" y="18" width="14" height="28" rx="3" fill="none" stroke="#d98f66" stroke-width="2.4"/></svg>`;
 const mark = () => {
@@ -211,6 +212,7 @@ function parts(tabbed) {
     indexSection({ name: 'Later', rows: [], empty: 'Nothing for later.' }));
   frontPage(f);
   needsDemo(f);
+  proseDemo(f);
   return f;
 }
 
@@ -260,6 +262,54 @@ function needsDemo(f) {
     nextLine({ left: 1, next: items[1], open }),
     nextLine({ left: 0, open }),
     reply);
+}
+
+// Card and document text as markdown: what the text says is the tool's own.
+function proseDemo(f) {
+  const doc = h('div', { class: 'kit-prose' });
+  doc.innerHTML = renderMarkdown([
+    '### Rendered text',
+    'Paragraphs, **bold**, `code`, [a link](https://subaud.tools) and a list:',
+    '',
+    '- raw HTML such as <b>this</b> shows as text',
+    '- a [script link](javascript:alert(1)) is only its words',
+    '',
+    '| Build | Minutes |',
+    '|---|---|',
+    '| cold | 14 |',
+    '| cached | 3 |',
+  ].join('\n'));
+  f.centre.append(h('div', { class: 'kit-label' }, 'markdown (renderMarkdown)'), doc);
+}
+
+// A decided card, as a record keeps it: what was chosen, what came since, and
+// the agent's calls, one reversed. The pills and the presses are the tool's.
+function decisionDemo() {
+  return decisionCard({
+    id: 'F2',
+    head: { crumb: 'galley · fix plan · F2', state: h('span', { class: 'kit-pill kit-badge t-done' }, 'decided'), key: 'muda/galley/F2' },
+    question: 'Should galley pin its Node version?',
+    example: 'Today each CI run installs whatever Node the runner has, so the cache key changes and `npm ci` starts cold: **14 minutes** where a warm run takes 3.',
+    options: [
+      { id: 'A', title: 'Pin Node 22 in .nvmrc', pullsIn: 'One file, read by CI and by `nvm`.', includes: 'The `.nvmrc` file and `node-version-file` in the workflow.', recommended: true, chosen: true },
+      { id: 'B', title: 'Not yet', pullsIn: 'Nothing; cold installs go on.' },
+      { id: 'C', title: 'Exempt', pullsIn: 'A reason and a review date.' },
+    ],
+    since: [
+      { at: '2026-11-03', text: 'Pull request #12 opened' },
+      { at: '2026-11-05', text: 'Merged; the next ten runs took 3 minutes each' },
+    ],
+    recommendation: { option: 'A', why: 'It saves about **11 minutes** on every push for one line of config.' },
+    next: 'A pull request with the file; the next ten runs are measured against the baseline.',
+    calls: [
+      { name: 'Which version', took: 'Node 22, the version the last green run used', instead: 'Node 20, the oldest still supported', why: 'Matching the last green run changes nothing else.', onReverse() {} },
+      { name: 'Where it is read', took: 'The workflow reads `.nvmrc`', instead: 'The version written in the workflow', why: 'One place for CI and for local work.', reversed: true, onReverse() {} },
+    ],
+    evidence: [
+      { text: 'Cold install, 14m 02s', source: 'run 11873024551', url: 'https://github.com/subaud-tools/galley/actions' },
+      { text: 'The workflow has no node-version', source: '.github/workflows/ci.yml:18' },
+    ],
+  });
 }
 
 // Which ones are chosen is the tool's own, and so is the redraw after a press.
@@ -328,6 +378,14 @@ if (view === 'parts' || view === 'tabs') {
   app.className = 'kit-app';
   const f = parts(view === 'tabs');
   app.append(b.el, f.left, f.centre, f.right);
+} else if (view === 'record') {
+  // ?view=record: a Record of the demo's cards (record.js), as a tool serves it.
+  app.className = 'kit-app';
+  app.append(b.el);
+  demoRecord(app, DEMO);
+} else if (view === 'decision') {
+  // ?view=decision: a decided card alone, to look at 1280 and 390 wide.
+  app.append(b.el, h('main', { class: 'kit-read', style: 'padding:16px 24px; max-width:1100px' }, h('div', { class: 'kit-label' }, 'a decision card, decided (decisionCard)'), decisionDemo()));
 } else if (view === 'label') {
   app.append(b.el, h('div', { class: 'kit-main' }, ...labelView(b)));
 } else {
