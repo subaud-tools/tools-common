@@ -64,7 +64,7 @@ Server rules:
 | diazo 0.52.0 (0.45.1) | conforms | conforms | conforms | conforms | conforms | conforms |
 | sift, in tackle (0.40.0) | `Idle: 8h` | new each start | none | none | none | conforms |
 | cull, in tackle (0.40.0) | `Idle: 8h` | new each start | none | none | none | no skills command |
-| casebook 0.24.0 (0.33.0) | `Idle: 8h`, `Busy` | new each start | none | none, counts its own streams | none | no skills command |
+| casebook 0.28.0 (0.72.0) | conforms | conforms | conforms | conforms | conforms | conforms |
 | galley 0.22.0 (0.33.0) | own server, through its PLAN1 | own server, through its PLAN1 | own server, through its PLAN1 | own server, through its PLAN1 | own server, through its PLAN1 | own command over `skills.Install` |
 | muda 0.5.0 (0.30.0) | no server yet | no server yet | no server yet | no server yet | no server yet | own command, no channel yet |
 | proj, in tackle (0.40.0) | not decided | not decided: new each start, on `localweb` directly | not decided | not decided | not decided | no channel |
@@ -77,7 +77,7 @@ Page rules:
 | diazo | conforms | conforms | conforms | conforms | conforms | conforms |
 | sift | needs adopting from 0.41.0 | uses `bar` | uses `card` | needs adopting from 0.41.0 | needs adopting from 0.41.0 | uses `msgstate` |
 | cull | needs adopting from 0.41.0 | uses `bar` | uses `card` | needs adopting from 0.41.0 | needs adopting from 0.41.0 | uses `msgstate` |
-| casebook | needs adopting from 0.41.0 | uses `bar` | uses `card` | needs adopting from 0.41.0 | needs adopting from 0.41.0 | uses `msgstate` |
+| casebook | through its PLAN2 | uses `bar` | uses `card` | through its PLAN2 | through its PLAN2 | uses `msgstate`, messages in `threadstore` |
 | galley | through its PLAN2 | through its PLAN2 | through its PLAN2 | through its PLAN2 | through its PLAN2 | uses `msgstate` |
 | muda | no page yet: its PLAN1 builds on the kit parts | no page yet | no page yet | no page yet | no page yet | no page yet |
 | proj | not decided | not decided | not decided | not decided | not decided | not decided |
