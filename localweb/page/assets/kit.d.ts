@@ -876,8 +876,8 @@ export interface OptionValue {
 export function optionBlock(o: OptionValue): HTMLElement;
 
 export interface CallValue {
-  /** Heads the row, when given (the call's question or name). */
-  name?: CardText;
+  /** Heads the row, when given (the call's question or name); read-only, a reversed one says so beside it. */
+  name?: Node | string;
   took: CardText;
   instead: CardText;
   why: CardText;
@@ -948,3 +948,116 @@ export interface DecisionCardOptions {
 
 /** A decision card: header and question; lead, example, notes; options and bar; Since then; recommendation; what happens next; calls; evidence folded; after, questions, foot. The caller passes every pill, note and press: the card knows no tool's states. */
 export function decisionCard(o: DecisionCardOptions): HTMLElement;
+
+// ---- record.js
+
+/** Text split into plain runs and the ids in known, each its own piece. An id is capitals then digits (DCSN1, F2, F-002). */
+export function idPieces(text: string, known: Set<string>): (string | { id: string })[];
+
+/** Makes each id in known a link in root's text, outside code, pre, links and a card's header: link(id) draws it, by default <a class="kit-ref" href="#id">. */
+export function linkIds(root: Element, known: Set<string>, link?: (id: string) => Node): void;
+
+/** One searchable part of a record: a section of a tab, and its text. */
+export interface RecordEntry {
+  tab: string;
+  id: string;
+  label: string;
+  text: string;
+}
+
+export interface RecordHit {
+  tab: string;
+  id: string;
+  label: string;
+  /** The words around the first match, with … where cut. */
+  snippet: string;
+}
+
+/** The entries holding q (any case); nothing for an empty q. */
+export function searchHits(entries: RecordEntry[], q: string, max?: number): RecordHit[];
+
+/** Takes every control out of el: .kit-btns, .kit-note-line, .kit-sendbar, textarea, and whatever more (a selector) names. Returns el. */
+export function readOnly<T extends Element>(el: T, more?: string): T;
+
+export interface RecordCardOptions<M extends ThreadMessageValue> {
+  /** The card's name for search (data-sec). */
+  label: string;
+  /** Its one edge in the record; none leaves it without. */
+  edge?: 'signal' | 'agent' | 'wait' | '';
+  /** Its thread, drawn under its body; none, no thread. */
+  messages?: M[];
+  /** Draws one message; default threadMessage with attachments and render. */
+  message?: (m: M) => Node;
+  attachments?: ThreadAttachments<M>;
+  render?: ThreadRender<M>;
+  /** More to take out, as readOnly's more. */
+  more?: string;
+}
+
+/** A card as a record shows it: read-only, named for search, with its thread under it. Returns el. */
+export function recordCard<T extends HTMLElement, M extends ThreadMessageValue>(el: T, o: RecordCardOptions<M>): T;
+
+/** What a record file carries in <script type="application/json" id=id>, and the file itself as parsed (without the theme the page set), for a Download of it. null on a served page. Read it before anything is drawn. */
+export function embeddedData<T = unknown>(id: string): { data: T; self: string } | null;
+
+/** One tab of a record. */
+export interface RecordTab {
+  id: string;
+  label: string;
+  /** Shown after the label: "3 files". */
+  count?: string;
+}
+
+/** A section of a tab, for the index. */
+export interface RecordSection {
+  id: string;
+  label: string;
+  depth?: number;
+}
+
+export interface RecordPageOptions {
+  /** The page's .kit-app, after its bar: the band and the three columns go in it. */
+  root: HTMLElement;
+  /** The tool's name: each column's fold is remembered under it. */
+  name: string;
+  tabs: RecordTab[];
+  /** Each tab's content, drawn once; every [data-sec] element in it is a part search reads. */
+  draw(tab: RecordTab): { el: Node; secs?: RecordSection[] };
+  /** The search box's words; false for no search. Default "Search the record". */
+  search?: string | false;
+  /** Ids turned into links in every tab's text. */
+  known?: Set<string>;
+  /** Draws one such link. */
+  link?: (id: string) => Node;
+  /** Draws the band; find is the search (null with none), select(tab) shows a tab. Default the tabs as a stage track with their counts, then find. */
+  band?(o: { tabs: RecordTab[]; open: string; find: HTMLElement | null; select(tab: string): void }): Node;
+  /** Draws the index; default the open tab's sections. */
+  index?(open: string, selected: string | null): Node | null;
+  /** Draws the thread column: the selected card's, else the open tab's. */
+  thread?(open: string, selected: string | null): Node | null;
+  /** Where a link goes; default a tab by its id, a card (#F2) by card-F2, else the element with that id. */
+  target?(hash: string): { tab: string; id: string } | null;
+  /** Hears each tab shown, with the element shown in it. */
+  onShow?(tab: string, at: string | null): void;
+}
+
+export interface RecordPage {
+  band: HTMLElement;
+  index: HTMLElement;
+  main: HTMLElement;
+  thread: HTMLElement;
+  find: HTMLElement | null;
+  /** Each tab's section.kit-rec-tab, by id. */
+  panes: Map<string, HTMLElement>;
+  /** Shows a tab, at an element in it (a card-<id> selects that card). */
+  show(tab: string, at?: string | null): void;
+  open(): string;
+  selected(): string | null;
+  /** Draws the band, the index and the thread again. */
+  redraw(): void;
+  /** Lets go of the address, the window and the page's listeners. */
+  stop(): void;
+}
+
+/** A Record: every card of a piece of work read-only in one page, in tabs with counts, searchable, a link to a card opening its tab with its thread. What each tab holds is the tool's. */
+export function recordPage(o: RecordPageOptions): RecordPage;

@@ -193,6 +193,13 @@ test('callRow: a reversed call says so and cannot be reversed again; readOnly ha
   assert(!callRow({ took: 't', instead: 'i', why: 'w', readOnly: true, onReverse() {} }).querySelector('button'), 'no button');
 });
 
+test('callRow: read-only, a named call that was reversed says so by its name', () => {
+  const row = callRow({ name: 'Cache key', took: 't', instead: 'i', why: 'w', reversed: true, readOnly: true });
+  eq(text(row.querySelector('.kit-call-name')), 'Cache key reversed');
+  eq(row.querySelector('.kit-call-name .kit-pill').className, 'kit-pill kit-badge');
+  eq(text(callRow({ name: 'Cache key', took: 't', instead: 'i', why: 'w', reversed: true }).querySelector('.kit-call-name')), 'Cache key', 'its button says it');
+});
+
 test('decisionCard: calls are listed under a label, each a callRow', () => {
   fixture().append(decisionCard({
     id: 'D1', question: 'Q?', options: [], recommendation: { option: 'A' },

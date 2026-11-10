@@ -83,13 +83,16 @@ export function optionBlock(o) {
 
 // callRow is one of the agent's calls: what it took, what reversing gives you
 // and why, then Reverse (onReverse; Reversed and off once reversed) and the
-// caller's other buttons. name, when given, heads it. readOnly has no buttons.
+// caller's other buttons. name, when given, heads it. readOnly has no buttons,
+// so a reversed call with a name says so beside it.
 export function callRow(o) {
   const bs = [];
   if (o.onReverse) bs.push({ label: o.reversed ? 'Reversed' : 'Reverse', disabled: !!o.reversed, run: () => { if (!o.reversed) o.onReverse(); } });
   bs.push(...(o.actions ?? []));
   return h('div', { class: `kit-call${o.reversed ? ' reversed' : ''}` },
-    o.name ? h('b', { class: 'kit-call-name' }, o.name) : null,
+    o.name
+      ? h('b', { class: 'kit-call-name' }, o.name, o.reversed && o.readOnly ? [' ', h('span', { class: 'kit-pill kit-badge' }, 'reversed')] : null)
+      : null,
     h('div', { class: 'kit-call-facts' },
       label('Took'), text(o.took),
       label('Instead of'), text(o.instead),

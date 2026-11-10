@@ -1,3 +1,4 @@
+import { demoRecord, DEMO } from './record.js';
 import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
 
 const MARK = `<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14161d"/><path d="M13 22H28M13 32H26M13 42H28" stroke="#9aa0ab" stroke-width="3.6" stroke-linecap="round"/><path d="M13 22H28" stroke="#d98f66" stroke-width="3.6" stroke-linecap="round"/><path d="M33 17V47" stroke="#d98f66" stroke-width="2.4"/><rect x="38" y="18" width="14" height="28" rx="3" fill="none" stroke="#d98f66" stroke-width="2.4"/></svg>`;
@@ -377,6 +378,11 @@ if (view === 'parts' || view === 'tabs') {
   app.className = 'kit-app';
   const f = parts(view === 'tabs');
   app.append(b.el, f.left, f.centre, f.right);
+} else if (view === 'record') {
+  // ?view=record: a Record of the demo's cards (record.js), as a tool serves it.
+  app.className = 'kit-app';
+  app.append(b.el);
+  demoRecord(app, DEMO);
 } else if (view === 'decision') {
   // ?view=decision: a decided card alone, to look at 1280 and 390 wide.
   app.append(b.el, h('main', { class: 'kit-read', style: 'padding:16px 24px; max-width:1100px' }, h('div', { class: 'kit-label' }, 'a decision card, decided (decisionCard)'), decisionDemo()));
