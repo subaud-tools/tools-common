@@ -700,10 +700,12 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-next-step { margin-top: 8px; }
 .kit-calls { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
 .kit-calls > .kit-label { margin-bottom: -4px; }
-.kit-call { border-left: 2px solid var(--kit-agent); padding-left: 12px; }
+.kit-calls .kit-call { border-left: 2px solid var(--kit-agent); padding-left: 12px; }
 .kit-call.reversed .kit-call-facts { color: var(--kit-muted); }
 .kit-call-name { font-size: 14px; }
-.kit-call .kit-btns { margin-top: 8px; flex-wrap: wrap; gap: 8px; }
+/* a lone call (a call's own card) has no rule, and its buttons sit as a card's */
+.kit-call > .kit-btns { margin-top: 12px; flex-wrap: wrap; gap: 8px; }
+.kit-calls .kit-call > .kit-btns { margin-top: 8px; }
 .kit-evidence { margin: 4px 0; padding-left: 16px; font-size: 14px; }
 .kit-source { word-break: break-all; }
 .kit-output { font: 12px var(--kit-mono); white-space: pre-wrap; margin: 4px 0; }

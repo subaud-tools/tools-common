@@ -117,13 +117,17 @@ export function embeddedData(id) {
 // ids in the tabs' text become links (link draws one). The caller may draw the
 // band (band({tabs, open, find, select})), the index (index(open, selected))
 // and the thread (thread(open, selected)); target(hash) may say where a link
-// goes ({tab, id}). search is the search box's words, false for none. onShow
+// goes ({tab, id}). route(), when given, says whether a hashchange is the
+// page's to follow (false: ignore it, the address has moved on); go(hash)
+// writes the address for a hit or a tab pressed, by default
+// history.pushState. search is the search box's words, false for none. onShow
 // hears each tab shown, and the element shown in it. name is the tool's, for
 // the columns' fold.
 export function recordPage(o) {
   const root = o.root;
   const stopping = new AbortController();
   const signal = stopping.signal;
+  const go = o.go ?? (hash => history.pushState(null, '', hash));
   const band = h('div', { class: 'kit-rec-band' });
   const left = h('aside', { class: 'kit-list kit-col kit-left-col', 'aria-label': 'Index' });
   const main = h('main', { class: 'kit-read kit-col kit-mid kit-rec-main', 'aria-label': 'The record' });
@@ -179,7 +183,7 @@ export function recordPage(o) {
       e.preventDefault();
       const id = a.getAttribute('href').slice(1);
       const card = id.startsWith('card-') ? id.slice('card-'.length) : null;
-      history.pushState(null, '', `#${card ?? id}`);
+      go(`#${card ?? id}`);
       selected = card;
       narrow.show(null);
       show(a.dataset.tab, id);
@@ -194,14 +198,12 @@ export function recordPage(o) {
     }, { signal });
   }
 
+  // A tab pressed: its address written, and the tab shown.
   const select = tab => {
-    if (decodeURIComponent(location.hash.slice(1)) === tab) route();
-    else location.hash = tab;
-    // The address moves after the press: show at once, the hash agrees later.
-    if (o.tabs.some(t => t.id === tab)) {
-      selected = null;
-      show(tab, null);
-    }
+    if (!o.tabs.some(t => t.id === tab)) return;
+    if (decodeURIComponent(location.hash.slice(1)) !== tab) go(`#${tab}`);
+    selected = null;
+    show(tab, null);
   };
 
   function frame() {
@@ -256,7 +258,9 @@ export function recordPage(o) {
     if (t) show(t.tab, t.id.startsWith('tab-') ? null : t.id);
     else show(open || o.tabs[0]?.id, null);
   }
-  addEventListener('hashchange', route, { signal });
+  addEventListener('hashchange', () => {
+    if (!o.route || o.route()) route();
+  }, { signal });
   route();
 
   return {

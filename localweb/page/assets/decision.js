@@ -36,18 +36,21 @@ function led(lead, v) {
 }
 
 const isLink = s => /^https?:\/\//i.test(s);
+// A url an entry may link to: the web or a fragment, as renderMarkdown's links.
+const safeHref = s => /^(https?:\/\/|#)/i.test(s);
 
 // evidenceList is a list of evidence entries ({text, source, url, output}): a
-// web source, or an entry's url, is a link; o.source(source), when given, may
+// web source, or an entry's url when it is the web or a fragment, is a link; o.source(source), when given, may
 // draw any other as the caller's link (null to leave it); else it is code. An
 // entry's output folds under it. null for none.
 export function evidenceList(entries, o = {}) {
   if (!entries?.length) return null;
   const source = e => {
     if (!e.source && !e.url) return null;
-    const href = e.url || (isLink(e.source) ? e.source : '');
+    const href = e.url && safeHref(e.url) ? e.url : isLink(e.source) ? e.source : '';
     if (href) return h('a', { href, target: '_blank', rel: 'noreferrer' }, e.source || e.url);
-    return (o.source && o.source(e.source)) ?? h('code', { class: 'kit-source' }, e.source);
+    const words = e.source || e.url;
+    return (e.source && o.source && o.source(e.source)) ?? h('code', { class: 'kit-source' }, words);
   };
   return h('ul', { class: 'kit-evidence' }, entries.map(e =>
     h('li', null,
@@ -83,8 +86,9 @@ export function optionBlock(o) {
 
 // callRow is one of the agent's calls: what it took, what reversing gives you
 // and why, then Reverse (onReverse; Reversed and off once reversed) and the
-// caller's other buttons. name, when given, heads it. readOnly has no buttons,
-// so a reversed call with a name says so beside it.
+// caller's other buttons. name, when given, heads it; its evidence, unfolded,
+// goes between the facts and the buttons (o.source as evidenceList's).
+// readOnly has no buttons, so a reversed call with a name says so beside it.
 export function callRow(o) {
   const bs = [];
   if (o.onReverse) bs.push({ label: o.reversed ? 'Reversed' : 'Reverse', disabled: !!o.reversed, run: () => { if (!o.reversed) o.onReverse(); } });
@@ -97,6 +101,7 @@ export function callRow(o) {
       label('Took'), text(o.took),
       label('Instead of'), text(o.instead),
       label('Why'), text(o.why)),
+    evidenceList(o.evidence, { source: o.source }),
     o.readOnly || !bs.length ? null : buttons(bs));
 }
 

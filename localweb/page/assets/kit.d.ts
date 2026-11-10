@@ -837,7 +837,7 @@ export interface EvidenceEntry {
   text: string;
   /** The run, job, file, resource or bill line it names. A web address is a link. */
   source?: string;
-  /** Where source's words link to, when they aren't an address themselves. */
+  /** Where source's words link to, when they aren't an address themselves: only http(s) or a #fragment; any other url is shown as code. */
   url?: string;
   /** A command's output, folded under the entry. */
   output?: string;
@@ -886,11 +886,15 @@ export interface CallValue {
   onReverse?: () => void;
   /** More buttons after Reverse, in its row. */
   actions?: Button[];
+  /** Listed unfolded between the facts and the buttons. */
+  evidence?: EvidenceEntry[];
+  /** As evidenceList's source. */
+  source?(source: string): Node | null;
   /** No buttons. */
   readOnly?: boolean;
 }
 
-/** One of the agent's calls: Took, Instead of and Why, then Reverse and the caller's buttons. */
+/** One of the agent's calls: Took, Instead of and Why, its evidence, then Reverse and the caller's buttons. Listed on a decision card it has the agent's rule at its left; alone (a call's own card) it has none. */
 export function callRow(o: CallValue): HTMLElement;
 
 export interface DecisionHead {
@@ -1025,7 +1029,7 @@ export interface RecordPageOptions {
   draw(tab: RecordTab): { el: Node; secs?: RecordSection[] };
   /** The search box's words; false for no search. Default "Search the record". */
   search?: string | false;
-  /** Ids turned into links in every tab's text. */
+  /** Ids turned into links in every tab's text: passing it links ids on every pane. A caller that wants links only on some panes leaves it out and calls linkIds itself on those. */
   known?: Set<string>;
   /** Draws one such link. */
   link?: (id: string) => Node;
@@ -1039,6 +1043,10 @@ export interface RecordPageOptions {
   target?(hash: string): { tab: string; id: string } | null;
   /** Hears each tab shown, with the element shown in it. */
   onShow?(tab: string, at: string | null): void;
+  /** Whether a hashchange is the page's to follow; false ignores it (the address has moved on to another page). Default always. The first draw doesn't ask. */
+  route?(): boolean;
+  /** Writes the address (#id) for a search hit or a tab pressed. Default history.pushState. */
+  go?(hash: string): void;
 }
 
 export interface RecordPage {

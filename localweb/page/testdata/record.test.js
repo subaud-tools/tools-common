@@ -198,3 +198,34 @@ test('embeddedData: the data a file carries and the file itself; null on a serve
   assert(!got.self.includes('data-theme'), 'the theme the page set is not the file');
   assert(got.self.includes('id="kit-test-data"'), 'the data block is in it');
 });
+
+test('recordPage: route says when a hashchange is the page\'s to follow', async () => {
+  history.replaceState(null, '', location.pathname + location.search);
+  let follow = false;
+  const { page } = demo({ route: () => follow });
+  eq(page.open(), 'overview', 'the first draw does not ask');
+  location.hash = '#F3';
+  await tick();
+  eq([page.open(), page.selected()], ['overview', null], 'ignored while route says no');
+  follow = true;
+  location.hash = '#F2';
+  await tick();
+  eq([page.open(), page.selected()], ['findings', 'F2']);
+  page.stop();
+  history.replaceState(null, '', location.pathname + location.search);
+});
+
+test('recordPage: go writes the address for a hit and a tab, in place of history.pushState', () => {
+  history.replaceState(null, '', location.pathname + location.search);
+  const went = [];
+  const { root, page } = demo({ go: h => went.push(h) });
+  const box = root.querySelector('.kit-rec-search');
+  box.value = 'zebra';
+  box.dispatchEvent(new Event('input'));
+  root.querySelectorAll('.kit-rec-hits a')[1].click();
+  root.querySelector('.kit-stage[data-stage="overview"]').click();
+  eq(went, ['#F3', '#overview']);
+  eq(location.hash, '', 'the address is the caller\'s to write');
+  eq(page.open(), 'overview');
+  page.stop();
+});

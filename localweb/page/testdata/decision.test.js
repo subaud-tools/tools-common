@@ -209,3 +209,31 @@ test('decisionCard: calls are listed under a label, each a callRow', () => {
   eq(text(calls.querySelector(':scope > .kit-label')), "The agent's calls");
   eq(calls.querySelectorAll('.kit-call').length, 2);
 });
+
+test('evidenceList: a url that is not the web or a fragment is not a link', () => {
+  const ul = evidenceList([
+    { text: 'bad', source: 'run 1', url: 'javascript:alert(1)' },
+    { text: 'data', source: 'run 2', url: 'data:text/html,<b>x</b>' },
+    { text: 'here', source: 'F2', url: '#card-F2' },
+  ]);
+  const lis = ul.querySelectorAll('li');
+  eq([lis[0].querySelector('a'), lis[1].querySelector('a')], [null, null]);
+  eq([lis[0].querySelector('code.kit-source').textContent, lis[1].querySelector('code.kit-source').textContent], ['run 1', 'run 2']);
+  eq(lis[2].querySelector('a').getAttribute('href'), '#card-F2');
+});
+
+test('callRow: a lone call has no rule; calls listed on a card do', () => {
+  const fx = fixture();
+  const lone = callRow({ took: 't', instead: 'i', why: 'w' });
+  fx.append(lone, decisionCard({ id: 'D1', question: 'Q?', recommendation: { option: 'A' }, calls: [{ took: 'a', instead: 'b', why: 'c' }] }));
+  eq([getComputedStyle(lone).borderLeftWidth, getComputedStyle(lone).paddingLeft], ['0px', '0px']);
+  const listed = fx.querySelector('.kit-calls .kit-call');
+  eq([getComputedStyle(listed).borderLeftWidth, getComputedStyle(listed).paddingLeft], ['2px', '12px']);
+});
+
+test('callRow: its evidence goes between the facts and its buttons, unfolded', () => {
+  const row = callRow({ took: 't', instead: 'i', why: 'w', evidence: [{ text: 'measured', source: 'run 1' }], onReverse() {} });
+  eq(kids(row), ['kit-call-facts', 'kit-evidence', 'kit-btns']);
+  eq(text(row.querySelector('.kit-evidence li')), 'measured run 1');
+  eq(kids(callRow({ took: 't', instead: 'i', why: 'w' })), ['kit-call-facts']);
+});
