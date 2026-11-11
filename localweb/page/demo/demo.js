@@ -353,6 +353,7 @@ function frontPage(f) {
 
 // ?view=sendshort|sendlong: a short and a long page of drafts, the send bar
 // locked to the centre's foot by frame's foot, to look at 1280 and 390 wide.
+// The cards are in a centred wrapper, as muda's and cull's centres are.
 function sendPage(long) {
   const f = frame({
     name: 'kitdemo',
@@ -363,8 +364,10 @@ function sendPage(long) {
   const drafts = createDrafts();
   f.leftBody.append(indexSection({ name: 'Findings', open() {}, empty: 'Nothing yet.', rows: [] }));
   f.rightBody.append(h('p', { class: 'kit-meta', style: 'padding:16px' }, 'The thread.'));
+  const wrap = h('div', { style: 'max-width:880px; margin:0 auto' });
+  f.centre.append(wrap);
   for (let i = 1; i <= (long ? 12 : 1); i++) {
-    f.centre.append(card({
+    wrap.append(card({
       head: `F${i} · Cache misses on build ${i}`,
       body: [
         h('p', null, 'Each build fetches the whole module cache again. A note goes with your choice on Send.'),

@@ -612,14 +612,17 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-sendbar .kit-btns { flex: 0 1 auto; gap: 8px; }
 
 /* locked to the centre's foot (frame.js foot): the centre lays out as a column
-   and the bar sits on its bottom edge as a band its full width, cancelling the
-   centre's padding (24px 24px 32px), on a short page too (auto above). Sticky
-   stops at the column's padding, so -32px puts it on the edge while a long page
-   scrolls above it, and at the end nothing is under it. */
-.kit-mid:has(> .kit-sendfoot) { display: flex; flex-direction: column; }
+   with no bottom padding, and the bar sits on its bottom edge as a band its full
+   width, cancelling the kit's 24px side padding, on a short page too (auto
+   above), sticky at bottom 0 while a long page scrolls above it, so at the end
+   nothing is under it. The centre's other children keep the full width a block
+   has, so a centred wrapper (max-width, auto margins) does not shrink; :where
+   leaves it no weight, so a width a tool gives a child wins. */
+.kit-mid:has(> .kit-sendfoot) { display: flex; flex-direction: column; padding-bottom: 0; }
+:where(.kit-mid:has(> .kit-sendfoot) > :not(.kit-sendfoot)) { width: 100%; box-sizing: border-box; }
 .kit-mid > :has(+ .kit-sendfoot) { margin-bottom: 16px; }
 .kit-sendfoot {
-  position: sticky; bottom: -32px; z-index: 2; flex: none; margin: auto -24px -32px;
+  position: sticky; bottom: 0; z-index: 2; flex: none; margin: auto -24px 0;
   padding: 12px 24px; background: var(--kit-panel); border-top: 1px solid var(--kit-line);
 }
 .kit-sendfoot:empty { display: none; }

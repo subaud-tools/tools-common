@@ -438,7 +438,7 @@ export interface Frame {
   right: HTMLElement | null;
   /** Where the caller draws the thread. */
   rightBody: HTMLElement | null;
-  /** Locks node (a sendBar) to the centre's bottom edge: a kit-sendfoot, full width, made the centre's last child, so call it after drawing the centre. null takes it away. */
+  /** Locks node (a sendBar) to the centre's bottom edge: a kit-sendfoot, full width, made the centre's last child, so call it after drawing the centre. null takes it away. The band spans the kit's 24px side padding, so keep it. */
   foot(node: Node | null): void;
 }
 

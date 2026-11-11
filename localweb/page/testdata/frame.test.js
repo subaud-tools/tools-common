@@ -465,9 +465,13 @@ async function sized(w) {
   return win.contentDocument;
 }
 
-async function footPage(w, long) {
+// footPage draws a short or long page of drafts w wide. css is a tool's own
+// stylesheet; wrapped puts the content in a centred wrapper as muda's and
+// cull's centres are; place: false leaves the bar for the test to place.
+async function footPage(w, long, { css = '', wrapped = false, place = true } = {}) {
   clean();
   const doc = await sized(w);
+  if (css) doc.head.append(Object.assign(doc.createElement('style'), { textContent: css }));
   const f = frame(parts());
   const app = doc.createElement('div');
   app.className = w <= 1080 ? 'kit-app kit-narrow' : 'kit-app';
@@ -476,11 +480,21 @@ async function footPage(w, long) {
   app.append(top, f.left, f.centre, f.right);
   doc.body.append(app);
   const d = createDrafts();
-  for (let i = 0; i < (long ? 30 : 1); i++) {
-    f.centre.append(d.box(`note:${i}`, `Note ${i}`, 3).el, buttons([{ label: `Choose ${i}`, run() {} }]));
+  const into = wrapped ? doc.createElement('div') : f.centre;
+  if (wrapped) {
+    into.style.cssText = 'max-width:880px; margin:0 auto';
+    f.centre.append(into);
   }
-  f.foot(sendBar({ count: '1 of 2 answered', sends: 1, hint: 'Unanswered ones stay open.', discard() {}, send() {} }));
-  return { f, foot: f.centre.querySelector(':scope > .kit-sendfoot') };
+  for (let i = 0; i < (long ? 30 : 1); i++) {
+    into.append(wrapped ? 'Short.' : d.box(`note:${i}`, `Note ${i}`, 3).el, buttons([{ label: `Choose ${i}`, run() {} }]));
+  }
+  const p = { f, into };
+  p.place = () => {
+    f.foot(sendBar({ count: '1 of 2 answered', sends: 1, hint: 'Unanswered ones stay open.', discard() {}, send() {} }));
+    p.foot = f.centre.querySelector(':scope > .kit-sendfoot');
+  };
+  if (place) p.place();
+  return p;
 }
 
 const near = (a, b, what) => assert(Math.abs(a - b) < 1, `${what}: got ${a}, want ${b}`);
@@ -525,3 +539,40 @@ for (const w of [1280, 390]) {
     assert(last.getBoundingClientRect().bottom <= p.foot.getBoundingClientRect().top - 15, 'the last control clears the bar by the gap');
   });
 }
+
+for (const w of [1280, 390]) {
+  test(`frame foot at ${w}: a centred wrapper in the centre keeps its width once the bar is placed`, async () => {
+    const p = await footPage(w, false, { wrapped: true, place: false });
+    const before = p.into.getBoundingClientRect();
+    p.place();
+    const after = p.into.getBoundingClientRect();
+    near(after.width, before.width, 'its width');
+    near(after.left, before.left, 'its left');
+    onEdge(p, 'wrapped');
+  });
+
+  test(`frame foot at ${w}: the band sits flush whatever bottom padding the tool gives the centre`, async () => {
+    for (const long of [false, true]) {
+      const p = await footPage(w, long, { css: '.kit-mid { padding-bottom: 48px; }' });
+      onEdge(p, `${long ? 'long' : 'short'}, at the top`);
+      p.f.centre.scrollTop = p.f.centre.scrollHeight;
+      onEdge(p, `${long ? 'long' : 'short'}, at the end`);
+      nothingUnder(p, `${long ? 'long' : 'short'}, at the end`);
+    }
+  });
+}
+
+test('frame foot: the band is padded 24px wide and 12px at 640 or less', async () => {
+  const pad = async w => {
+    const s = getComputedStyle((await footPage(w, false)).foot);
+    return [s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft];
+  };
+  eq(await pad(1280), ['12px', '24px', '12px', '24px']);
+  eq(await pad(390), ['12px', '12px', '12px', '12px']);
+});
+
+test('frame foot: a width the tool gives a child of the centre wins over the full width', async () => {
+  const p = await footPage(1280, false, { wrapped: true, css: '.narrow-child { width: 200px; }' });
+  p.into.className = 'narrow-child';
+  near(p.into.getBoundingClientRect().width, 200, 'its width');
+});
