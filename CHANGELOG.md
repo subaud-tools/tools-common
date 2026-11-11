@@ -4,6 +4,14 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.74.0
+
+### Added
+- localweb/page: `frame()` returns `foot(node | null)`, the one call that places a page's send bar. It puts `node` (a `sendBar`) in a `kit-sendfoot` made the centre column's last child, so call it after drawing the centre; a redraw that empties the centre takes it out, and the next call puts it back last. `foot(null)` takes it away. `sendBar` itself is unchanged.
+- localweb/page: `.kit-sendfoot` locks the bar to the centre's bottom edge: the centre lays out as a column while it holds one, and the bar is a solid band (`--kit-panel`, a line above) the column's full width, on the bottom edge of a short page too, sticky while a long page scrolls above it, with nothing under it at the end and 16px between the content and the band. Inside it the bar loses its card look and is at most 880px wide, centred; at 640px wide or less its padding is 12px. The centre's padding stays 24px 24px 32px, which the band cancels, so a tool that pads its centre differently moves the band's margins with it.
+- The kit demo has `?view=sendshort` and `?view=sendlong`, and `?view=parts` places its bar with `foot`.
+- PAGE-STANDARD.md: the Drafts row says the bar sits locked to the middle column's foot, placed with `frame`'s `foot`.
+
 ## 0.73.0
 
 ### Added
