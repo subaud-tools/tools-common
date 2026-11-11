@@ -438,6 +438,8 @@ export interface Frame {
   right: HTMLElement | null;
   /** Where the caller draws the thread. */
   rightBody: HTMLElement | null;
+  /** Locks node (a sendBar) to the centre's bottom edge: a kit-sendfoot, full width, made the centre's last child, so call it after drawing the centre. null takes it away. The band spans the kit's 24px side padding, so keep it. */
+  foot(node: Node | null): void;
 }
 
 /** The three columns of a .kit-app grid; the caller appends left, centre and right after its bar. */
@@ -717,7 +719,7 @@ export interface SendBarOptions {
   extra?: Button[];
 }
 
-/** The bar at the foot of a page of drafts. */
+/** The bar at the foot of a page of drafts; place it with frame's foot, which locks it to the centre's bottom edge. */
 export function sendBar(o: SendBarOptions): HTMLElement;
 
 // ---- draftlist.js

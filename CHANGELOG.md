@@ -4,6 +4,16 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.74.0
+
+### Added
+- localweb/page: `frame()` returns `foot(node | null)`, the one call that places a page's send bar. It puts `node` (a `sendBar`) in a `kit-sendfoot` made the centre column's last child, so call it after drawing the centre; a redraw that empties the centre takes it out, and the next call puts it back last. `foot(null)` takes it away. `sendBar` itself is unchanged.
+- localweb/page: `.kit-sendfoot` locks the bar to the centre's bottom edge. While the centre holds one, it lays out as a column with no bottom padding. The bar is a solid band (`--kit-panel`, a line above) the column's full width. It sits on the bottom edge of a short page too, and stays at `bottom: 0` while a long page scrolls above it, so it is flush whatever bottom padding a tool sets and nothing is under it at the end. Inside it the bar loses its card look and is at most 880px wide, centred; at 640px wide or less its padding is 12px. The band cancels the kit's 24px side padding, so a page keeps that side padding for the band to span the column.
+- localweb/page: while a footer is placed, the centre's other children keep a block's full width, so a centred wrapper (`max-width`, `margin: 0 auto`) does not shrink. The rule has no weight, so a width a tool gives a child wins.
+- localweb/page: while a footer is placed, the last block's bottom margin becomes the 16px gap above the band, and sibling margins in the centre stop collapsing.
+- The kit demo has `?view=sendshort` and `?view=sendlong`, and `?view=parts` places its bar with `foot`.
+- PAGE-STANDARD.md: the Drafts row says the bar sits locked to the middle column's foot, placed with `frame`'s `foot`.
+
 ## 0.73.0
 
 ### Added

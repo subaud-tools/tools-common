@@ -62,7 +62,7 @@ export function createDrafts(o = {}) {
 
 // sendBar is the bar at the foot of a page of drafts: count and hint are its
 // words, sends how many go. discard and send are the caller's; extra buttons go
-// before them.
+// before them. frame's foot places it, locked to the centre's bottom edge.
 export function sendBar(o) {
   return h('div', { class: 'kit-sendbar' },
     h('span', { class: 'kit-sendbar-count' }, o.count),

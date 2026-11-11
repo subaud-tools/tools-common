@@ -57,12 +57,24 @@ function side(name, which, cls, o) {
 // frame builds the columns. left and right are { panel, label, folded }, each
 // optional; centre is { label }. The caller draws into leftBody, centre and
 // rightBody, and appends left, centre and right to its grid. A side stays where
-// the reader's toggle left it: nothing a card holds moves it.
+// the reader's toggle left it: nothing a card holds moves it. foot(node) locks
+// node (a sendBar) to the centre's bottom edge, in a kit-sendfoot made its last
+// child, so call it after drawing the centre; foot(null) takes it away.
 export function frame({ name, left, centre, right }) {
   const [l, leftBody] = side(name, 'left', 'kit-list', left);
   const [r, rightBody] = side(name, 'right', 'kit-rail', right);
   const mid = h('main', { class: 'kit-read kit-col kit-mid', 'aria-label': centre.label });
-  return { left: l, leftBody, centre: mid, right: r, rightBody };
+  const sendfoot = h('div', { class: 'kit-sendfoot' });
+  const foot = node => {
+    if (!node) {
+      sendfoot.replaceChildren();
+      sendfoot.remove();
+      return;
+    }
+    sendfoot.replaceChildren(node);
+    mid.append(sendfoot);
+  };
+  return { left: l, leftBody, centre: mid, right: r, rightBody, foot };
 }
 
 // narrowMode shows one thing at a time at 1080 wide or less: the centre, or a

@@ -1,5 +1,5 @@
 import { demoRecord, DEMO } from './record.js';
-import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
+import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, narrowMode, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
 
 const MARK = `<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14161d"/><path d="M13 22H28M13 32H26M13 42H28" stroke="#9aa0ab" stroke-width="3.6" stroke-linecap="round"/><path d="M13 22H28" stroke="#d98f66" stroke-width="3.6" stroke-linecap="round"/><path d="M33 17V47" stroke="#d98f66" stroke-width="2.4"/><rect x="38" y="18" width="14" height="28" rx="3" fill="none" stroke="#d98f66" stroke-width="2.4"/></svg>`;
 const mark = () => {
@@ -199,8 +199,7 @@ function parts(tabbed) {
       questionButton({ label: QUESTIONS.smaller, asked: true, run() {} }),
       questionButton({ label: QUESTIONS.breaks, asked: false, run() {} }),
     ]),
-    drafts.box('note:F1', 'A note on F1: it goes with your choice, or on its own.', 3).el,
-    sendBar({ count: '1 of 2 answered', sends: 1, hint: 'Unanswered ones stay open.', discard() {}, send() {} }));
+    drafts.box('note:F1', 'A note on F1: it goes with your choice, or on its own.', 3).el);
   const select = id => f.centre.dataset.open = id;
   f.leftBody.append(
     indexSection({ name: 'Findings', open() {}, empty: '', rows: [
@@ -213,6 +212,7 @@ function parts(tabbed) {
   frontPage(f);
   needsDemo(f);
   proseDemo(f);
+  f.foot(sendBar({ count: '1 of 2 answered', sends: 1, hint: 'Unanswered ones stay open.', discard() {}, send() {} }));
   return f;
 }
 
@@ -351,6 +351,35 @@ function frontPage(f) {
   f.centre.append(h('div', { class: 'kit-label' }, 'the front page: filter rows, status pills and groups that fold'), slot);
 }
 
+// ?view=sendshort|sendlong: a short and a long page of drafts, the send bar
+// locked to the centre's foot by frame's foot, to look at 1280 and 390 wide.
+// The cards are in a centred wrapper, as muda's and cull's centres are.
+function sendPage(long) {
+  const f = frame({
+    name: 'kitdemo',
+    left: { panel: 'index', label: 'The index' },
+    centre: { label: 'Cards' },
+    right: { panel: 'thread', label: 'Thread' },
+  });
+  const drafts = createDrafts();
+  f.leftBody.append(indexSection({ name: 'Findings', open() {}, empty: 'Nothing yet.', rows: [] }));
+  f.rightBody.append(h('p', { class: 'kit-meta', style: 'padding:16px' }, 'The thread.'));
+  const wrap = h('div', { style: 'max-width:880px; margin:0 auto' });
+  f.centre.append(wrap);
+  for (let i = 1; i <= (long ? 12 : 1); i++) {
+    wrap.append(card({
+      head: `F${i} · Cache misses on build ${i}`,
+      body: [
+        h('p', null, 'Each build fetches the whole module cache again. A note goes with your choice on Send.'),
+        buttons([{ label: 'A: cache it', run() {} }, { label: 'B: not yet', run() {} }]),
+        drafts.box(`note:F${i}`, `A note on F${i}`, 2).el,
+      ],
+    }));
+  }
+  f.foot(sendBar({ count: `1 of ${long ? 12 : 1} answered`, sends: 1, hint: 'Unanswered ones stay open.', discard() {}, send() {} }));
+  return f;
+}
+
 // ------------------------------------------------------------------- the page
 const b = bar({
   brand: { name: view === 'label' ? 'cull' : 'casebook', mark: mark() },
@@ -378,6 +407,11 @@ if (view === 'parts' || view === 'tabs') {
   app.className = 'kit-app';
   const f = parts(view === 'tabs');
   app.append(b.el, f.left, f.centre, f.right);
+} else if (view === 'sendshort' || view === 'sendlong') {
+  app.className = 'kit-app';
+  const f = sendPage(view === 'sendlong');
+  app.append(b.el, f.left, f.centre, f.right);
+  narrowMode({ root: app, left: f.left, right: f.right });
 } else if (view === 'record') {
   // ?view=record: a Record of the demo's cards (record.js), as a tool serves it.
   app.className = 'kit-app';
