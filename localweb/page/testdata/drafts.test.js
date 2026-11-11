@@ -122,3 +122,13 @@ test('sendBar: the caller can add a button before them', () => {
   eq([first.textContent, first.disabled], ['Take all recommendations', true]);
   eq(b.querySelectorAll('.kit-btn').length, 3);
 });
+
+test('sendBar: in the locked foot it is a line of the band, not a card', () => {
+  const foot = document.createElement('div');
+  foot.className = 'kit-sendfoot';
+  const b = bar();
+  foot.append(b);
+  fixture().append(foot);
+  const s = getComputedStyle(b);
+  eq([s.borderTopWidth, s.borderTopLeftRadius, s.backgroundColor, s.paddingTop, s.maxWidth], ['0px', '0px', 'rgba(0, 0, 0, 0)', '0px', '880px']);
+});

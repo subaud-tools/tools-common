@@ -1,5 +1,7 @@
 import { test, eq, assert, fixture } from './harness.js';
 import { frame, collapsible, narrowMode } from '/_kit/frame.js';
+import { createDrafts, sendBar } from '/_kit/drafts.js';
+import { buttons } from '/_kit/dom.js';
 import { lineTip, wireTip } from '/_kit/tip.js';
 
 const parts = (extra = {}) => ({
@@ -429,3 +431,97 @@ test('frame: draws where storage is blocked, and folds without remembering', () 
   });
   eq(localStorage.getItem('tooltest.collapsed.index'), null);
 });
+
+// ---- the locked send bar: frame's foot holds it on the centre's bottom edge
+
+test('frame: foot puts the bar in a kit-sendfoot, the centre\'s last child, and null takes it away', () => {
+  clean();
+  const f = frame(parts());
+  mount(f);
+  const content = document.createElement('p');
+  f.centre.append(content);
+  const bar = sendBar({ count: '0 of 1', sends: 0, hint: '', discard() {}, send() {} });
+  f.foot(bar);
+  const foot = f.centre.lastElementChild;
+  eq(foot.className, 'kit-sendfoot');
+  assert(foot.firstElementChild === bar && foot.children.length === 1, 'the bar is in it');
+  f.centre.replaceChildren(content);
+  const again = sendBar({ count: '1 of 1', sends: 1, hint: '', discard() {}, send() {} });
+  f.foot(again);
+  assert(f.centre.lastElementChild === foot && foot.firstElementChild === again, 'after a redraw it goes back last, holding the new bar');
+  f.foot(null);
+  assert(!f.centre.querySelector('.kit-sendfoot'), 'gone when empty');
+});
+
+// A page of the frame in its own window, w wide and 700 high, so the kit's
+// widths (the phone rules at 640 or less) are the window's.
+async function sized(w) {
+  const win = document.createElement('iframe');
+  win.style.cssText = `width:${w}px; height:700px; border:0; display:block`;
+  win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{height:100%;margin:0}</style><body>';
+  const loaded = new Promise(r => win.addEventListener('load', r, { once: true }));
+  fixture().append(win);
+  await loaded;
+  return win.contentDocument;
+}
+
+async function footPage(w, long) {
+  clean();
+  const doc = await sized(w);
+  const f = frame(parts());
+  const app = doc.createElement('div');
+  app.className = w <= 1080 ? 'kit-app kit-narrow' : 'kit-app';
+  const top = doc.createElement('div');
+  top.className = 'kit-bar';
+  app.append(top, f.left, f.centre, f.right);
+  doc.body.append(app);
+  const d = createDrafts();
+  for (let i = 0; i < (long ? 30 : 1); i++) {
+    f.centre.append(d.box(`note:${i}`, `Note ${i}`, 3).el, buttons([{ label: `Choose ${i}`, run() {} }]));
+  }
+  f.foot(sendBar({ count: '1 of 2 answered', sends: 1, hint: 'Unanswered ones stay open.', discard() {}, send() {} }));
+  return { f, foot: f.centre.querySelector(':scope > .kit-sendfoot') };
+}
+
+const near = (a, b, what) => assert(Math.abs(a - b) < 1, `${what}: got ${a}, want ${b}`);
+
+function onEdge({ f, foot }, what) {
+  const col = f.centre.getBoundingClientRect();
+  const r = foot.getBoundingClientRect();
+  near(r.bottom, col.top + f.centre.clientTop + f.centre.clientHeight, `${what}: its bottom is the column's`);
+  near(r.left, col.left + f.centre.clientLeft, `${what}: its left is the column's`);
+  near(r.width, f.centre.clientWidth, `${what}: its width is the column's`);
+  return r;
+}
+
+function nothingUnder({ f, foot }, what) {
+  const r = foot.getBoundingClientRect();
+  for (const c of f.centre.querySelectorAll('button, textarea, input, select, a')) {
+    if (foot.contains(c)) continue;
+    const b = c.getBoundingClientRect();
+    assert(b.bottom <= r.top + 0.5 || b.top >= r.bottom - 0.5, `${what}: ${c.textContent || c.placeholder} sits under the bar`);
+  }
+}
+
+for (const w of [1280, 390]) {
+  test(`frame foot at ${w}: on a short page the bar sits on the column's bottom edge, a solid band its full width`, async () => {
+    const p = await footPage(w, false);
+    eq(p.f.centre.scrollHeight <= p.f.centre.clientHeight, true);
+    const r = onEdge(p, 'short');
+    assert(r.top > p.f.centre.querySelector('button').getBoundingClientRect().bottom + 15, 'a gap between the content and the bar');
+    const bg = getComputedStyle(p.foot).backgroundColor;
+    assert(bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent', `a solid band, got ${bg}`);
+    nothingUnder(p, 'short');
+  });
+
+  test(`frame foot at ${w}: on a long page the bar stays on the edge while it scrolls, and at the end nothing is under it`, async () => {
+    const p = await footPage(w, true);
+    assert(p.f.centre.scrollHeight > p.f.centre.clientHeight * 2, 'the page is long');
+    onEdge(p, 'at the top');
+    p.f.centre.scrollTop = p.f.centre.scrollHeight;
+    onEdge(p, 'at the end');
+    nothingUnder(p, 'at the end');
+    const last = [...p.f.centre.querySelectorAll('button')].filter(b => !p.foot.contains(b)).at(-1);
+    assert(last.getBoundingClientRect().bottom <= p.foot.getBoundingClientRect().top - 15, 'the last control clears the bar by the gap');
+  });
+}
