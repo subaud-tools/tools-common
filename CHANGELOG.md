@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## Unreleased
+
+### Added
+- record: the shared record of what this user has done across the family, one JSON file at `StateDir("subaud")/record.json`: lessons finished, tools used and named features reached, each with the date it first happened. `MarkLesson`, `MarkTool`, `MarkFeature` and `Read` (a missing file reads as empty); `Record.HasLesson`, `HasTool`, `HasFeature`. A mark holds an exclusive lock on `record.json.lock` around its read-modify-write and writes by rename, so two tools marking at once both land. Local only, nothing sent.
+
 ## 0.75.0
 
 ### Added
