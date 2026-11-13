@@ -44,13 +44,16 @@ type Tool struct {
 
 // LessonPage is one lesson of the walk: a title, a Goal and its steps.
 type LessonPage struct {
-	N      int
-	Slug   string // the file's name without .md: "3-plan-a-change"
-	File   string // "lessons/3-plan-a-change.md"
-	Title  string
-	Goal   string
-	Steps  []Step
-	Source string // the whole file
+	N     int
+	Slug  string // the file's name without .md: "3-plan-a-change"
+	File  string // "lessons/3-plan-a-change.md"
+	Title string
+	Goal  string
+	// Offered says when the walk offers this lesson ("you have two sessions
+	// running"); empty for the four core lessons, which run in order.
+	Offered string
+	Steps   []Step
+	Source  string // the whole file
 }
 
 // Step does one action: why, one ask, what Claude runs, then any note and
@@ -136,6 +139,7 @@ func load(fsys fs.FS) (set, error) {
 	}
 	s.fit = string(fit)
 	errs = append(errs, commands("fit.md", s.fit)...)
+	errs = append(errs, placeholders("fit.md", s.fit, false)...)
 
 	names, err := fs.Glob(fsys, "tools/*.md")
 	if err != nil {
@@ -204,6 +208,34 @@ func commands(file, text string) []error {
 		first := strings.FieldsFunc(t, func(r rune) bool { return r == ' ' || r == '`' })
 		if len(first) > 0 && slices.Contains(Family, first[0]) {
 			errs = append(errs, fmt.Errorf("%s:%d: a family command for the user to type: %q", file, i+1, strings.TrimSpace(line)))
+		}
+	}
+	return errs
+}
+
+var (
+	placeholderRe = regexp.MustCompile(`<[A-Za-z][^<>\n]*>`)
+	inlineCodeRe  = regexp.MustCompile("`[^`\n]*`")
+)
+
+// placeholders finds placeholders written <like this> outside code: markdown
+// parsers (galley's, the Guide tab's) take them for raw HTML and drop them, so
+// guide text writes them ‹like this›. Inline code spans are skipped, and so
+// are fenced blocks unless fences holds asks (a lesson's steps), which are
+// shown as text.
+func placeholders(file, text string, fences bool) []error {
+	var errs []error
+	fenced := false
+	for i, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			fenced = !fenced
+			continue
+		}
+		if fenced && !fences {
+			continue
+		}
+		if m := placeholderRe.FindString(inlineCodeRe.ReplaceAllString(line, "")); m != "" {
+			errs = append(errs, fmt.Errorf("%s:%d: placeholder %s: write it ‹%s›", file, i+1, m, m[1:len(m)-1]))
 		}
 	}
 	return errs
@@ -289,6 +321,7 @@ func parseTool(file, text string) (Tool, []error) {
 		bad("%s is not a family tool", t.Name)
 	}
 	t.Summary = one("summary")
+	errs = append(errs, placeholders(file+" summary", t.Summary, true)...)
 	switch w := one("weight"); w {
 	case "core":
 		t.Core = true
@@ -306,6 +339,7 @@ func parseTool(file, text string) (Tool, []error) {
 	}
 	for _, a := range t.Asks {
 		errs = append(errs, commands(file+" asks", "```\n"+a+"\n```")...)
+		errs = append(errs, placeholders(file+" asks", a, true)...)
 	}
 	sec := sections(body)
 	t.When, t.Skip, t.Where, t.Pointers = sec["When to reach for it"], sec["When to skip it"], sec["Where it sits"], sec["Pointers"]
@@ -320,6 +354,7 @@ func parseTool(file, text string) (Tool, []error) {
 		}
 	}
 	errs = append(errs, commands(file, body)...)
+	errs = append(errs, placeholders(file, body, false)...)
 	return t, errs
 }
 
@@ -341,6 +376,7 @@ func parseLesson(file, text string) (LessonPage, []error) {
 	}
 	l.N = n
 	errs = append(errs, commands(file, text)...)
+	errs = append(errs, placeholders(file, text, true)...)
 
 	lines := strings.Split(text, "\n")
 	walk := -1
@@ -350,6 +386,8 @@ func parseLesson(file, text string) (LessonPage, []error) {
 			l.Title = strings.TrimSpace(line[2:])
 		case strings.HasPrefix(line, "**Goal:**"):
 			l.Goal = strings.TrimSpace(strings.TrimPrefix(line, "**Goal:**"))
+		case strings.HasPrefix(line, "**Offered when:**"):
+			l.Offered = strings.TrimSpace(strings.TrimPrefix(line, "**Offered when:**"))
 		case strings.TrimSpace(line) == "## Walkthrough":
 			walk = i
 		}

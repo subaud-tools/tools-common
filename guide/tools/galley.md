@@ -3,8 +3,8 @@ name: galley
 summary: A document you and your agent revise in rounds: you mark up the draft in your browser, the agent rewrites, and you read what changed.
 weight: core
 asks:
-  - Let's use galley to edit <file>.
-  - Open <page>.html in galley so I can edit its text.
+  - Let's use galley to edit ‹file›.
+  - Open ‹page›.html in galley so I can edit its text.
   - I approve the document.
 ---
 
@@ -12,6 +12,7 @@ asks:
 
 - Writing someone else will read: an answer to a customer, a guide, workshop text, a proposal, a blog post, a design doc, a README.
 - A web page whose words need work: galley opens an HTML page's text for editing and redraws the page each round.
+- A document you want to share looking finished: you edit plain markdown, and galley turns it into a well-formatted page that's easy to send.
 
 ## When to skip it
 
