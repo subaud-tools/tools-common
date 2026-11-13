@@ -2,7 +2,9 @@
 // <skills dir>/<name>/SKILL.md for each agent harness (Claude Code, Codex,
 // pi), and refreshes the copies already installed when the binary's skill
 // changes. A file is written only when it is the tool's own: its front
-// matter's name: is the tool's name.
+// matter's name: is the tool's name. A family skill (front matter owner:
+// family, such as the guide's using-the-tools) is written by every tool, and
+// replaces an existing copy only when that copy is family-owned too.
 package skills
 
 import (
@@ -133,6 +135,9 @@ func installOne(h harness, name string, body []byte) (string, error) {
 		return "", err
 	}
 	defer s.close()
+	if err := s.familyGuard(name, body); err != nil {
+		return "", err
+	}
 	if err := s.write(body); err != nil {
 		return "", err
 	}
@@ -278,6 +283,22 @@ func (s *skill) write(body []byte) error {
 	if err := s.dir.Rename(tmp, skillFile); err != nil {
 		_ = s.dir.Remove(tmp)
 		return err
+	}
+	return nil
+}
+
+// FamilyOwned reports whether b, a SKILL.md, is a family skill: its front
+// matter says owner: family.
+func FamilyOwned(b []byte) bool {
+	v, _ := frontmatterValue(b, "owner")
+	return v == "family"
+}
+
+// familyGuard refuses to write a family skill over an existing copy that is
+// not family-owned (the user's own skill of the same name).
+func (s *skill) familyGuard(name string, body []byte) error {
+	if s.old != nil && FamilyOwned(body) && !FamilyOwned(s.old) {
+		return &notOwnError{fmt.Sprintf("%s is not family-owned (no owner: family): not %s's to replace", s.dest, name)}
 	}
 	return nil
 }

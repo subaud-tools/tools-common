@@ -387,7 +387,7 @@ func parseLesson(file, text string) (LessonPage, []error) {
 		case strings.HasPrefix(line, "**Goal:**"):
 			l.Goal = strings.TrimSpace(strings.TrimPrefix(line, "**Goal:**"))
 		case strings.HasPrefix(line, "**Offered when:**"):
-			l.Offered = strings.TrimSpace(strings.TrimPrefix(line, "**Offered when:**"))
+			l.Offered = strings.TrimSuffix(strings.TrimSpace(strings.TrimPrefix(line, "**Offered when:**")), ".")
 		case strings.TrimSpace(line) == "## Walkthrough":
 			walk = i
 		}

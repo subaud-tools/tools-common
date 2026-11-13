@@ -1,0 +1,59 @@
+---
+name: using-the-tools
+description: Use when a request might call for one of the subaud tools ({{range $i, $t := .Tools}}{{if $i}}, {{end}}{{$t.Name}}{{end}}): to pick the tool the request needs, or none, hand off between them, and introduce a tool the user hasn't met one at a time. Installed with every subaud tool; each tool's own skill keeps the detail.
+owner: family
+---
+
+# Using the subaud tools
+
+This skill is written from tools-common's guide, the same text as the Guide tab on every tool's page. Each tool's own skill says how to run it; this one says which tool a request calls for.
+
+## Which tool a request calls for
+
+- A change with a choice in it, or work across several repos or days: diazo.
+- Prose someone will read (a README, a guide, an answer, a page's words): galley.
+- Slow, flaky or wasteful CI, or a cloud bill line: muda.
+- A one-line fix with one obvious answer: no tool. Just do it.
+
+Reach for a tool only when the request calls for it, and never describe the family to answer a request that doesn't.
+
+## One tool at a time
+
+The shared record says what this user has done: `$XDG_STATE_HOME/subaud/record.json` (`~/.local/state/subaud/record.json` by default, `$SUBAUD_HOME/state/record.json` when that is set), with `tools` used and `lessons` finished, each with a date. Read it before you bring in a tool.
+
+- A tool the user has used: use it, with no introduction.
+- A tool they haven't: name it in one sentence (its summary below), then offer its lesson, or its section on the Guide tab of any tool's page, before you run it. One tool per request; don't list the others.
+- Every ask is something the user says to you. Never tell them to type a tool's command.
+
+## Lessons to offer
+
+Offer a lesson once, when it becomes relevant, unless the record lists it as finished:
+{{range .Offered}}
+- **{{.Title}}** (lesson {{.N}}): when {{.Offered}}.{{end}}
+
+To run one, follow the getting-started-with-subaud skill.
+
+## How they hand off
+
+{{demote .Fit}}
+
+## Each tool
+{{range .Tools}}
+### {{.Name}}
+
+{{.Summary}}
+
+**When to reach for it:**
+
+{{.When}}
+{{if .Skip}}
+**When to skip it:**
+
+{{.Skip}}
+{{end}}{{if .Where}}
+**Where it sits:** {{.Where}}
+{{end}}
+**Asks the user might give you:**
+{{range .Asks}}
+- "{{.}}"{{end}}
+{{end}}

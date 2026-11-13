@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"maps"
+	"strings"
 	"testing"
 	"testing/fstest"
 
+	"github.com/subaud-tools/tools-common/guide"
 	"github.com/subaud-tools/tools-common/setupbundle"
 )
 
@@ -19,6 +21,20 @@ var (
 		"skills/proj/references/hooks.md": []byte("# hooks\n"),
 	}
 )
+
+// withFamily is files plus the family skills every bundle carries.
+func withFamily(t *testing.T, files map[string][]byte) map[string][]byte {
+	t.Helper()
+	want := maps.Clone(files)
+	family, err := guide.Skills()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range family {
+		want[setupbundle.FamilySkillPath(s.Name)] = s.Body
+	}
+	return want
+}
 
 func fixture() fstest.MapFS {
 	m := fstest.MapFS{}
@@ -43,8 +59,19 @@ func TestBuildThenReadKeepsIdentityAndFiles(t *testing.T) {
 	if !bytes.Equal(b.Manifest, manifest) {
 		t.Errorf("manifest = %q, want %q", b.Manifest, manifest)
 	}
-	if !maps.EqualFunc(b.Files, files, bytes.Equal) {
-		t.Errorf("files = %q, want %q", b.Files, files)
+	want := withFamily(t, files)
+	if !maps.EqualFunc(b.Files, want, bytes.Equal) {
+		t.Errorf("files = %q, want %q", b.Files, want)
+	}
+}
+
+// Every tool's bundle carries the family skills; a tool file at one of
+// their paths is refused rather than shadowing it.
+func TestBuildRefusesAToolFileAtAFamilySkillsPath(t *testing.T) {
+	m := fixture()
+	m["skills/using-the-tools/SKILL.md"] = &fstest.MapFile{Data: []byte("mine"), Mode: 0o644}
+	if _, err := setupbundle.Build("proj", "1.2.3", manifest, m); err == nil || !strings.Contains(err.Error(), "skills/using-the-tools/SKILL.md") {
+		t.Fatalf("got %v", err)
 	}
 }
 
