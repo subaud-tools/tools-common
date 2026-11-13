@@ -50,13 +50,14 @@ func needChrome(t *testing.T) string {
 // dumpDOM loads url in headless Chrome and returns the DOM after scripts ran.
 // It stops reading at </html> and kills the browser: full Chrome on macOS
 // leaves an updater child holding stdout open long after the dump.
-func dumpDOM(t *testing.T, url string) (string, error) {
+func dumpDOM(t *testing.T, url string, extra ...string) (string, error) {
 	t.Helper()
 	chrome := needChrome(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	args := []string{"--disable-gpu", "--no-first-run", "--no-default-browser-check",
-		"--user-data-dir=" + profileDir(t), "--virtual-time-budget=15000", "--dump-dom", url}
+		"--user-data-dir=" + profileDir(t), "--virtual-time-budget=15000"}
+	args = append(append(args, extra...), "--dump-dom", url)
 	if !strings.Contains(filepath.Base(chrome), "headless-shell") {
 		args = append([]string{"--headless=new"}, args...)
 	}
@@ -181,3 +182,5 @@ func TestJSNeeds(t *testing.T)     { runBrowser(t, "needs") }
 func TestJSProse(t *testing.T)     { runBrowser(t, "prose") }
 func TestJSDecision(t *testing.T)  { runBrowser(t, "decision") }
 func TestJSRecord(t *testing.T)    { runBrowser(t, "record") }
+func TestJSTour(t *testing.T)      { runBrowser(t, "tour") }
+func TestJSGuide(t *testing.T)     { runBrowser(t, "guide") }

@@ -769,6 +769,77 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-rec-index a { color: var(--kit-fg); text-decoration: none; }
 .kit-rec-index a:hover { color: var(--kit-signal); }
 .kit-ref { font: 13px var(--kit-mono); }
+/* ---- Show me around (tour.js) -------------------------------------------- */
+/* The overlay takes every click; the page shows through, dimmed, except the
+ * control the step outlines, its ring drawn just outside it; the note sits
+ * beside it, never on it. */
+.kit-tour { position: fixed; inset: 0; z-index: 200; cursor: default; }
+.kit-tour-ring {
+  position: fixed;
+  pointer-events: none;
+  border-radius: 6px;
+  outline: 2px solid var(--kit-signal);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--kit-bg) 72%, transparent);
+}
+.kit-tour-card {
+  position: fixed;
+  width: min(300px, calc(100vw - 16px));
+  box-sizing: border-box;
+  padding: 12px 14px;
+  background: var(--kit-card);
+  color: var(--kit-fg);
+  border: 1px solid var(--kit-line);
+  border-radius: 8px;
+  box-shadow: var(--kit-lift);
+}
+.kit-tour-count { margin: 0 0 4px; font: 10.5px var(--kit-mono); letter-spacing: 0.06em; color: var(--kit-muted); }
+.kit-tour-note { margin: 0 0 12px; font-size: 14px; line-height: 1.5; }
+.kit-tour-acts { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ---- the Guide (guide.js) ------------------------------------------------ */
+/* A wide sheet: the installed tools down the side, the one picked in the
+ * main pane. At 640 wide or less the side sits above the main pane. */
+.kit-sheet.kit-guide-sheet { top: 5vh; width: min(960px, 96vw); max-height: 90vh; padding: 0; }
+.kit-guide-sheet > .kit-sheet-head { margin: 0; padding: 12px 20px; border-bottom: 1px solid var(--kit-line); }
+.kit-guide-sheet > .kit-sheet-body { margin: 0; }
+.kit-guide { display: grid; grid-template-columns: 190px minmax(0, 1fr); min-height: 0; }
+.kit-guide-side { border-right: 1px solid var(--kit-line); padding: 14px 12px; font-size: 14px; }
+.kit-guide-side ul { list-style: none; margin: 0 0 10px; padding: 0; }
+.kit-guide-side .kit-label { margin: 0 0 6px; }
+.kit-guide-pick {
+  display: block; width: 100%; text-align: left; font: inherit; color: var(--kit-fg);
+  background: none; border: 0; border-radius: 6px; padding: 4px 8px; cursor: pointer;
+}
+.kit-guide-pick:hover { background: var(--kit-signal-soft); }
+.kit-guide-pick.on { background: var(--kit-signal-soft); color: var(--kit-signal); font-weight: 600; }
+.kit-guide-also { margin: 0 0 10px; }
+.kit-guide-also > summary { cursor: pointer; }
+.kit-guide-family { display: inline-block; margin-top: 8px; font-size: 13px; color: var(--kit-muted); }
+.kit-guide-main { padding: 18px 24px 22px; overflow-wrap: anywhere; }
+.kit-guide-main h2 { margin: 0 0 4px; font-size: 20px; }
+.kit-guide-main h3 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--kit-muted); }
+.kit-guide-summary { margin: 0 0 6px; font-size: 15px; }
+.kit-guide-asks { list-style: none; margin: 0; padding: 0; }
+.kit-guide-ask {
+  display: flex; align-items: flex-start; gap: 10px; margin: 0 0 6px; padding: 8px 10px;
+  border: 1px solid var(--kit-line); border-radius: 6px; background: var(--kit-card);
+}
+.kit-guide-ask-text { flex: 1; font-size: 14px; }
+.kit-guide-ask .kit-btn { flex: none; }
+.kit-guide-more { margin-top: 16px; }
+.kit-guide-more > summary { cursor: pointer; }
+.kit-guide-links { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }
+.kit-guide-page { max-width: 1040px; margin: 0 auto; padding: 16px; }
+.kit-guide-page .kit-guide { border: 1px solid var(--kit-line); border-radius: 8px; background: var(--kit-panel); }
+@media (max-width: 640px) {
+  .kit-guide { grid-template-columns: minmax(0, 1fr); }
+  .kit-guide-side { border-right: 0; border-bottom: 1px solid var(--kit-line); }
+  .kit-guide-side > ul { display: flex; flex-wrap: wrap; gap: 4px; }
+  .kit-guide-side > ul .kit-guide-pick { width: auto; }
+  .kit-guide-main { padding: 14px 16px 18px; }
+}
+
 @media print {
   .kit-app.kit-record { display: block; height: auto; }
   .kit-record > .kit-col:not(.kit-mid), .kit-rec-find { display: none; }

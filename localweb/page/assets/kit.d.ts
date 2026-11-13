@@ -197,6 +197,8 @@ export type StatusTone = 'muted' | 'signal' | 'danger';
 export interface BarHandle {
   el: HTMLElement;
   themeControl: HTMLElement;
+  /** The Guide button every page's bar has, left of the theme control: it opens openGuide(). */
+  guideControl: HTMLElement;
   setSection(id: string): void;
   /** Show or hide every section button, for one bar kept across pages. */
   setSectionsShown(shown: boolean): void;
@@ -1073,3 +1075,81 @@ export interface RecordPage {
 
 /** A Record: every card of a piece of work read-only in one page, in tabs with counts, searchable, a link to a card opening its tab with its thread. What each tab holds is the tool's. */
 export function recordPage(o: RecordPageOptions): RecordPage;
+
+/** One step of Show me around: the control it outlines (a selector on the real page) and a short note. before() readies the step (opens a pane); false skips it. */
+export interface TourStep {
+  id: string;
+  target: string;
+  note: string;
+  before?: () => unknown | Promise<unknown>;
+}
+
+export interface TourOptions {
+  /** The localStorage flag marking it seen, per tool's origin (default kit.tour). */
+  seenKey?: string;
+  /** How long a step waits for its control before it is skipped, in ms (default 4000). */
+  wait?: number;
+  /** Runs as it starts: hold what moves under it (a live stream). */
+  onStart?: () => void;
+  /** Runs as it ends; restore is false when the user's own navigation ended it. */
+  onEnd?: (restore: boolean) => void;
+}
+
+export interface Tour {
+  steps: TourStep[];
+  /** Shows it now: an overlay outlines each control in turn; → or next goes on, Esc or skip ends it. */
+  start(): void;
+  /** Shows it unless it was done or skipped before in this browser. */
+  startOnce(): void;
+  seen(): boolean;
+}
+
+/** Show me around: registers the page's tour (the Guide offers it on the page's own section) and returns it. */
+export function tour(steps: TourStep[], o?: TourOptions): Tour;
+/** The tour this page registered last, or null. */
+export function registeredTour(): Tour | null;
+/** Where a tour's note goes: below the control, else above, else left, else right, else the middle, always inside the window. */
+export function placeNote(
+  target: { x: number; y: number; width: number; height: number },
+  card: { width: number; height: number },
+  view: { width: number; height: number },
+  gap?: number,
+): { x: number; y: number };
+
+/** One tool's section in the Guide, from tools-common's guide package. */
+export interface GuideTool {
+  name: string;
+  summary: string;
+  core: boolean;
+  asks: string[];
+  when: string;
+  skip?: string;
+  where?: string;
+  pointers?: string;
+  /** Its public guide page, where one exists. */
+  guide?: string;
+}
+
+/** What GET /api/kit/guide answers: the tool this page is, the installed tools (core first), how they fit together, and the family's site. */
+export interface GuideData {
+  tool: string;
+  family: string;
+  fit: string;
+  tools: GuideTool[];
+}
+
+export interface GuideViewOptions {
+  /** Copies an ask (the clipboard by default). */
+  copy?: (text: string) => unknown;
+  /** The page's tour, offered as Show me around on its own tool's section. */
+  tour?: Tour | null;
+  /** Runs as Show me around starts. */
+  onTour?: () => void;
+}
+
+/** The Guide: the installed tools down the side, the tool you're in open first (when, skip, asks with Copy; where it sits and pointers behind More). */
+export function guideView(data: GuideData, o?: GuideViewOptions): HTMLElement;
+/** Loads /api/kit/guide and opens the Guide in a sheet over the page, offering the registered tour. The bar's Guide button calls it. */
+export function openGuide(o?: { url?: string; tour?: Tour | null; copy?: (text: string) => unknown }): Promise<SheetHandle>;
+/** Draws the Guide as the whole page in root, as /_kit/guide/ does. */
+export function guidePage(root: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<void>;

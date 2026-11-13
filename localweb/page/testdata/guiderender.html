@@ -1,0 +1,37 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/_kit/kit.css">
+<body>
+<main id="guide"></main>
+<script type="module">
+// The Guide as /_kit/guide/ draws it, from the real guide data, measured at
+// the window's width: no console errors, nothing wider than the window, the
+// side list beside the main pane on a desktop and above it on a phone.
+const errors = [];
+addEventListener('error', e => errors.push(String(e.message)));
+addEventListener('unhandledrejection', e => errors.push(String(e.reason)));
+const realError = console.error;
+console.error = (...a) => { errors.push(a.map(String).join(' ')); realError(...a); };
+const out = document.createElement('pre');
+out.id = 'result';
+try {
+  const { guidePage } = await import('/_kit/guide.js');
+  const root = document.getElementById('guide');
+  await guidePage(root, { copy: async () => {} });
+  root.querySelector('.kit-guide-more').open = true;
+  const side = root.querySelector('.kit-guide-side').getBoundingClientRect();
+  const main = root.querySelector('.kit-guide-main').getBoundingClientRect();
+  out.textContent = JSON.stringify({
+    width: innerWidth,
+    overflow: document.documentElement.scrollWidth > innerWidth,
+    layout: side.right <= main.left + 1 ? 'beside' : side.bottom <= main.top + 1 ? 'above' : 'overlap',
+    tool: root.querySelector('.kit-guide-main h2').textContent,
+    asks: root.querySelectorAll('.kit-guide-ask').length,
+    errors,
+  });
+} catch (e) {
+  out.textContent = JSON.stringify({ errors: [...errors, String(e && e.stack ? e.stack : e)] });
+}
+document.body.append(out);
+</script>
