@@ -185,6 +185,14 @@ srv, err := localweb.Start(ctx, localweb.Config{
 </script>
 ```
 
+- **Guide** (`guide.js`): every `bar` has a Guide button that opens
+  `openGuide()`, the family guide over the page from `GET /api/kit/guide`
+  (every `pageserve.Run` answers it from the `guide` package), on the tool the
+  page is; `guideView(data)` draws it, and `/_kit/guide/` is the same as a page.
+- **Show me around** (`tour.js`): `tour(steps, { seenKey })` registers the
+  page's tour (each step `{ id, target, note, before }`); `startOnce()` shows it
+  the first time, Esc skips, → goes on, and the Guide offers it on the page's
+  own section.
 - **Components** (`dom.js`): `bar`, `list`, `facts`, `card`, `buttons`,
   `codeBlock`, `fold`, `noteField`, and `h`. The `.kit-*` classes are the
   contract and work from static HTML too.

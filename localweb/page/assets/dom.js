@@ -1,6 +1,7 @@
 import { createSelection } from './selection.js';
 import { MESSAGE_STATES } from './msgstate.js';
 import { submitOnEnter } from './enter.js';
+import { openGuide } from './guide.js';
 
 // DOM builders for the kit's components. Each returns plain elements styled by
 // kit.css; the CSS classes are the contract and also work from static HTML.
@@ -89,7 +90,8 @@ function alsoOpen() {
 }
 
 // bar is the top bar: brand, section controls with counts, status text, the
-// "also open" button, the live pill, theme, and the one filled primary button.
+// "also open" button, the live pill, Guide, theme, and the one filled primary
+// button.
 export function bar(o) {
   const ctls = new Map();
   for (const s of o.sections || []) {
@@ -99,6 +101,8 @@ export function bar(o) {
   const also = alsoOpen();
   const pill = h('span', { class: 'kit-live', hidden: true, role: 'status' });
   const themeControl = o.theme || h('button', { class: 'kit-ctl', type: 'button' }, 'theme');
+  // Guide is on every page, left of the theme control (guide.js).
+  const guideControl = h('button', { class: 'kit-ctl kit-guide-btn', type: 'button', onclick: () => void openGuide() }, 'Guide');
   const primary = h('button', { class: 'kit-primary', type: 'button', hidden: true });
   let run = null;
   primary.addEventListener('click', () => run && run());
@@ -106,8 +110,9 @@ export function bar(o) {
   const handle = {
     el: h('header', { class: 'kit-bar' },
       h(o.brand.href ? 'a' : 'span', { class: 'kit-brand', href: o.brand.href || null }, o.brand.mark || null, o.brand.name),
-      ...ctls.values(), status, h('span', { class: 'kit-sp' }), also.el, pill, themeControl, primary),
+      ...ctls.values(), status, h('span', { class: 'kit-sp' }), also.el, pill, guideControl, themeControl, primary),
     themeControl,
+    guideControl,
     setSection(id) {
       for (const [k, el] of ctls) {
         el.classList.toggle('on', k === id);

@@ -1,0 +1,32 @@
+---
+name: getting-started-with-subaud
+description: Use when the user asks to get started with subaud ("get me started with subaud") or takes up an offered lesson: runs the getting-started walk in proj's split page, one step at a time, posting each step's result to the lesson tab.
+owner: family
+---
+
+# Getting started with subaud
+
+The walk is {{len .Core}} lessons in proj's split page: the session's terminal on the left, the lesson as a pinned tab on the right. It runs in a throwaway practice repo that lesson 1 makes (`~/subaud-practice`, local only, no GitHub). {{len .Offered}} more lessons are offered later, when they become relevant.
+
+**The learner drives; you guide.** They press Send to Claude on a step, which types its ask into your terminal. You run only what that step's Claude runs line lists, check state quietly, and never run ahead to the next step or explain what's coming.
+
+## Running it
+
+1. `proj guide start` opens the lesson tab beside this terminal, or uses the one open. For an offered lesson, `proj guide start --lesson N`.
+2. When a step's ask arrives, run what its Claude runs line lists and nothing more. On a choose step, run nothing: say whether the learner's pick was right, from what actually happens.
+3. Post the step's result, a short sentence each: `proj guide result --lesson N --step M --ran "what ran" --happened "what happened" --means "what it means"`. The learner presses Next.
+4. After the last step's result, `proj guide done --lesson N` shows the lesson's recap and marks it finished in the shared record.
+5. When a step fails, say so in `--happened`, fix it with the learner, and post the result again.
+
+After lesson {{len .Core}}, point the learner to the Guide tab on any tool's page, and name the lessons waiting for later, rather than listing every tool.
+
+## The lessons
+{{range .Lessons}}
+### Lesson {{.N}}: {{.Title}}
+{{if .Offered}}
+Offered when {{.Offered}}.
+{{end}}
+**Goal:** {{.Goal}}
+{{range $i, $s := .Steps}}
+{{inc $i}}. **{{$s.Title}}**{{if $s.Choose}} (choose: the learner predicts before acting){{end}}. Ask: "{{$s.Ask}}" Claude runs: {{$s.Runs}}{{end}}
+{{end}}

@@ -39,7 +39,7 @@ func TestBundleCommandWritesOnlyReleaseArchive(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if b.Tool != "proj" || b.Version != "1.2.3" || !bytes.Equal(b.Manifest, manifest) || !maps.EqualFunc(b.Files, tc.want, bytes.Equal) {
+			if b.Tool != "proj" || b.Version != "1.2.3" || !bytes.Equal(b.Manifest, manifest) || !maps.EqualFunc(b.Files, withFamily(t, tc.want), bytes.Equal) {
 				t.Fatalf("wrong bundle: %+v", b)
 			}
 			entries, err := os.ReadDir(home)

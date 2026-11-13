@@ -16,6 +16,8 @@ import (
 	"io/fs"
 	"strings"
 	"time"
+
+	"github.com/subaud-tools/tools-common/guide"
 )
 
 const (
@@ -41,8 +43,12 @@ type meta struct {
 }
 
 // Build returns the gzipped tar of a bundle for tool at version, with
-// manifest as setup.toml and every regular file of files (rooted at what
-// becomes files/). The same input always gives the same bytes.
+// manifest as setup.toml, every regular file of files (rooted at what
+// becomes files/), and the family skills rendered from the guide, at
+// files/skills/<name>/SKILL.md, so every tool's release carries them. A
+// tool file at one of those paths is refused. The manifest is left as it
+// is: a setup.toml that installs the family skills is the tool's to write.
+// The same input always gives the same bytes.
 func Build(tool, version string, manifest []byte, files fs.FS) ([]byte, error) {
 	m, err := json.Marshal(meta{Format: format, Tool: tool, Version: version})
 	if err != nil {
@@ -65,12 +71,23 @@ func Build(tool, version string, manifest []byte, files fs.FS) ([]byte, error) {
 	if err := add(manifestName, manifest); err != nil {
 		return nil, err
 	}
+	family, err := guide.Skills()
+	if err != nil {
+		return nil, err
+	}
+	reserved := map[string]bool{}
+	for _, s := range family {
+		reserved[FamilySkillPath(s.Name)] = true
+	}
 	err = fs.WalkDir(files, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
 		if !d.Type().IsRegular() {
 			return fmt.Errorf("setup bundle: %s is not a regular file", p)
+		}
+		if reserved[p] {
+			return fmt.Errorf("setup bundle: %s is a family skill's path; the bundle adds it", p)
 		}
 		body, err := fs.ReadFile(files, p)
 		if err != nil {
@@ -81,6 +98,11 @@ func Build(tool, version string, manifest []byte, files fs.FS) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	for _, s := range family {
+		if err := add(filesDir+FamilySkillPath(s.Name), s.Body); err != nil {
+			return nil, err
+		}
+	}
 	if err := tw.Close(); err != nil {
 		return nil, err
 	}
@@ -89,6 +111,10 @@ func Build(tool, version string, manifest []byte, files fs.FS) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
+
+// FamilySkillPath is where a family skill sits in a bundle, relative to
+// files/: skills/<name>/SKILL.md.
+func FamilySkillPath(name string) string { return "skills/" + name + "/SKILL.md" }
 
 // Read validates and reads a bundle. It refuses a setup.json format other
 // than this package's, and any member other than setup.json, setup.toml and regular

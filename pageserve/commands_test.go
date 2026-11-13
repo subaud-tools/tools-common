@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	tools "github.com/subaud-tools/tools-common"
+	"github.com/subaud-tools/tools-common/guide"
 )
 
 const testSkill = "---\nname: cull\ndescription: test\n---\nbody\n"
@@ -298,6 +299,27 @@ func TestChannelScopeIsTheSessionsFolder(t *testing.T) {
 		}
 		if root, _ := got.Root(); root != tc.cwd {
 			t.Errorf("%v: Spec.Root got %q", tc.args, root)
+		}
+	}
+}
+
+// `<tool> skills install` writes the two family skills beside the tool's
+// own, the same bytes the guide renders, for every tool.
+func TestSkillsInstallAlsoWritesTheFamilySkills(t *testing.T) {
+	pi := t.TempDir()
+	t.Setenv("PI_CODING_AGENT_DIR", pi)
+	var out, errw bytes.Buffer
+	if err := SkillsCommand("cull", skill).Run([]string{"install", "--agent", "pi"}, &out, &errw); err != nil {
+		t.Fatalf("%v: %s", err, errw.String())
+	}
+	family, err := guide.Skills()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range family {
+		b, err := os.ReadFile(filepath.Join(pi, "skills", s.Name, "SKILL.md"))
+		if err != nil || !bytes.Equal(b, s.Body) {
+			t.Errorf("%s: %v", s.Name, err)
 		}
 	}
 }

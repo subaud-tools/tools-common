@@ -51,6 +51,9 @@ func refreshOne(h harness, name string, body []byte) (string, error) {
 		return "", err
 	}
 	defer s.close()
+	if err := s.familyGuard(name, body); err != nil {
+		return "", err
+	}
 	if bytes.Equal(s.old, body) {
 		return "", nil
 	}

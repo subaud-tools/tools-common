@@ -18,6 +18,7 @@ import (
 
 	tools "github.com/subaud-tools/tools-common"
 	"github.com/subaud-tools/tools-common/channelmcp"
+	"github.com/subaud-tools/tools-common/guide"
 	"github.com/subaud-tools/tools-common/localweb"
 	"github.com/subaud-tools/tools-common/skills"
 )
@@ -305,7 +306,9 @@ func skillsCommand(tool, name string, skill func() ([]byte, error)) tools.Comman
 			"each agent harness found (Claude Code, Codex, pi: by their home directories), or for each\n"+
 			"--agent named (claude-code, codex, pi). The skills directory may be a symlink; nothing\n"+
 			"beneath it may be. An existing SKILL.md there is replaced only when it is "+tool+"'s own\n"+
-			"(name: "+name+"). Run it again after each update to keep the skill in step with the binary.",
+			"(name: "+name+"). The family skills (using-the-tools, getting-started-with-subaud) are\n"+
+			"installed beside it, replacing only family-owned copies. Run it again after each update\n"+
+			"to keep the skills in step with the binary.",
 		func(fs *flag.FlagSet) {
 			fs.Var(new(agents), "agent", "a harness to install for (repeatable): claude-code, codex or pi")
 		})
@@ -322,7 +325,18 @@ func skillsCommand(tool, name string, skill func() ([]byte, error)) tools.Comman
 		if err != nil {
 			return tools.Exitf(2, "%v", err)
 		}
-		return skills.Install(name, body, *fs.Lookup("agent").Value.(*agents), out, errw)
+		family, err := guide.Skills()
+		if err != nil {
+			return tools.Exitf(2, "%v", err)
+		}
+		as := *fs.Lookup("agent").Value.(*agents)
+		first := skills.Install(name, body, as, out, errw)
+		for _, f := range family {
+			if err := skills.Install(f.Name, f.Body, as, out, errw); err != nil && first == nil {
+				first = err
+			}
+		}
+		return first
 	}
 	return tools.Command{
 		Name: "skills", Group: "setup", Synopsis: "install [--agent NAME]…", Subcommands: []string{"install"},

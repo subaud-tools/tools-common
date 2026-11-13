@@ -385,3 +385,34 @@ func TestOwnsWithMarkersRequiresMudaNameAndStringMarker(t *testing.T) {
 		})
 	}
 }
+
+const familyBody = "---\nname: using-the-tools\ndescription: the family's map\nowner: family\n---\nnew map\n"
+
+// A family-owned skill (owner: family) is written by any tool, fresh or over
+// a family-owned copy, but never over a copy of the same name that is not
+// family-owned; Refresh keeps to the same rule.
+func TestFamilySkillReplacesOnlyAFamilyCopy(t *testing.T) {
+	h := home(t)
+	p := filepath.Join(h, ".claude/skills/using-the-tools/SKILL.md")
+	var out, errw bytes.Buffer
+	if err := skills.Install("using-the-tools", []byte(familyBody), []string{"claude-code"}, &out, &errw); err != nil {
+		t.Fatalf("fresh: %v %s", err, errw.String())
+	}
+	write(t, p, "---\nname: using-the-tools\nowner: family\n---\nan older tool's map\n")
+	if err := skills.Install("using-the-tools", []byte(familyBody), []string{"claude-code"}, &out, &errw); err != nil || read(t, p) != familyBody {
+		t.Fatalf("over a family copy: %v %s", err, errw.String())
+	}
+	mine := "---\nname: using-the-tools\n---\nthe user's own\n"
+	write(t, p, mine)
+	errw.Reset()
+	err := skills.Install("using-the-tools", []byte(familyBody), []string{"claude-code"}, &out, &errw)
+	if exitCode(err) != 1 || !strings.Contains(errw.String(), "not family-owned") || read(t, p) != mine {
+		t.Fatalf("over the user's own: %v %s %q", err, errw.String(), read(t, p))
+	}
+	if got, err := skills.Refresh("using-the-tools", []byte(familyBody)); err != nil || len(got) != 0 || read(t, p) != mine {
+		t.Fatalf("refresh over the user's own: %v %v", got, err)
+	}
+	if !skills.FamilyOwned([]byte(familyBody)) || skills.FamilyOwned([]byte(mine)) {
+		t.Error("FamilyOwned")
+	}
+}

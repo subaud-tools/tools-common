@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide</title>
+<link rel="stylesheet" href="/_kit/kit.css">
+<script src="/_kit/boot.js"></script>
+<body>
+<main id="guide"></main>
+<script type="module">
+import { guidePage } from '/_kit/guide.js';
+guidePage(document.getElementById('guide')).catch(e => {
+  document.getElementById('guide').textContent = `The guide didn't load: ${e && e.message ? e.message : e}`;
+});
+</script>
