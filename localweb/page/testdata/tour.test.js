@@ -26,11 +26,19 @@ const steps = () => [
 ];
 const fresh = name => { localStorage.removeItem(name); return name; };
 
-test('tour: outlines the first control with its note and count', async () => {
+test('tour: outlines the first control with its note and count, before any frame is drawn', async () => {
   page();
   const t = tour(steps(), { seenKey: fresh('kit.tour.test1'), wait: 50 });
-  t.start();
-  const o = await until('a');
+  // No frames: a page whose frames lag (CI's headless browser, a background tab) still gets the ring in place.
+  const raf = window.requestAnimationFrame;
+  window.requestAnimationFrame = () => 0;
+  let o;
+  try {
+    t.start();
+    o = await until('a');
+  } finally {
+    window.requestAnimationFrame = raf;
+  }
   eq(o.querySelector('.kit-tour-note').textContent, 'This is a.');
   eq(o.querySelector('.kit-tour-count').textContent, '1 of 3');
   const r = document.getElementById('a').getBoundingClientRect();

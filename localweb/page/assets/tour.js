@@ -90,8 +90,8 @@ export function tour(steps, o = {}) {
     const onHash = () => { if (moving) pushed++; else finish(false); };
     window.addEventListener('hashchange', onHash);
 
-    // place follows the step's control every frame: the ring on it, the note beside it.
-    function place() {
+    // placeNow puts the ring on the step's control and the note beside it.
+    function placeNow() {
       const step = steps[at];
       const target = step ? document.querySelector(step.target) : null;
       if (target) {
@@ -101,6 +101,11 @@ export function tour(steps, o = {}) {
         card.style.left = `${p.x}px`;
         card.style.top = `${p.y}px`;
       }
+    }
+
+    // place follows the step's control every frame.
+    function place() {
+      placeNow();
       raf = requestAnimationFrame(place);
     }
 
@@ -120,6 +125,8 @@ export function tour(steps, o = {}) {
         nextBtn.textContent = i === steps.length - 1 ? 'done' : 'next';
         ring.hidden = false;
         card.hidden = false;
+        // Placed now, not on the next frame: a page whose frames lag (a background tab) would show the ring at 0,0 first.
+        placeNow();
         nextBtn.focus();
         return;
       }
