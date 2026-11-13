@@ -18,40 +18,40 @@
 
 2. **See what's installed**
 
-   kempt installed your tools, so it can tell you which ones you have.
+   Each tool answers with its version when asked, so your agent can tell you which ones you have.
 
    ```
    Which subaud tools do I have, and what is each one for, in a line each?
    ```
 
-   **Claude runs:** `kempt plan`, which lists what's installed and changes nothing.
+   **Claude runs:** each tool's `version`, for every subaud tool it finds on your machine; it changes nothing.
 
    You don't need all of them today; each lesson brings in one or two.
 
 3. **Guess what happens next**
 
-   Before checking for updates, think about what kempt does when it finds one.
+   Before checking for updates, think about what happens when a new version of a tool comes out.
 
    ```
-   I think kempt shows me what it would change and waits for my yes. Am I right?
+   I think nothing changes until I ask my agent to update. Am I right?
    ```
 
-   **Claude runs:** nothing; it checks your pick against what kempt does.
+   **Claude runs:** nothing; it checks your pick against how the tools update.
 
    **Choose:**
 
-   - **It shows me first and waits**: I think kempt shows me what it would change and waits for my yes. Am I right?
-   - **It updates everything straight away**: I think kempt updates everything straight away. Am I right?
-   - **It only tells me, and I update by hand**: I think kempt only tells me, and I have to update each tool by hand. Am I right?
+   - **Nothing changes until I ask**: I think nothing changes until I ask my agent to update. Am I right?
+   - **The tools update themselves**: I think the tools update themselves in the background. Am I right?
+   - **I reinstall from the website**: I think I have to reinstall each tool from its website. Am I right?
 
 4. **Check for updates**
 
-   New versions ship often, and kempt is how they reach you.
+   New versions ship often, and your agent brings them in when you ask.
 
    ```
-   Are any of my tools out of date? If so, show me what would change before you update them.
+   Are any of my tools out of date? If so, tell me which before you update them.
    ```
 
-   **Claude runs:** `kempt outdated`, then `kempt upgrade` only after you say yes.
+   **Claude runs:** each tool's `update` after you say yes, or `kempt update` when kempt manages this machine.
 
    If everything is current, there's nothing to do; that's the usual answer.
