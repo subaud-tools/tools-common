@@ -503,6 +503,8 @@ export interface IndexSectionOptions {
   empty: string;
   /** Turns the name into a link: "<name> ›". */
   open?: () => void;
+  /** Drawn on the right of the name, in one heading row (div.kit-index-head): a "+ Add" button. Without it the name stands alone as before. */
+  action?: Node;
 }
 
 /** A named group of rows. */

@@ -208,7 +208,9 @@ function parts(tabbed) {
       indexRow({ id: 'F3', title: 'A draft waits for Send', meta: 'draft · A', draft: true, select }),
       indexRow({ id: 'F4', title: 'Waiting on another finding', meta: 'waiting on F1', waits: true, select }),
     ] }),
-    indexSection({ name: 'Later', rows: [], empty: 'Nothing for later.' }));
+    indexSection({ name: 'Later', rows: [], empty: 'Nothing for later.' }),
+    indexSection({ name: 'Artifacts', open() {}, empty: 'No files yet.', rows: [],
+      action: h('button', { class: 'kit-chip', type: 'button', onclick() {} }, '+ Add') }));
   frontPage(f);
   needsDemo(f);
   proseDemo(f);
