@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.76.1
+
+### Fixed
+- guide: lesson 1 no longer assumes kempt set up the machine. A suite installed through each tool's install line has no kempt.toml, so `kempt plan` and `kempt outdated` failed there; the lesson now asks each tool for its version, and updates through each tool's `update` (or `kempt update` where kempt manages the machine).
+
 ## 0.76.0
 
 ### Added
