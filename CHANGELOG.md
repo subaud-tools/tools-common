@@ -8,6 +8,7 @@ tags and PRs.
 
 ### Added
 - record: the shared record of what this user has done across the family, one JSON file at `StateDir("subaud")/record.json`: lessons finished, tools used and named features reached, each with the date it first happened. `MarkLesson`, `MarkTool`, `MarkFeature` and `Read` (a missing file reads as empty); `Record.HasLesson`, `HasTool`, `HasFeature`. A mark holds an exclusive lock on `record.json.lock` around its read-modify-write and writes by rename, so two tools marking at once both land. Local only, nothing sent.
+- guide: the family guide's text, embedded: one section per tool (`guide/tools/<name>.md`, front matter for its name, summary, `weight: core|light` and its asks; body sections When to reach for it, When to skip it, Where it sits, Pointers), how the tools fit together (`guide/fit.md`) and the walk's lessons (`guide/lessons/<n>-<topic>.md`, a title, a Goal and steps in learning-with-court's lesson shape, with an optional `**Choose:**` list). `Tools()`, `Lesson(n)`, `LessonNumbers()`, `Fit()` and `Named(text)`. Loading refuses a tool file missing a part (a core tool without Pointers too), a lesson step without its sentence, ask or Claude runs line, and any line that tells the user to type a family command. This release has diazo, galley and muda in full, fit.md and lesson 3 (plan a change on diazo's page); the other tools and lessons follow.
 
 ## 0.75.0
 
