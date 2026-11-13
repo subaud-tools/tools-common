@@ -429,6 +429,11 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    wait colour, the row in front of you the signal. */
 .kit-index-section { padding: 4px 12px 8px; }
 .kit-index-section > .kit-label { margin: 12px 8px 8px; }
+/* a name with an action (indexSection's action): the name left, the action
+   right, on one line; a long name wraps rather than push the action out. */
+.kit-index-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 8px 8px; min-width: 0; }
+.kit-index-head > .kit-label { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.kit-index-head > :last-child { flex: none; }
 .kit-index-section > .kit-empty { margin: 0 8px; }
 .kit-index-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .kit-index-row {

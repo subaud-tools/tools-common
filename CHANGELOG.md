@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.75.0
+
+### Added
+- localweb/page: `indexSection` takes `action`, a node drawn on the right of the section's name in one heading row (`div.kit-index-head`, name left, action right, on one line; a long name wraps rather than push the action out of a narrow column). The name is the same link or plain label as before. A section without an action is drawn exactly as before.
+- The kit demo's left column has an Artifacts section with a **+ Add** action.
+
 ## 0.74.0
 
 ### Added

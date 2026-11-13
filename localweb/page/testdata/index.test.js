@@ -68,3 +68,29 @@ test('indexSection: open turns the name into a link', () => {
   b.click();
   eq(opened, 1);
 });
+
+test('indexSection: an action sits beside the name in one heading row', () => {
+  const action = document.createElement('button');
+  action.textContent = '+ Add';
+  const s = indexSection({ name: 'Artifacts', rows: [], empty: 'None yet.', open() {}, action });
+  const box = fixture();
+  box.style.width = '160px';
+  box.append(s);
+  const head = s.firstChild;
+  eq([head.tagName, head.className, head.children.length], ['DIV', 'kit-index-head', 2]);
+  eq([head.firstChild.className, head.firstChild.textContent], ['kit-label kit-label-link', 'Artifacts ›']);
+  assert(head.lastChild === action, 'the action follows the name');
+  eq(s.lastChild.className, 'kit-empty');
+  const hr = head.getBoundingClientRect(), lr = head.firstChild.getBoundingClientRect(), ar = action.getBoundingClientRect();
+  assert(lr.left < ar.left, 'the name on the left, the action on the right');
+  assert(ar.right <= hr.right + 0.5 && head.scrollWidth <= head.clientWidth, 'nothing overflows the column');
+  assert(Math.abs((lr.top + lr.bottom) / 2 - (ar.top + ar.bottom) / 2) < 2, 'the two sit on one line');
+});
+
+test('indexSection: a plain name with an action, and none without one', () => {
+  const action = document.createElement('i');
+  const head = indexSection({ name: 'Later', rows: [], empty: '', action }).firstChild;
+  eq([head.className, head.firstChild.tagName, head.firstChild.className], ['kit-index-head', 'DIV', 'kit-label']);
+  const plain = indexSection({ name: 'Later', rows: [], empty: 'x' });
+  eq(plain.outerHTML, '<section class="kit-index-section"><div class="kit-label">Later</div><p class="kit-empty">x</p></section>');
+});

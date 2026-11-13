@@ -27,12 +27,14 @@ export function indexRow(o) {
 }
 
 // indexSection is a named group of rows, or its empty words with none. open,
-// when given, turns the name into a link that calls it.
+// when given, turns the name into a link that calls it; action, a node, sits on
+// the right of the name in one heading row.
 export function indexSection(o) {
+  const label = o.open
+    ? h('button', { class: 'kit-label kit-label-link', type: 'button', onclick: o.open }, `${o.name} ›`)
+    : h('div', { class: 'kit-label' }, o.name);
   return h('section', { class: 'kit-index-section' },
-    o.open
-      ? h('button', { class: 'kit-label kit-label-link', type: 'button', onclick: o.open }, `${o.name} ›`)
-      : h('div', { class: 'kit-label' }, o.name),
+    o.action ? h('div', { class: 'kit-index-head' }, label, o.action) : label,
     o.rows.length
       ? h('ul', { class: 'kit-index-rows' }, o.rows)
       : h('p', { class: 'kit-empty' }, o.empty));
