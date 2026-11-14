@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.79.0
+
+### Added
+- pageserve: `Where.Session` (`tmux_session`), the tmux session a pane belongs to. When it is set, `TerminalOf` and `TerminalGo` pass `proj terminal --session`, so proj (0.34.0 and later) opens that session's main pane when the pane id is gone or now belongs to another session.
+
 ## 0.78.0
 
 ### Added
