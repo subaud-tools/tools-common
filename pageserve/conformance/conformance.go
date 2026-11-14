@@ -51,6 +51,20 @@ type Server struct {
 	// Nothing in pageserve exits for being idle: a tool that adds a timer of its
 	// own is caught only when Env shortens it to under this.
 	Quiet time.Duration
+	// Delivery: the tool's channel takes Sends with Spec.Stream and its serve
+	// wires pageserve.Delivery, so the delivers rule runs, with two `<tool>
+	// watch` sessions. Send must be set.
+	Delivery bool
+	// Send records one Send for the project at folder through the tool's API on
+	// e (e.Loopback(), e.Token), as the page's Send button does.
+	Send func(e pageserve.Entry, folder string) error
+	// Folder makes the project folder the delivers rule's sessions run in (a
+	// git repository, for a tool whose projects are). nil: an empty folder.
+	Folder func(t *testing.T) string
+	// PresenceTTL is the presence TTL Env gives serve (0:
+	// pageserve.DefaultPresenceTTL): a killed session's project may take this
+	// long, and 5s, to reach another.
+	PresenceTTL time.Duration
 }
 
 // staleWait is how long the stale mark may take after an install; tests
@@ -71,6 +85,7 @@ var rules = []struct {
 	{"build", saysBuild},
 	{"skills", shipsSkill},
 	{"stop", stopTakesHeader},
+	{"delivers", delivers},
 }
 
 // Check asserts every server rule against s, one subtest per rule.

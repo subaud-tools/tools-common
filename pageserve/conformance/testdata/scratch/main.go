@@ -1,16 +1,22 @@
 // Command scratch is a server built only from pageserve, with none of its own
 // code for the server rules, which conformance must pass. SCRATCH_BREAK names
 // a rule to break, the one thing it does beyond that, which conformance must
-// fail: that is what proves the check can fail.
+// fail: that is what proves the check can fail. Its channel (`scratch watch`)
+// takes Sends with Spec.Stream, and its serve wires pageserve.Delivery, with
+// POST /api/conformance-send to record one.
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
+	"strconv"
+	"sync"
 	"syscall"
 	"testing/fstest"
 	"time"
@@ -32,6 +38,9 @@ func main() {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 		err = serve(ctx, broke)
+	case len(os.Args) > 1 && os.Args[1] == "watch":
+		c := pageserve.Commands{Spec: spec, Process: pageserve.Process{Live: pageserve.LiveFor(tool)}}
+		err = c.WatchCommand(pageserve.Help{}).Run(os.Args[2:], os.Stdout, os.Stderr)
 	case len(os.Args) > 1 && os.Args[1] == "skills" && broke != "skills":
 		// SCRATCH_SKILL names the skill apart from the tool.
 		name := os.Getenv("SCRATCH_SKILL")
@@ -55,7 +64,8 @@ func serve(ctx context.Context, broke string) error {
 	if err := os.MkdirAll(state, 0o700); err != nil {
 		return err
 	}
-	o := pageserve.Options{Live: pageserve.LiveFor(tool), Assets: assets, Version: "1.2.3"}
+	o := pageserve.Options{Live: pageserve.LiveFor(tool), Assets: assets, Version: "1.2.3", Events: pageserve.NewEvents()}
+	o.API = deliveryAPI(o.Events, broke == "delivers")
 	switch broke {
 	case "token": // a tool that makes a new token each start
 		_ = os.Remove(filepath.Join(state, "token"))
@@ -114,4 +124,93 @@ func handRolled(ctx context.Context, o pageserve.Options) error {
 	}
 	defer o.Live.Withdraw(e.PID)
 	return srv.Wait()
+}
+
+// spec is scratch's channel: no tools, its folder as its scope, and a Send's
+// text pushed as is.
+var spec = pageserve.Spec{Tool: tool, Version: "1.2.3", Answers: "the sends", Stream: true,
+	Scope: func(cwd string) string { return cwd },
+	Wake: func(body json.RawMessage) (string, map[string]string, bool) {
+		var got struct {
+			ID   int64  `json:"id"`
+			Text string `json:"text"`
+		}
+		if json.Unmarshal(body, &got) != nil || got.ID == 0 {
+			return "", nil, false
+		}
+		return got.Text, map[string]string{"source": tool, "send_id": strconv.FormatInt(got.ID, 10)}, true
+	}}
+
+// presenceTTL is scratch's own short test clock.
+const presenceTTL = 2 * time.Second
+
+// deliveryAPI is scratch's agent routes over an in-memory queue per folder.
+// The last session to claim from a folder owns it, and while its owner is
+// present nobody else claims there. twice (SCRATCH_BREAK=delivers) hands
+// each Send to every session that claims, as a claim that isn't exclusive
+// would.
+func deliveryAPI(ev *pageserve.Events, twice bool) http.Handler {
+	var mu sync.Mutex
+	var next int64
+	queued, owner := map[string][]int64{}, map[string]string{}
+	taken := map[string]map[int64]bool{} // with twice: session -> the Sends it took
+	d := &pageserve.Delivery{Events: ev, TTL: presenceTTL,
+		Covered: func(_ context.Context, root string) ([]string, error) { return []string{realPath(root)}, nil },
+		Claim: func(_ context.Context, session string, covered, present []string) (any, bool, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			for _, f := range covered {
+				if twice {
+					for _, id := range queued[f] {
+						if !taken[session][id] {
+							if taken[session] == nil {
+								taken[session] = map[int64]bool{}
+							}
+							taken[session][id] = true
+							return map[string]any{"id": id, "text": "send " + strconv.FormatInt(id, 10)}, true, nil
+						}
+					}
+					continue
+				}
+				if o := owner[f]; o != "" && o != session && slices.Contains(present, o) {
+					continue
+				}
+				if q := queued[f]; len(q) > 0 {
+					queued[f], owner[f] = q[1:], session
+					return map[string]any{"id": q[0], "text": "send " + strconv.FormatInt(q[0], 10)}, true, nil
+				}
+			}
+			return nil, false, nil
+		}}
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/agent/presence", func(w http.ResponseWriter, r *http.Request) {
+		var b struct {
+			Session string `json:"session"`
+		}
+		if json.NewDecoder(r.Body).Decode(&b) != nil || b.Session == "" {
+			http.Error(w, "session is required", http.StatusBadRequest)
+			return
+		}
+		d.Touch(b.Session)
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("POST /api/agent/claim", d.ServeClaim)
+	mux.HandleFunc("POST /api/conformance-send", func(w http.ResponseWriter, r *http.Request) {
+		f := realPath(r.URL.Query().Get("folder"))
+		mu.Lock()
+		next++
+		queued[f] = append(queued[f], next)
+		mu.Unlock()
+		d.Deliver()
+		w.WriteHeader(http.StatusNoContent)
+	})
+	return mux
+}
+
+// realPath resolves symlinks (macOS's /var is /private/var), or returns p.
+func realPath(p string) string {
+	if r, err := filepath.EvalSymlinks(p); err == nil {
+		return r
+	}
+	return filepath.Clean(p)
 }
