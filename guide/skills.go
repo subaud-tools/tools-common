@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -48,7 +49,7 @@ func Skills() ([]Skill, error) {
 			d.Offered = append(d.Offered, l)
 		}
 	}
-	funcs := template.FuncMap{"demote": demote, "inc": func(i int) int { return i + 1 }}
+	funcs := template.FuncMap{"demote": demote, "inc": func(i int) int { return i + 1 }, "yamlquote": yamlQuote, "toolNames": toolNames}
 	var out []Skill
 	for _, name := range skillNames {
 		t, err := template.New(name+".md.tmpl").Funcs(funcs).ParseFS(templates, "templates/"+name+".md.tmpl")
@@ -79,4 +80,18 @@ func demote(md string) string {
 		b.WriteString(line + "\n")
 	}
 	return strings.TrimSpace(b.String())
+}
+
+// yamlQuote writes s as a YAML double-quoted scalar, so a front-matter value
+// may hold ": " or "#" (a plain scalar with ": " in it doesn't parse, and pi
+// then drops the skill). strconv's escapes are a subset of YAML's.
+func yamlQuote(s string) string { return strconv.Quote(s) }
+
+// toolNames joins the tools' names with commas, for a skill's description.
+func toolNames(ts []Tool) string {
+	n := make([]string, len(ts))
+	for i, x := range ts {
+		n[i] = x.Name
+	}
+	return strings.Join(n, ", ")
 }

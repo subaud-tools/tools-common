@@ -1,6 +1,6 @@
 ---
 name: using-the-tools
-description: Use when a request might call for one of the subaud tools ({{range $i, $t := .Tools}}{{if $i}}, {{end}}{{$t.Name}}{{end}}): to pick the tool the request needs, or none, hand off between them, and introduce a tool the user hasn't met one at a time. Installed with every subaud tool; each tool's own skill keeps the detail.
+description: {{yamlquote (printf "Use when a request might call for one of the subaud tools (%s): to pick the tool the request needs, or none, hand off between them, and introduce a tool the user hasn't met one at a time. Installed with every subaud tool; each tool's own skill keeps the detail." (toolNames .Tools))}}
 owner: family
 ---
 

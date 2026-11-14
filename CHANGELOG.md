@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.76.2
+
+### Fixed
+- guide: the two family skills load in pi. Their descriptions held ": " in an unquoted YAML value, so the front matter didn't parse and pi dropped both skills; a description is now written as a quoted string, and a test checks every front-matter value. `using-the-tools`' description now names the tools rather than the template text that was meant to list them.
+
 ## 0.76.1
 
 ### Fixed

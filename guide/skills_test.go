@@ -3,9 +3,43 @@ package guide
 import (
 	"bytes"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
+
+// Each front-matter value is valid YAML: pi's loader drops a skill whose
+// front matter won't parse, and an unquoted value with ": " in it ("…walk:
+// runs…") doesn't. A value is either double-quoted or a plain scalar with no
+// ": ", no " #" and no leading indicator.
+func TestSkillFrontMatterIsValidYAML(t *testing.T) {
+	sk, err := Skills()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range sk {
+		parts := strings.SplitN(string(s.Body), "---\n", 3)
+		if len(parts) < 3 || parts[0] != "" {
+			t.Fatalf("%s: no front matter", s.Name)
+		}
+		for _, line := range strings.Split(strings.TrimSuffix(parts[1], "\n"), "\n") {
+			k, v, ok := strings.Cut(line, ": ")
+			if !ok || k == "" || strings.ContainsAny(k, " \t") {
+				t.Errorf("%s: not a key: value line: %q", s.Name, line)
+				continue
+			}
+			if strings.HasPrefix(v, `"`) {
+				if _, err := strconv.Unquote(v); err != nil || !strings.HasSuffix(v, `"`) {
+					t.Errorf("%s: %s is a broken quoted string: %s", s.Name, k, v)
+				}
+				continue
+			}
+			if strings.Contains(v, ": ") || strings.Contains(v, " #") || strings.ContainsAny(v[:1], "!&*?|>'%@`{}[],-") {
+				t.Errorf("%s: %s is not a valid plain YAML value: %s", s.Name, k, v)
+			}
+		}
+	}
+}
 
 // Both family skills render from the guide content, family-owned, so they
 // can't drift from the Guide tab.
@@ -27,7 +61,7 @@ func TestSkillsRenderFromTheContent(t *testing.T) {
 		if m := placeholderRe.FindString(inlineCodeRe.ReplaceAllString(b, "")); m != "" {
 			t.Errorf("%s: placeholder %s", s.Name, m)
 		}
-		if strings.Contains(b, "<no value>") {
+		if strings.Contains(b, "{{") || strings.Contains(b, "<no value>") {
 			t.Errorf("%s: a template field rendered empty", s.Name)
 		}
 	}
