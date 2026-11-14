@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.79.1
+
+### Fixed
+- guide: lesson 2 works as written. proj treats a folder added on its page as a folder of projects, so the practice repo now lives at `~/subaud/practice`: lesson 1 makes it there, lesson 2 adds `~/subaud` and opens `practice/try`, and lesson 4 opens `practice/later`. Lesson 2's `proj window` line names the `--socket` and `--pane` it needs.
+
 ## 0.79.0
 
 ### Added

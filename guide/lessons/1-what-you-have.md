@@ -9,10 +9,10 @@
    The lessons need a place to try things where nothing matters, so the first step makes one: a new folder with git in it, on your machine only.
 
    ```
-   Make me a practice repo for these lessons: a new folder called subaud-practice in my home folder, with git set up in it.
+   Make me a practice repo for these lessons: a folder called practice inside a new subaud folder in my home folder, with git set up in it.
    ```
 
-   **Claude runs:** `mkdir ~/subaud-practice` and `git init` in it.
+   **Claude runs:** `mkdir -p ~/subaud/practice` and `git init` in it.
 
    You can delete it when the lessons are done; nothing is sent to GitHub.
 
