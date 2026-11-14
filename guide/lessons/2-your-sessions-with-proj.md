@@ -12,19 +12,19 @@
    Open proj's page as a tab beside this terminal.
    ```
 
-   **Claude runs:** `proj window --right` with the address of proj's page, which starts proj's server when it isn't running and opens the page as a tab on the right of this split page.
+   **Claude runs:** `proj window --socket ‹socket› --pane ‹pane› --right ‹proj's page›`, with this session's tmux socket and pane from `$TMUX` and `$TMUX_PANE`, which starts proj's server when it isn't running and opens the page as a tab on the right of this split page.
 
    This window is a split page: the terminal on the left, tabs on the right. The lesson is one tab; proj's page is another, and later lessons open diazo's and galley's beside them.
 
 2. **Add the project**
 
-   A project is a folder you work in; once proj knows it, the folder can have sessions of its own.
+   A project is a folder you work in. proj finds projects inside the folders you give it, so you add the subaud folder and your practice repo shows up as a project in it.
 
    ```
-   I'm adding my subaud-practice folder on the folders tab of proj's page. Tell me when proj lists it.
+   I'm adding my subaud folder on the folders tab of proj's page. Tell me when proj lists practice as a project.
    ```
 
-   **Claude runs:** `proj list --json`, which shows subaud-practice among the projects once your add arrives.
+   **Claude runs:** `proj list --json`, which shows practice among the projects once your add arrives.
 
    You did it on the page and the agent saw it from the terminal; asking the agent to add a folder works too, and the page shows it either way.
 
@@ -33,10 +33,10 @@
    A session is one terminal for one piece of work, with an agent running in it and its own split page.
 
    ```
-   Open a proj session called subaud-practice/try with Claude in it.
+   Open a proj session called practice/try with Claude in it.
    ```
 
-   **Claude runs:** `proj new subaud-practice/try --agent claude`, which opens it in the background.
+   **Claude runs:** `proj new practice/try --agent claude`, which opens it in the background.
 
    Your screen stays where it is, and the new session shows up on the sessions tab of proj's page; + new work at the top of the page opens one the same way.
 

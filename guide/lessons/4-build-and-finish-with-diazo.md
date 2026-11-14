@@ -79,9 +79,9 @@
    A plan isn't tied to the session that started it: any session can open it again and carry on, and whatever you left unanswered comes to that session.
 
    ```
-   Open a new proj session called subaud-practice/later with Claude in it. I'll ask it there to pick up my practice-repo plan.
+   Open a new proj session called practice/later with Claude in it. I'll ask it there to pick up my practice-repo plan.
    ```
 
-   **Claude runs:** `proj new subaud-practice/later --agent claude`, which opens it in the background.
+   **Claude runs:** `proj new practice/later --agent claude`, which opens it in the background.
 
    Switch to it and say "pick up my practice-repo plan with diazo"; it runs `diazo_open` on the same folder, and the page talks to it from then on.
