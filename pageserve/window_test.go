@@ -106,6 +106,30 @@ func TestTerminalGoAsksProjToShowIt(t *testing.T) {
 	}
 }
 
+// A Where that knows its tmux session's name passes it, so proj can open that
+// session when the pane is gone; one without it asks as before.
+func TestTerminalPassesTheSession(t *testing.T) {
+	named := inTmux
+	named.Session = "pi"
+	for _, tc := range []struct {
+		w    Where
+		goTo bool
+		want []string
+	}{
+		{named, true, []string{"terminal", "--socket", inTmux.Socket, "--pane", inTmux.Pane, "--session", "pi", "--go", "--json"}},
+		{named, false, []string{"terminal", "--socket", inTmux.Socket, "--pane", inTmux.Pane, "--session", "pi", "--json"}},
+		{inTmux, true, []string{"terminal", "--socket", inTmux.Socket, "--pane", inTmux.Pane, "--go", "--json"}},
+	} {
+		calls := withTerminal(t, `{"state":"attached"}`)
+		if _, err := terminal(tc.w, tc.goTo); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual((*calls)[0], tc.want) {
+			t.Fatalf("%+v: %v", tc.w, (*calls)[0])
+		}
+	}
+}
+
 func TestTerminalOfOutsideTmuxIsNothing(t *testing.T) {
 	calls := withTerminal(t, `{"state":"attached"}`)
 	for _, w := range []Where{{}, {Socket: "/tmp/s"}, {Pane: "%3"}} {

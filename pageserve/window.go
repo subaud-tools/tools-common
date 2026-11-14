@@ -23,9 +23,12 @@ import (
 
 // Where is where a session runs in tmux. It is zero outside tmux. A tool's
 // route that takes it from its channel embeds it in the body it decodes.
+// Session is the tmux session's name, which a tool's serve may resolve and keep
+// beside the pane; the channel never sets it.
 type Where struct {
-	Socket string `json:"tmux_socket,omitempty"`
-	Pane   string `json:"tmux_pane,omitempty"`
+	Socket  string `json:"tmux_socket,omitempty"`
+	Pane    string `json:"tmux_pane,omitempty"`
+	Session string `json:"tmux_session,omitempty"`
 }
 
 // WhereFrom reads a session's Where from its environment: the socket's path is
@@ -110,6 +113,9 @@ func terminal(w Where, goTo bool) (*Terminal, error) {
 	}
 	limit := terminalRead
 	args := []string{"terminal", "--socket", w.Socket, "--pane", w.Pane}
+	if w.Session != "" {
+		args = append(args, "--session", w.Session)
+	}
 	if goTo {
 		limit = terminalGo
 		args = append(args, "--go")
