@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture } from './harness.js';
-import { guideView, openGuide } from '/_kit/guide.js';
+import { guideView, openGuide, guideAsks } from '/_kit/guide.js';
 import { tour } from '/_kit/tour.js';
 import { bar } from '/_kit/dom.js';
 
@@ -130,4 +130,59 @@ test('bar: every page has Guide, left of the theme control, and it opens the gui
   } finally {
     window.fetch = real;
   }
+});
+
+const serve = body => async url => {
+  serve.asked.push(String(url));
+  return typeof body === 'number' ? new Response('no', { status: body }) : new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
+};
+async function withFetch(body, fn) {
+  const real = window.fetch;
+  serve.asked = [];
+  window.fetch = serve(body);
+  try { return await fn(); } finally { window.fetch = real; }
+}
+
+test('guideAsks: draws the page tool\'s summary and its asks, each with Copy', async () => {
+  const el = fixture();
+  const drawn = await withFetch(data(), () => guideAsks(el, { copy: async () => {} }));
+  eq(drawn, true);
+  eq(serve.asked, ['/api/kit/guide']);
+  const box = el.querySelector('.kit-guide-asks-box');
+  eq(box.querySelector('.kit-guide-summary').textContent, 'The planning page.');
+  eq([...box.querySelectorAll('.kit-guide-ask-text')].map(e => e.textContent), ['Plan this with diazo: ‹idea›.', 'What waits on me?']);
+  eq([...box.querySelectorAll('.kit-guide-ask button')].map(e => e.textContent), ['Copy', 'Copy']);
+  eq(box.querySelector('.kit-guide-asks-more').textContent, 'More in the Guide');
+});
+
+test('guideAsks: Copy copies the ask', async () => {
+  const copied = [];
+  const el = fixture();
+  await withFetch(data(), () => guideAsks(el, { copy: async s => copied.push(s) }));
+  const b = el.querySelectorAll('.kit-guide-ask button')[1];
+  b.click();
+  await new Promise(r => setTimeout(r, 0));
+  eq(copied, ['What waits on me?']);
+  eq(b.textContent, 'Copied');
+});
+
+test('guideAsks: More in the Guide opens the Guide', async () => {
+  const el = fixture();
+  await withFetch(data(), async () => {
+    await guideAsks(el, { copy: async () => {} });
+    el.querySelector('.kit-guide-asks-more').click();
+    await new Promise(r => setTimeout(r, 30));
+    const dlg = document.querySelector('.kit-guide-sheet[role="dialog"]');
+    assert(dlg && dlg.querySelector('.kit-guide-main h2').textContent === 'diazo', 'guide opened on diazo');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  });
+});
+
+test('guideAsks: draws nothing for a tool the guide has no section for, or when the fetch fails', async () => {
+  const el = fixture();
+  el.textContent = 'kept';
+  eq(await withFetch({ ...data(), tool: 'nope' }, () => guideAsks(el)), false);
+  eq(el.textContent, 'kept');
+  eq(await withFetch(500, () => guideAsks(el)), false);
+  eq(el.textContent, 'kept');
 });

@@ -8,12 +8,14 @@ owner: family
 
 The walk is {{len .Core}} lessons in proj's split page: the session's terminal on the left, the lesson as a pinned tab on the right. It runs in a throwaway practice repo that lesson 1 makes (`~/subaud-practice`, local only, no GitHub). {{len .Offered}} more lessons are offered later, when they become relevant.
 
+From lesson 2 on, a tool's real page (proj's, then diazo's and galley's) is open as a tab on the right of the split page, beside the terminal on the left. When the first of those pages opens, tell the learner: "The lessons go back and forth on purpose: some answers you give on the page, some you type in the terminal, and either way the other side catches up. That's how you'll use them day to day." Whichever side an answer comes from, act on it the same way.
+
 **The learner drives; you guide.** They press Send to Claude on a step, which types its ask into your terminal. You run only what that step's Claude runs line lists, check state quietly, and never run ahead to the next step or explain what's coming.
 
 ## Running it
 
 1. `proj guide start` opens the lesson tab beside this terminal, or uses the one open. For an offered lesson, `proj guide start --lesson N`.
-2. When a step's ask arrives, run what its Claude runs line lists and nothing more. On a choose step, run nothing: say whether the learner's pick was right, from what actually happens.
+2. When a step's ask arrives, run what its Claude runs line lists and nothing more.
 3. Post the step's result, a short sentence each: `proj guide result --lesson N --step M --ran "what ran" --happened "what happened" --means "what it means"`. The learner presses Next.
 4. After the last step's result, `proj guide done --lesson N` shows the lesson's recap and marks it finished in the shared record.
 5. When a step fails, say so in `--happened`, fix it with the learner, and post the result again.
@@ -28,5 +30,5 @@ Offered when {{.Offered}}.
 {{end}}
 **Goal:** {{.Goal}}
 {{range $i, $s := .Steps}}
-{{inc $i}}. **{{$s.Title}}**{{if $s.Choose}} (choose: the learner predicts before acting){{end}}. Ask: "{{$s.Ask}}" Claude runs: {{$s.Runs}}{{end}}
+{{inc $i}}. **{{$s.Title}}**. Ask: "{{$s.Ask}}" Claude runs: {{$s.Runs}}{{end}}
 {{end}}

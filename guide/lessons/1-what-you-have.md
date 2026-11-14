@@ -28,25 +28,9 @@
 
    You don't need all of them today; each lesson brings in one or two.
 
-3. **Guess what happens next**
+3. **Check for updates**
 
-   Before checking for updates, think about what happens when a new version of a tool comes out.
-
-   ```
-   I think nothing changes until I ask my agent to update. Am I right?
-   ```
-
-   **Claude runs:** nothing; it checks your pick against how the tools update.
-
-   **Choose:**
-
-   - **Nothing changes until I ask**: I think nothing changes until I ask my agent to update. Am I right?
-   - **The tools update themselves**: I think the tools update themselves in the background. Am I right?
-   - **I reinstall from the website**: I think I have to reinstall each tool from its website. Am I right?
-
-4. **Check for updates**
-
-   New versions ship often, and your agent brings them in when you ask.
+   New versions ship often, and nothing changes until you ask; your agent brings them in when you do.
 
    ```
    Are any of my tools out of date? If so, tell me which before you update them.

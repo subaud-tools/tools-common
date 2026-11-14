@@ -830,6 +830,15 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-guide-more { margin-top: 16px; }
 .kit-guide-more > summary { cursor: pointer; }
 .kit-guide-links { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }
+/* guideAsks: an empty front page's summary and asks, and a link to the Guide */
+.kit-guide-asks-box { max-width: 640px; margin: 24px auto; padding: 18px 20px; border: 1px solid var(--kit-line); border-radius: 8px; background: var(--kit-panel); overflow-wrap: anywhere; }
+.kit-guide-asks-box .kit-guide-summary { margin: 0 0 14px; }
+.kit-guide-asks-box .kit-label { margin: 0 0 6px; }
+.kit-guide-asks-more {
+  margin-top: 8px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px;
+  color: var(--kit-signal); cursor: pointer;
+}
+.kit-guide-asks-more:hover { text-decoration: underline; }
 .kit-guide-page { max-width: 1040px; margin: 0 auto; padding: 16px; }
 .kit-guide-page .kit-guide { border: 1px solid var(--kit-line); border-radius: 8px; background: var(--kit-panel); }
 @media (max-width: 640px) {

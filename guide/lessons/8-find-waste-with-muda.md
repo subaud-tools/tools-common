@@ -26,24 +26,9 @@
 
    **Claude runs:** `muda_status`, to see what waits on you.
 
-3. **Guess what comes first**
+3. **Decide on a finding**
 
-   Think about what muda does before it suggests any fix.
-
-   ```
-   I think it records a baseline of real runs first, and only then looks for waste. Am I right?
-   ```
-
-   **Claude runs:** nothing; it checks your pick.
-
-   **Choose:**
-
-   - **A baseline first**: I think it records a baseline of real runs first, and only then looks for waste. Am I right?
-   - **A fix first**: I think it suggests fixes straight away from the workflow files. Am I right?
-
-4. **Decide on a finding**
-
-   A finding is one piece of waste, with what it costs, its fixes and the one muda recommends; you choose on the page.
+   After it records a baseline of real runs, muda posts findings, each one piece of waste with what it costs, its fixes and the one it recommends; you choose on the page.
 
    ```
    Explain the first finding on muda's page; I'll choose there.
