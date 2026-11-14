@@ -135,7 +135,10 @@ func TestCoveredRunsOncePerSessionAcrossManyClaims(t *testing.T) {
 
 // A session whose presence lapses causes one deliver event at the lapse, so a
 // gone owner's project can be taken over; nothing ticks before or after it.
-func TestALapsedSessionCausesOneDeliverEvent(t *testing.T) {
+// A lapse emits deliver at once and again one TTL later: the store may still
+// hold a gone owner's project at the lapse (it touched a delivery after its
+// last check-in), and nothing else would try the takeover again.
+func TestALapsedSessionCausesADeliverEventAndOneMoreATTLLater(t *testing.T) {
 	f := newClaimFixture(100 * time.Millisecond)
 	f.d.Touch("s-1")
 	if !f.d.Present("s-1") {
@@ -145,9 +148,17 @@ func TestALapsedSessionCausesOneDeliverEvent(t *testing.T) {
 	if n := f.delivers(); n != 0 {
 		t.Fatalf("%d deliver events before the lapse", n)
 	}
-	time.Sleep(350 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond) // past the lapse at 100 ms
 	if n := f.delivers(); n != 1 {
-		t.Fatalf("%d deliver events after the lapse, want 1", n)
+		t.Fatalf("%d deliver events just after the lapse, want 1", n)
+	}
+	time.Sleep(150 * time.Millisecond) // past lapse + TTL at 200 ms
+	if n := f.delivers(); n != 2 {
+		t.Fatalf("%d deliver events a TTL after the lapse, want 2", n)
+	}
+	time.Sleep(250 * time.Millisecond)
+	if n := f.delivers(); n != 2 {
+		t.Fatalf("%d deliver events long after the lapse, want 2", n)
 	}
 	if f.d.Present("s-1") || len(f.d.Sessions()) != 0 {
 		t.Fatalf("s-1 still present after its lapse: %v", f.d.Sessions())

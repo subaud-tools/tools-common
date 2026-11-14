@@ -121,7 +121,9 @@ func (d *Delivery) arm() {
 }
 
 // lapse forgets the sessions whose presence has lapsed and, when any did, emits
-// one deliver event, so a gone owner's project can be taken over.
+// one deliver event, so a gone owner's project can be taken over, and one more
+// a TTL later: the store holds a gone owner's project while it touched a
+// delivery within the TTL, which it can have done after its last check-in.
 func (d *Delivery) lapse() {
 	d.mu.Lock()
 	now, gone := time.Now(), false
@@ -136,6 +138,7 @@ func (d *Delivery) lapse() {
 	d.mu.Unlock()
 	if gone {
 		d.Deliver()
+		time.AfterFunc(d.ttl(), d.Deliver)
 	}
 }
 
