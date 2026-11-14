@@ -4,7 +4,8 @@ package pageserve
 // the tool's plugin, pi through channels.tools). It gives the agent the
 // tool's tools, and a tool call starts serve when it isn't running. Under pi
 // it registers the session's presence, holds a long poll open for the human's
-// Sends and injects each one as a notifications/claude/channel event; that
+// Sends (with Spec.Stream, serve's event stream, claiming on each deliver
+// event) and injects each one as a notifications/claude/channel event; that
 // loop never starts serve. Under Claude Code
 // `<tool> watch` runs that loop instead and prints each Send as a JSON line
 // for the plugin's mod. Moved from cull's internal/cull/channel/channel.go.
@@ -54,6 +55,11 @@ type Spec struct {
 	// the agent; ok is false when there is nothing to push (the wait timed
 	// out).
 	Wake func(body json.RawMessage) (text string, meta map[string]string, ok bool)
+	// Stream: the loop hears of Sends on serve's GET /api/events instead of
+	// long-polling GET /api/agent/wait, and claims with POST /api/agent/claim
+	// once each time it connects and on every deliver event (serve wires
+	// Delivery). Wake reads the claim's answer, the same body as wait's.
+	Stream bool
 	// Answers names what the human sends, in the channel's log lines:
 	// "the user's answers".
 	Answers string
@@ -392,6 +398,21 @@ func (ch *Channel) loop(ctx context.Context) {
 			lastPresence, lastErr = time.Now(), ""
 			ch.nudge()
 		}
+		if ch.Spec.Stream {
+			err := ch.listen(ctx, c, &lastPresence, func() { lastErr = "" })
+			if ctx.Err() != nil {
+				return
+			}
+			var se *StatusError
+			if errors.As(err, &se) {
+				lastPresence = time.Time{}
+			}
+			logOnce(err)
+			if rest(at) {
+				lastPresence = time.Time{}
+			}
+			continue
+		}
 		var got json.RawMessage
 		code, err := c.Do(ctx, http.MethodGet, "/api/agent/wait?"+Query(
 			"session", ch.ID.Session, "root", ch.scope(), "timeout", strconv.Itoa(max(int(ch.Poll.Seconds()), 1))), nil, &got)
@@ -411,18 +432,96 @@ func (ch *Channel) loop(ctx context.Context) {
 		case code == http.StatusOK && len(got) > 0:
 			lastErr = ""
 			ch.nudge()
-			text, meta, ok := ch.Spec.Wake(got)
-			if !ok {
-				ch.logf("refused delivery: %s", refused(got))
-				continue
-			}
-			if err := ch.Push.Notify(text, meta); err != nil {
-				ch.logf("notify: %v", err)
-			}
+			ch.push(got)
 		default:
 			lastErr = ""
 			ch.nudge()
 		}
+	}
+}
+
+// push hands one claimed Send to the agent through Push, or logs it refused.
+func (ch *Channel) push(got json.RawMessage) {
+	text, meta, ok := ch.Spec.Wake(got)
+	if !ok {
+		ch.logf("refused delivery: %s", refused(got))
+		return
+	}
+	if err := ch.Push.Notify(text, meta); err != nil {
+		ch.logf("notify: %v", err)
+	}
+}
+
+// listen is the loop's turn with Spec.Stream: it holds serve's event stream
+// open, claims once it is open and on every deliver event, and keeps presence
+// fresh meanwhile (lastPresence is the loop's), until ctx ends or the stream
+// or a call fails, which it returns for the loop's retry. ok runs once the
+// stream is open. A deliver event while a claim is running brings one more
+// round, so nothing emitted meanwhile is missed.
+func (ch *Channel) listen(ctx context.Context, c *Client, lastPresence *time.Time, ok func()) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	opened := make(chan struct{})
+	deliver := make(chan struct{}, 1)
+	ended := make(chan error, 1)
+	go func() {
+		ended <- c.Listen(ctx, func() { close(opened) }, func(typ string, _ json.RawMessage) {
+			if typ == DeliverEvent {
+				select {
+				case deliver <- struct{}{}:
+				default:
+				}
+			}
+		})
+	}()
+	var presence <-chan time.Time // nil without presence: never fires
+	var timer *time.Timer
+	if !ch.Spec.NoPresence {
+		timer = time.NewTimer(max(time.Until(lastPresence.Add(ch.Presence)), 0))
+		defer timer.Stop()
+		presence = timer.C
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err := <-ended:
+			return err
+		case <-opened:
+			opened = nil
+			ok()
+			ch.nudge()
+			if err := ch.claim(ctx, c); err != nil {
+				return err
+			}
+		case <-deliver:
+			if err := ch.claim(ctx, c); err != nil {
+				return err
+			}
+		case <-presence:
+			if err := ch.Announce(ctx, c); err != nil {
+				return err
+			}
+			*lastPresence = time.Now()
+			ch.nudge()
+			timer.Reset(ch.Presence)
+		}
+	}
+}
+
+// claim takes the session's Sends from serve, one claim at a time, pushing
+// each, until serve answers that nothing is left.
+func (ch *Channel) claim(ctx context.Context, c *Client) error {
+	for {
+		var got json.RawMessage
+		code, err := c.Do(ctx, http.MethodPost, "/api/agent/claim", map[string]string{"session": ch.ID.Session, "root": ch.scope()}, &got)
+		if err != nil {
+			return err
+		}
+		if code != http.StatusOK || len(got) == 0 {
+			return nil
+		}
+		ch.push(got)
 	}
 }
 
