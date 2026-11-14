@@ -5,6 +5,7 @@ package pageserve
 // internal/cull/channel/client.go, with diazo's Fresh.
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -191,6 +193,70 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any) (in
 		}
 	}
 	return resp.StatusCode, nil
+}
+
+// listenIdle is how long Listen waits with nothing at all on the stream (serve
+// writes a heartbeat every 15s) before it gives the stream up.
+const listenIdle = 45 * time.Second
+
+// Listen opens serve's GET /api/events from the latest event on, calls open
+// once the stream is open (an event emitted from then on reaches on), then on
+// with each event's type and data, until ctx ends or the stream does. It says
+// why it ended: a stream that ends, or goes quiet past its heartbeats, wraps
+// ErrNoServe, as a serve that went does.
+func (c *Client) Listen(ctx context.Context, open func(), on func(typ string, data json.RawMessage)) error {
+	e, err := c.ensure()
+	if errors.Is(err, errStart) {
+		return err
+	}
+	if err != nil {
+		return fmt.Errorf("%s %w", c.Tool, ErrNoServe)
+	}
+	parent := ctx
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, e.Loopback()+"/api/events", nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set(localweb.TokenHeader, e.Token)
+	req.Header.Set("Accept", "text/event-stream")
+	// The stream stays open: c.HTTP's timeout would end it. A quiet stream ends
+	// with idle instead.
+	hc := http.Client{Transport: c.HTTP.Transport}
+	resp, err := hc.Do(req)
+	if err != nil {
+		if parent.Err() != nil {
+			return parent.Err()
+		}
+		return fmt.Errorf("%s %w (%w)", c.Tool, ErrNoServe, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
+		return &StatusError{Tool: c.Tool, Code: resp.StatusCode, Msg: string(bytes.TrimSpace(b))}
+	}
+	idle := time.AfterFunc(listenIdle, cancel)
+	defer idle.Stop()
+	open()
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 64<<10), 8<<20)
+	for sc.Scan() {
+		idle.Reset(listenIdle)
+		// serve writes each event as one data line of {type, data}.
+		line, ok := strings.CutPrefix(sc.Text(), "data: ")
+		if !ok {
+			continue
+		}
+		var ev wireEvent
+		if json.Unmarshal([]byte(line), &ev) == nil && ev.Type != "" {
+			on(ev.Type, ev.Data)
+		}
+	}
+	if err := parent.Err(); err != nil {
+		return err
+	}
+	return fmt.Errorf("%s %w (its event stream ended)", c.Tool, ErrNoServe)
 }
 
 // Report hands serve one report from the harness about session: a send

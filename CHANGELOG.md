@@ -4,6 +4,15 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.77.0
+
+### Added
+- pageserve: stream-and-claim delivery, opt-in. With `Spec.Stream` set, the channel loop (`<tool> channel` under pi, `<tool> watch` under Claude Code) stops long-polling `GET /api/agent/wait`: it keeps posting presence, holds serve's `GET /api/events` open with its token, and calls `POST /api/agent/claim` (`{session, root}`) once each time the stream opens and on every `deliver` event, claiming again until serve answers 204, and pushes each claimed Send through `Push` as the long poll did. An idle channel asks serve nothing but presence. A dropped stream or a new serve goes through the loop's existing retry, and the claim on connect brings anything sent meanwhile. `Client.Listen` reads the stream; it gives up a stream quiet past serve's heartbeats.
+- pageserve: `Delivery`, serve's half, wired with the tool's own `Claim` and `Covered`: `ServeClaim` is the claim route (the tool's claim body with 200, or 204), `Touch`/`Present`/`Sessions` keep presence in memory with a TTL (`DefaultPresenceTTL`, 90s), a session's covered scopes are found once and kept until it lapses or `Forget`, `Deliver` emits `deliver` (the tool calls it when it records a Send or takes a delivery back) and closes `Wake` (for a tool's kept long poll), and one timer, set to the next presence lapse, emits `deliver` so a gone owner's project can be taken over, and once more a TTL later for a takeover the store still held at the lapse. Nothing ticks per session. `Take` is one claim, for a tool's own route.
+- conformance: the `delivers` rule, for a `Server` with `Delivery` and a `Send` hook: two `<tool> watch` sessions on a fresh serve; three Sends queued before they connect all arrive, a Send reaches exactly one, after the session that took it is killed the next reaches the other within `PresenceTTL` and 5s, and a Send recorded as serve restarts arrives. `Folder` makes the project folder.
+
+Nothing changes for a tool that doesn't set `Spec.Stream` or `Server.Delivery`.
+
 ## 0.76.3
 
 ### Changed
