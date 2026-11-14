@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.76.3
+
+### Changed
+- localweb: the sign-in cookie lasts a year (`Max-Age`), so a page's sign-in survives quitting the browser and a bookmarked page works after a restart. It stays `HttpOnly`, `SameSite=Strict`, per port, on 127.0.0.1 only.
+
 ## 0.76.2
 
 ### Fixed

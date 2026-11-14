@@ -120,6 +120,9 @@ func (s *Server) Stuck() bool {
 	}
 }
 
+// signInAge is how long a sign-in cookie lasts, in seconds: a year.
+const signInAge = 365 * 24 * 60 * 60
+
 // cookieName carries the port: browsers keep cookies per host, not per
 // port, so two serves of one tool on 127.0.0.1 would otherwise overwrite
 // each other's sign-in.
@@ -138,7 +141,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if t := r.URL.Query().Get("t"); t != "" && r.Method == http.MethodGet && s.tokenOK(t) {
 		//nolint:gosec // G124: loopback http; Secure would break the cookie, HttpOnly+SameSite=Strict suffice
-		http.SetCookie(w, &http.Cookie{Name: s.cookieName(), Value: s.Token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
+		// A year, so the sign-in outlives the browser: the token is kept across
+		// restarts, and a bookmarked page works after Chrome quits.
+		http.SetCookie(w, &http.Cookie{Name: s.cookieName(), Value: s.Token, Path: "/", MaxAge: signInAge, HttpOnly: true, SameSite: http.SameSiteStrictMode})
 		q := r.URL.Query()
 		q.Del("t")
 		loc := r.URL.Path

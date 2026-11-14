@@ -97,6 +97,11 @@ func TestTokenQueryRedirectsAndSetsCookie(t *testing.T) {
 	if ck == nil || ck.Value != s.Token || !ck.HttpOnly || ck.SameSite != http.SameSiteStrictMode {
 		t.Fatalf("cookie %+v", ck)
 	}
+	// The sign-in outlives the browser: a cookie with no expiry is gone when
+	// Chrome quits, and a bookmarked page then loads with every call refused.
+	if ck.MaxAge != 365*24*60*60 {
+		t.Fatalf("cookie Max-Age = %d, want one year", ck.MaxAge)
+	}
 	if r := do(t, s, "GET", "/board?t=wrong", nil); r.Status == http.StatusSeeOther {
 		t.Fatal("wrong token must not set a cookie")
 	}
