@@ -1151,5 +1151,10 @@ export interface GuideViewOptions {
 export function guideView(data: GuideData, o?: GuideViewOptions): HTMLElement;
 /** Loads /api/kit/guide and opens the Guide in a sheet over the page, offering the registered tour. The bar's Guide button calls it. */
 export function openGuide(o?: { url?: string; tour?: Tour | null; copy?: (text: string) => unknown }): Promise<SheetHandle>;
+/**
+ * What an empty front page says, drawn in el from GET /api/kit/guide: the page tool's one-line summary, its asks each with Copy,
+ * and More in the Guide, which opens the Guide. Leaves el as it was, and resolves false, when the guide has no section for the tool or doesn't load.
+ */
+export function guideAsks(el: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<boolean>;
 /** Draws the Guide as the whole page in root, as /_kit/guide/ does. */
 export function guidePage(root: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<void>;

@@ -33,13 +33,13 @@ func TestContentIsValid(t *testing.T) {
 			t.Fatal(err)
 		}
 		texts[l.File] = l.Source
-		// The walk is four core lessons; the rest are offered when relevant.
-		if core := n <= 4; core != (l.Offered == "") {
-			t.Errorf("%s: lessons 1 to 4 are the core walk with no **Offered when:**, later ones have one (got %q)", l.File, l.Offered)
+		// The walk is six core lessons; the rest are offered when relevant.
+		if core := n <= 6; core != (l.Offered == "") {
+			t.Errorf("%s: lessons 1 to 6 are the core walk with no **Offered when:**, later ones have one (got %q)", l.File, l.Offered)
 		}
 	}
-	if got := LessonNumbers(); len(got) != 6 {
-		t.Errorf("lessons %v, want the four core and the two offered", got)
+	if got := LessonNumbers(); len(got) != 8 {
+		t.Errorf("lessons %v, want the six core and the two offered", got)
 	}
 	for file, text := range texts {
 		for _, name := range Named(text) {
@@ -78,8 +78,7 @@ First.
 
 const goodLesson = "# Plan a change\n\n**Goal:** Take an idea to a plan.\n\n## Walkthrough\n\n" +
 	"1. **Say the idea**\n\n   A plan starts from one line.\n\n   ```\n   Plan this with diazo: a README.\n   ```\n\n   **Claude runs:** `diazo_open`\n\n" +
-	"2. **Guess what comes first**\n\n   Predict before you look.\n\n   ```\n   I think it asks me first. Am I right?\n   ```\n\n   **Claude runs:** nothing.\n\n" +
-	"   **Choose:**\n\n   - **It asks me first**: I think it asks me first. Am I right?\n   - **It writes code first**: I think it writes code first. Am I right?\n"
+	"2. **Confirm the understanding**\n\n   The agent says back what it understood.\n\n   ```\n   Show me the understanding on the page.\n   ```\n\n   **Claude runs:** `diazo_status`\n"
 
 // Each rule a file can break is caught, naming the file.
 func TestValidationCatches(t *testing.T) {
@@ -99,7 +98,7 @@ func TestValidationCatches(t *testing.T) {
 		{"angle-bracket placeholder in an ask", "tools/diazo.md", strings.Replace(goodTool, "Plan this with diazo.", "Plan this with diazo: <idea>.", 1), "placeholder"},
 		{"angle-bracket placeholder in a lesson ask", "lessons/3-plan.md", strings.Replace(goodLesson, "a README.", "<idea>.", 1), "placeholder"},
 		{"angle-bracket placeholder in fit", "fit.md", "# How they fit\n\nAsk about <topic>.\n", "placeholder"},
-		{"choose step with one choice", "lessons/3-plan.md", strings.Replace(goodLesson, "   - **It writes code first**: I think it writes code first. Am I right?\n", "", 1), "two choices"},
+		{"choose step", "lessons/3-plan.md", goodLesson + "\n   **Choose:**\n\n   - **It asks me first**: I think it asks me first. Am I right?\n   - **It writes code first**: I think it writes code first. Am I right?\n", "Choose"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

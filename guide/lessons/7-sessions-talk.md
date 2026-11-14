@@ -26,25 +26,9 @@
 
    **Claude runs:** `send_message` to that session.
 
-3. **Guess where the answer lands**
+3. **Read the answer**
 
-   Think about how the answer reaches this session.
-
-   ```
-   I think the answer comes back on the same thread, and you tell me when it arrives. Am I right?
-   ```
-
-   **Claude runs:** nothing; it checks your pick.
-
-   **Choose:**
-
-   - **Back on the same thread**: I think the answer comes back on the same thread, and you tell me when it arrives. Am I right?
-   - **In the other terminal only**: I think the answer only shows in the other terminal, and I have to go and read it. Am I right?
-   - **It goes to me by email**: I think the answer comes to me by email. Am I right?
-
-4. **Read the answer**
-
-   The other session answers when it's free; if it's busy, give it a minute.
+   The answer comes back on the same thread when the other session is free; if it's busy, give it a minute.
 
    ```
    Has it answered? Read me the thread.

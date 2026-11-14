@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/_kit/kit.css">
+<style>#result { display: none; }</style>
+<body>
+<main id="asks" style="max-width: 720px; margin: 0 auto; padding: 24px 16px;"></main>
+<script type="module">
+// An empty front page's asks as guideAsks draws them, from the real guide
+// data, measured at the window's width: no console errors, nothing wider than
+// the window, the summary and every ask drawn.
+const errors = [];
+addEventListener('error', e => errors.push(String(e.message)));
+addEventListener('unhandledrejection', e => errors.push(String(e.reason)));
+const realError = console.error;
+console.error = (...a) => { errors.push(a.map(String).join(' ')); realError(...a); };
+const out = document.createElement('pre');
+out.id = 'result';
+try {
+  const { guideAsks } = await import('/_kit/kit.js');
+  const root = document.getElementById('asks');
+  const drawn = await guideAsks(root, { copy: async () => {} });
+  out.textContent = JSON.stringify({
+    width: innerWidth,
+    overflow: document.documentElement.scrollWidth > innerWidth,
+    drawn,
+    summary: (root.querySelector('.kit-guide-summary') || {}).textContent || '',
+    asks: root.querySelectorAll('.kit-guide-ask').length,
+    errors,
+  });
+} catch (e) {
+  out.textContent = JSON.stringify({ errors: [...errors, String(e && e.stack ? e.stack : e)] });
+}
+document.body.append(out);
+</script>

@@ -23,6 +23,16 @@ async function clip(text) {
   await navigator.clipboard.writeText(text);
 }
 
+// askRow is one ask with its Copy button, which says Copied for a moment.
+function askRow(text, copy) {
+  const btn = h('button', { class: 'kit-btn', type: 'button' }, 'Copy');
+  btn.onclick = () => void Promise.resolve(copy(text)).then(() => {
+    btn.textContent = 'Copied';
+    setTimeout(() => (btn.textContent = 'Copy'), 1500);
+  });
+  return h('li', { class: 'kit-guide-ask' }, h('span', { class: 'kit-guide-ask-text' }, text), btn);
+}
+
 // guideView is the guide for data (GuideData). o.copy copies an ask (the
 // clipboard by default); o.tour is the page's tour, offered on its own tool's
 // section; o.onTour runs as the tour starts (the sheet closes).
@@ -37,15 +47,6 @@ export function guideView(data, o = {}) {
     const b = h('button', { class: 'kit-guide-pick', type: 'button', dataset: { pick: id }, onclick: () => show(id) }, label);
     picks.set(id, b);
     return b;
-  }
-
-  function askRow(text) {
-    const btn = h('button', { class: 'kit-btn', type: 'button' }, 'Copy');
-    btn.onclick = () => void Promise.resolve(copy(text)).then(() => {
-      btn.textContent = 'Copied';
-      setTimeout(() => (btn.textContent = 'Copy'), 1500);
-    });
-    return h('li', { class: 'kit-guide-ask' }, h('span', { class: 'kit-guide-ask-text' }, text), btn);
   }
 
   function toolSection(t) {
@@ -66,7 +67,7 @@ export function guideView(data, o = {}) {
       h('h3', {}, 'When to reach for it'), md(t.when),
       t.skip ? h('h3', {}, 'When to skip it') : null, t.skip ? md(t.skip) : null,
       h('h3', {}, 'Ask your agent'),
-      h('ul', { class: 'kit-guide-asks' }, (t.asks || []).map(askRow)),
+      h('ul', { class: 'kit-guide-asks' }, (t.asks || []).map(a => askRow(a, copy))),
       more,
       tourBtn || pub ? h('div', { class: 'kit-guide-links' }, tourBtn, pub) : null,
     ];
@@ -131,6 +132,29 @@ export async function openGuide(o = {}) {
     s.el.classList.add('kit-guide-sheet');
     return s;
   }
+}
+
+// guideAsks draws, in el, what an empty front page says: the page tool's
+// one-line summary, its asks each with Copy, and More in the Guide, which
+// opens the Guide. It loads the same /api/kit/guide the Guide does, so the two
+// say the same thing. When the guide has no section for the tool, or doesn't
+// load, it leaves el as it was. It resolves to whether it drew.
+export async function guideAsks(el, o = {}) {
+  let t;
+  try {
+    const data = await load(o.url);
+    t = (data.tools || []).find(x => x.name === data.tool);
+  } catch {
+    return false;
+  }
+  if (!t) return false;
+  const copy = o.copy || clip;
+  el.replaceChildren(h('div', { class: 'kit-guide-asks-box' },
+    h('p', { class: 'kit-guide-summary' }, t.summary),
+    h('div', { class: 'kit-label' }, 'Ask your agent'),
+    h('ul', { class: 'kit-guide-asks' }, (t.asks || []).map(a => askRow(a, copy))),
+    h('button', { class: 'kit-guide-asks-more', type: 'button', onclick: () => void openGuide({ url: o.url, copy: o.copy }) }, 'More in the Guide')));
+  return true;
 }
 
 // guidePage draws the guide as the whole page, in root (/_kit/guide/).

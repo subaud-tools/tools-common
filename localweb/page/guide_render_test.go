@@ -97,3 +97,57 @@ func shot(t *testing.T, url, path, size string) {
 		t.Fatalf("screenshot: %v: %s", err, out)
 	}
 }
+
+// An empty front page's asks (guideAsks) render at desktop (1280) and phone
+// (390) width from the real guide data, with no console errors and nothing
+// wider than the window. With KIT_GUIDE_SHOTS set to a directory, it saves a
+// screenshot at each width there.
+func TestGuideAsksRenderAtDesktopAndPhone(t *testing.T) {
+	srv := guideServer(t)
+	want, err := guide.Data("diazo", func(string) bool { return true })
+	if err != nil {
+		t.Fatal(err)
+	}
+	var summary string
+	var asks int
+	for _, tl := range want.Tools {
+		if tl.Name == "diazo" {
+			summary, asks = tl.Summary, len(tl.Asks)
+		}
+	}
+	for _, c := range []struct{ w, h int }{{1280, 900}, {390, 844}} {
+		t.Run(strconv.Itoa(c.w), func(t *testing.T) {
+			size := "--window-size=" + strconv.Itoa(c.w) + "," + strconv.Itoa(c.h)
+			page := srv.URL + "/asksrender.html"
+			if c.w < 500 {
+				page = srv.URL + "/phone.html?w=" + strconv.Itoa(c.w) + "&h=" + strconv.Itoa(c.h) + "&src=/asksrender.html"
+				size = "--window-size=500," + strconv.Itoa(c.h)
+			}
+			dom, err := dumpDOM(t, page, size)
+			if err != nil {
+				t.Fatal(err)
+			}
+			m := resultRE.FindStringSubmatch(dom)
+			if m == nil {
+				t.Fatalf("no result:\n%s", dom)
+			}
+			var got struct {
+				Width    int
+				Overflow bool
+				Drawn    bool
+				Summary  string
+				Asks     int
+				Errors   []string
+			}
+			if err := json.Unmarshal([]byte(html.UnescapeString(m[1])), &got); err != nil {
+				t.Fatalf("%v: %s", err, m[1])
+			}
+			if len(got.Errors) > 0 || got.Overflow || !got.Drawn || got.Width != c.w || got.Summary != summary || got.Asks != asks || asks == 0 {
+				t.Fatalf("at %d: %+v (want summary %q, %d asks)", c.w, got, summary, asks)
+			}
+			if dir := os.Getenv("KIT_GUIDE_SHOTS"); dir != "" {
+				shot(t, page, filepath.Join(dir, "asks-"+strconv.Itoa(c.w)+".png"), size)
+			}
+		})
+	}
+}

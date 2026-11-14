@@ -50,25 +50,21 @@ type LessonPage struct {
 	Title string
 	Goal  string
 	// Offered says when the walk offers this lesson ("you have two sessions
-	// running"); empty for the four core lessons, which run in order.
+	// running"); empty for the six core lessons, which run in order.
 	Offered string
 	Steps   []Step
 	Source  string // the whole file
 }
 
-// Step does one action: why, one ask, what Claude runs, then any note and
-// choices.
+// Step does one action: why, one ask, what Claude runs, then any note. The
+// walk is a tutorial, not a quiz: a step has no choices.
 type Step struct {
-	Title  string
-	Why    string   // the plain sentence before the ask
-	Ask    string   // the one line to send to Claude
-	Runs   string   // what follows **Claude runs:**
-	Note   string   // anything after Claude runs (what to watch for)
-	Choose []Choice // a choose step's buttons, two or more
+	Title string
+	Why   string // the plain sentence before the ask
+	Ask   string // the one line to send to Claude
+	Runs  string // what follows **Claude runs:**
+	Note  string // anything after Claude runs (what to watch for)
 }
-
-// Choice is one button of a choose step: its label and what it sends.
-type Choice struct{ Label, Prompt string }
 
 type set struct {
 	tools   []Tool
@@ -358,10 +354,7 @@ func parseTool(file, text string) (Tool, []error) {
 	return t, errs
 }
 
-var (
-	stepRe   = regexp.MustCompile(`^(\d+)\. \*\*(.+)\*\*\s*$`)
-	choiceRe = regexp.MustCompile(`^- \*\*(.+?)\*\*: (.+)$`)
-)
+var stepRe = regexp.MustCompile(`^(\d+)\. \*\*(.+)\*\*\s*$`)
 
 func parseLesson(file, text string) (LessonPage, []error) {
 	var errs []error
@@ -428,12 +421,13 @@ func parseLesson(file, text string) (LessonPage, []error) {
 }
 
 // parseStep reads one step: its title, then paragraphs, the fenced ask, the
-// **Claude runs:** line, any note and a **Choose:** list.
+// **Claude runs:** line and any note. It refuses a **Choose:** list: the walk
+// has no quiz.
 func parseStep(lines []string, bad func(string, ...any)) Step {
 	s := Step{Title: lines[0]}
 	var paras []string
 	var para, fence []string
-	fenced, asks, choosing := false, 0, false
+	fenced, asks := false, 0
 	end := func() {
 		if len(para) > 0 {
 			paras = append(paras, strings.Join(para, " "))
@@ -463,10 +457,7 @@ func parseStep(lines []string, bad func(string, ...any)) Step {
 			s.Runs = strings.TrimSpace(strings.TrimPrefix(t, "**Claude runs:**"))
 		case t == "**Choose:**":
 			end()
-			choosing = true
-		case choosing && choiceRe.MatchString(t):
-			m := choiceRe.FindStringSubmatch(t)
-			s.Choose = append(s.Choose, Choice{Label: m[1], Prompt: m[2]})
+			bad("a **Choose:** list; the walk has no choose steps")
 		case t == "":
 			end()
 		default:
@@ -488,9 +479,6 @@ func parseStep(lines []string, bad func(string, ...any)) Step {
 	} else {
 		s.Why = paras[0]
 		s.Note = strings.Join(paras[1:], "\n\n")
-	}
-	if choosing && len(s.Choose) < 2 {
-		bad("a choose step needs two choices or more, not %d", len(s.Choose))
 	}
 	return s
 }

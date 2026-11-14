@@ -4,6 +4,14 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.78.0
+
+### Added
+- localweb/page: `guideAsks(el, o)` draws what an empty front page says: the page tool's one-line summary from the guide, its asks each with Copy (the Guide's ask rows), and More in the Guide, which opens `openGuide()`. It loads the same `/api/kit/guide` as the Guide, and leaves `el` as it was (resolving `false`) when the guide has no section for the tool or doesn't load. PAGE-STANDARD.md: an empty front page shows its tool's asks.
+
+### Changed
+- guide: the getting-started walk is a tutorial, not a quiz. The loader refuses a `**Choose:**` list, `Step` has no choices, and every lesson's choose step is gone, its point folded into the step after it. The core walk is six lessons going through proj, diazo and galley: lesson 3 is now Plan with diazo (the start's rounds, the understanding, decisions, a principle from a note, reversing a call, the spec, dropping a task) and lesson 5 Write with galley (instructions on a passage and the whole document, a hand edit, Chat, Revise, History, Approve, Share). Lesson 2 is now Your sessions with proj (proj's page and its tabs, a project and its session, Chrome or Ghostty, the servers, saving a layout and restoring a session, scratch and creel), lesson 4 Build and finish with diazo (the Build view, a step only you can do, sign-off, the wrap-up, sharing the record, picking a plan up in a new session) and lesson 6 diazo and galley together (the spec reviewed in galley as a diazo step, approved there, shown on diazo's page as edited after approval with its diff). Every lesson from 2 on keeps the tool's real page open beside the terminal and goes back and forth on purpose, and the getting-started skill says so. Sessions talk and Find waste with muda, still offered, are lessons 7 and 8.
+
 ## 0.77.0
 
 ### Added
