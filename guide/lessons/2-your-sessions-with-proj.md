@@ -18,10 +18,10 @@
 
 2. **Add the project**
 
-   A project is a folder you work in. proj finds projects inside the folders you give it, so you add the subaud folder and your practice repo shows up as a project in it.
+   A project is a folder you work in. proj finds projects inside the folders you give it, so you add the subaud folder and your practice repo shows up as a project in it. On the right, open the proj tab, then its folders tab; under add a root, type `~/subaud` and press add root. Then send this.
 
    ```
-   I'm adding my subaud folder on the folders tab of proj's page. Tell me when proj lists practice as a project.
+   I added ~/subaud on the folders tab of proj's page. Tell me when proj lists practice as a project.
    ```
 
    **Claude runs:** `proj list --json`, which shows practice among the projects once your add arrives.
