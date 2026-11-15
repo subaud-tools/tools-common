@@ -193,11 +193,66 @@ test('spotlight: with no clear spot in view, the control is scrolled to the midd
   clearSpotlight();
 });
 
-// textUnder lists the words on the page the card lies over (every text node).
-function textUnder(card) {
+// The real walk's diazo spec step: a header of short labels, then the spec's
+// card filling the page, its optional box, Approve and a help line at its foot.
+// Every place the note can go covers some words: the header's big labels, or
+// the tips of the spec's lines (fewer, by area); it must take the labels, never the spec the learner is asked to read before approving.
+test('spotlight: with words everywhere, the note covers what is around the page before the words around the control', async () => {
+  const fx = fixture();
+  const W = innerWidth, H = innerHeight;
+  const HEAD = 200; // taller than the note: the band at the top covers none of the spec
+  const label = s => `<span style="display:inline-block;margin:0 6px;font-size:26px;line-height:28px">${s}</span>`;
+  // Each line of the spec runs to x=496, just past where a note at the right edge starts.
+  const line = '<p style="margin:0 0 10px;width:480px;white-space:nowrap;text-align:justify;text-align-last:justify">The README is ten lines and says what the tool is.</p>';
+  fx.innerHTML = `<div id="head" style="position:fixed;left:0;top:0;width:${W}px;height:${HEAD}px;overflow:hidden">${(label('Plan') + label('Record') + label('live') + label('Guide') + label('theme') + label('Share')).repeat(10)}</div>`
+    + `<section id="spec" style="position:fixed;left:16px;top:${HEAD}px;width:${W - 32}px">`
+    + line.repeat(Math.max(1, Math.floor((H - HEAD - 110) / 30)))
+    + '<textarea placeholder="Anything to add for the agent (optional)" style="display:block;width:40%;height:50px"></textarea>'
+    + '<div style="display:flex;gap:8px;margin-top:8px"><button data-walk="approve-spec">Approve spec</button>'
+    + '<span>Then the agent writes the plan.</span></div></section>';
+  const note = 'The spec says in plain words what will change. Nothing is planned until you agree with it, so this is where you catch a misunderstanding before any work starts.';
+  await spotlight(step({ n: 4, of: 5, walk: 'approve-spec', title: 'Press Approve on the spec.', note }));
+  await sleep(400);
+  const card = document.querySelector('.kit-spot-card');
+  eq(textUnder(card, 'spec'), [], 'the note covers none of the spec, its box or its help line: ' + JSON.stringify([card.getBoundingClientRect(), innerWidth, innerHeight]));
+  assert(inView(card), 'in the window');
+  assert(!hit(card.getBoundingClientRect(), fx.querySelector('button').getBoundingClientRect()), 'nor the control');
+  clearSpotlight();
+});
+
+// The same, with the spec in a scroller scrolled to its foot (as diazo's is
+// when Approve is lit): words it clips out of sight under the header are not
+// on the page, so the note still finds the place that covers none of it.
+test('spotlight: words a scroller clips out of sight do not count as text under the note', async () => {
+  const fx = fixture();
+  const W = innerWidth, H = innerHeight;
+  const HEAD = 200;
+  const label = s => `<span style="display:inline-block;margin:0 6px;font-size:26px;line-height:28px">${s}</span>`;
+  const line = '<p style="margin:0 0 10px;width:480px;white-space:nowrap;text-align:justify;text-align-last:justify">The README is ten lines and says what the tool is.</p>';
+  fx.innerHTML = `<div style="position:fixed;left:0;top:0;width:${W}px;height:${HEAD}px;overflow:hidden">${(label('Plan') + label('Record') + label('live') + label('Guide') + label('theme') + label('Share')).repeat(10)}</div>`
+    + `<div id="scroller" style="position:fixed;left:16px;top:${HEAD}px;width:${W - 32}px;height:${H - HEAD}px;overflow:auto"><section id="spec">`
+    + line.repeat(40)
+    + '<textarea style="display:block;width:40%;height:50px"></textarea>'
+    + '<div style="display:flex;gap:8px;margin-top:8px"><button data-walk="approve-spec">Approve spec</button><span>Then the agent writes the plan.</span></div></section></div>';
+  const sc = fx.querySelector('#scroller');
+  sc.scrollTop = sc.scrollHeight;
+  const note = 'The spec says in plain words what will change. Nothing is planned until you agree with it, so this is where you catch a misunderstanding before any work starts.';
+  await spotlight(step({ n: 4, of: 5, walk: 'approve-spec', title: 'Press Approve on the spec.', note }));
+  await sleep(400);
+  const card = document.querySelector('.kit-spot-card');
   const c = card.getBoundingClientRect();
-  const out = [];
-  const w = document.createTreeWalker(document.getElementById('fx'), NodeFilter.SHOW_TEXT);
+  const visible = textUnder(card, 'spec').length && c.bottom > HEAD;
+  assert(!visible, `the note covers none of the spec in sight: ${JSON.stringify([c.top, c.bottom, textUnder(card, 'spec')])}`);
+  clearSpotlight();
+});
+
+// textUnder lists the words on the page the card lies over (every text node,
+// or those under the element with id within), and any field under it there.
+function textUnder(card, within = 'fx') {
+  const c = card.getBoundingClientRect();
+  const root = document.getElementById(within);
+  const out = [...root.querySelectorAll('textarea')].filter(e => hit(c, e.getBoundingClientRect())).map(() => 'textarea');
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const r = document.createRange();
   for (let n = w.nextNode(); n; n = w.nextNode()) {
     if (!n.textContent.trim()) continue;

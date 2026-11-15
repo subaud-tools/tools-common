@@ -43,6 +43,9 @@ import { h } from './dom.js';
 const MARGIN = 8;
 const GAP = 12;
 const FIELDS = 'textarea, select, input:not([type=button],[type=submit],[type=hidden],[type=checkbox],[type=radio]), [contenteditable=""], [contenteditable="true"]';
+// CONTEXT_WORDS is how many characters of words a container needs, beyond the
+// control's own, to be what the step is about.
+const CONTEXT_WORDS = 160;
 let lits = 0;
 
 let current = null;
@@ -231,16 +234,46 @@ function corners(cs, view) {
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, Math.max(lo, hi)));
 const overlap = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
 
+// context is what the step is about: the control's nearest container holding
+// words of its own (a take above a reply box, the spec above Approve), short
+// of the whole page. The note covers anything else first.
+function context(t) {
+  if (!t) return null;
+  const own = (t.textContent || '').length;
+  for (let e = t.parentElement; e && e !== document.body && e !== document.documentElement; e = e.parentElement) {
+    if ((e.textContent || '').length - own >= CONTEXT_WORDS) return e;
+  }
+  return null;
+}
+
 // textBoxes is where the page's words and fields are in view: each line box
 // of every text node, and every field or editable document, leaving out the
-// note itself and the control's own label.
+// note itself and the control's own label, and cut to what the containers
+// that clip them (a scroller, a box with overflow hidden) leave in sight.
+// near marks those in the control's context.
 function textBoxes(view, t, card) {
   const out = [];
-  const seen = b => b.width >= 1 && b.height >= 1 && b.bottom > 0 && b.top < view.height && b.right > 0 && b.left < view.width;
+  const ctx = context(t);
+  const clips = new Map();
+  // clipOf is the part of the window el's clipping ancestors leave in sight.
+  const clipOf = el => {
+    if (!el || el === document.body || el === document.documentElement) return { left: 0, top: 0, right: view.width, bottom: view.height };
+    if (clips.has(el)) return clips.get(el);
+    let c = clipOf(el.parentElement);
+    const st = getComputedStyle(el);
+    if (st.overflowX !== 'visible' || st.overflowY !== 'visible') {
+      const r = el.getBoundingClientRect();
+      c = { left: Math.max(c.left, r.left), top: Math.max(c.top, r.top), right: Math.min(c.right, r.right), bottom: Math.min(c.bottom, r.bottom) };
+    }
+    clips.set(el, c);
+    return c;
+  };
+  const cut = (b, c) => ({ left: Math.max(b.left, c.left), top: Math.max(b.top, c.top), right: Math.min(b.right, c.right), bottom: Math.min(b.bottom, c.bottom) });
+  const seen = b => b.right - b.left >= 1 && b.bottom - b.top >= 1 && b.bottom > 0 && b.top < view.height && b.right > 0 && b.left < view.width;
   for (const e of document.querySelectorAll(FIELDS)) {
     if (card.contains(e) || (t && t.contains(e))) continue;
-    const b = e.getBoundingClientRect();
-    if (seen(b)) out.push(b);
+    const b = cut(e.getBoundingClientRect(), clipOf(e.parentElement));
+    if (seen(b)) out.push({ b, near: !!ctx && ctx.contains(e) });
   }
   const range = document.createRange();
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
@@ -250,25 +283,35 @@ function textBoxes(view, t, card) {
     const p = n.parentElement;
     if (p && (p.closest('script, style, template, [hidden]'))) continue;
     range.selectNodeContents(n);
-    for (const b of range.getClientRects()) if (seen(b)) out.push(b);
+    const near = !!ctx && ctx.contains(n);
+    const c = clipOf(p);
+    for (const r of range.getClientRects()) {
+      const b = cut(r, c);
+      if (seen(b)) out.push({ b, near });
+    }
   }
   return out;
 }
 
 // spot picks the first place that is in the window, off the control (r) and
-// over no words; else the in-window place with the fewest under it. under is
-// how much text the place covers.
+// over no words; else the in-window place that covers the fewest words of the
+// control's context, then the fewest words at all. under is how much text the
+// place covers.
 function spot(places, r, cs, view, t, card) {
   const text = textBoxes(view, t, card);
-  let best = null, least = Infinity;
+  let best = null, leastNear = Infinity, least = Infinity;
   for (const p of places) {
     const box = { left: p.x, top: p.y, right: p.x + cs.width, bottom: p.y + cs.height };
     if (box.left < MARGIN - 0.5 || box.top < MARGIN - 0.5 || box.right > view.width - MARGIN + 0.5 || box.bottom > view.height - MARGIN + 0.5) continue;
     if (r && overlap(box, { left: r.left - GAP / 2, top: r.top - GAP / 2, right: r.right + GAP / 2, bottom: r.bottom + GAP / 2 }) > 0) continue;
-    let under = 0;
-    for (const b of text) under += overlap(box, b);
+    let under = 0, near = 0;
+    for (const { b, near: n } of text) {
+      const o = overlap(box, b);
+      under += o;
+      if (n) near += o;
+    }
     if (under === 0) return { ...p, under };
-    if (under < least) { least = under; best = { ...p, under }; }
+    if (near < leastNear || (near === leastNear && under < least)) { leastNear = near; least = under; best = { ...p, under }; }
   }
   return best || { x: clamp((view.width - cs.width) / 2, MARGIN, view.width), y: clamp((view.height - cs.height) / 2, MARGIN, view.height), under: Infinity };
 }

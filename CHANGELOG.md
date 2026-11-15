@@ -12,6 +12,7 @@ tags and PRs.
 - guide: the getting-started skill runs all three walks on "Get me started with subaud." (`proj guide start`) and one on "Show me around ‹tool›." (`proj guide start ‹tool›`), and lists each walk's steps and end card.
 - localweb/page: the spotlight shows a step's preparing line, with no ring, while its control isn't on the page, then switches to the title and note and rings the control when it appears. A note taller than about 40% of the window scrolls inside itself; the placement still keeps it off the control and the page's text.
 - localweb/page: a spotlight body `{"end": {tool, learned, next, next_tool}}` draws a walk's end card in the middle of the window with no ring: "You learned", the lines, what is next and one button, "Go on to ‹next_tool›" or Done, which posts `{type: "kit:walk-next", tool, next_tool}` to `window.parent`.
+- localweb/page: when every place for a step's note covers some words, the note covers what is around the page (a header's labels) before the words around its control (the take above a reply box, the spec above Approve), and words a scroller or an overflow-hidden box clips out of sight no longer count as under it. Before, it took the least text by area, which put the longer notes over a line of the take or the middle of the spec the step asks the learner to read.
 - pageserve: `POST /api/kit/spotlight` carries a step's `press` and `prepare`, and takes an end card (`{"end": …}`, needing learned and next) as well as a step.
 
 ## 0.83.0
