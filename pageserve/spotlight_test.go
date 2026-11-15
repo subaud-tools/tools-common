@@ -76,14 +76,14 @@ func TestServeSendsTheSpotlight(t *testing.T) {
 	wait(t, r)
 }
 
-// A step carries its preparing note and press through to the page, and an end
+// A step carries its preparing note, ready hook and press through to the page, and an end
 // card ({"end": {...}}) is a body of its own: no hook, no title.
 func TestServeSendsThePrepareNoteAndTheEndCard(t *testing.T) {
 	ev := NewEvents()
 	r := startRun(t, Options{Events: ev})
 	e, _ := LiveFor("cull").Running()
 
-	step := `{"n":2,"of":6,"tool":"cull","walk":"proj-tab","press":"ok","ok":true,"prepare":"Your agent is opening it.","title":"Press the tab.","note":"Why."}`
+	step := `{"n":2,"of":6,"tool":"cull","walk":"proj-tab","ready":"select-passage","press":"ok","ok":true,"prepare":"Your agent is opening it.","title":"Press the tab.","note":"Why."}`
 	if code := postSpot(t, e, step, true); code != http.StatusOK {
 		t.Fatalf("step: %d", code)
 	}
@@ -100,7 +100,7 @@ func TestServeSendsThePrepareNoteAndTheEndCard(t *testing.T) {
 	}
 	var got map[string]any
 	_ = json.Unmarshal(evs[0].Data, &got)
-	if got["prepare"] != "Your agent is opening it." || got["press"] != "ok" || got["end"] != nil {
+	if got["prepare"] != "Your agent is opening it." || got["press"] != "ok" || got["ready"] != "select-passage" || got["end"] != nil {
 		t.Fatalf("step %s", evs[0].Data)
 	}
 	got = nil

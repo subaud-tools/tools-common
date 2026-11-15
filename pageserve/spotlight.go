@@ -23,6 +23,7 @@ type Spotlight struct {
 	Of      int           `json:"of,omitempty"`
 	Tool    string        `json:"tool,omitempty"`
 	Walk    string        `json:"walk,omitempty"`
+	Ready   string        `json:"ready,omitempty"`
 	Press   string        `json:"press,omitempty"`
 	Prepare string        `json:"prepare,omitempty"`
 	Title   string        `json:"title,omitempty"`
@@ -88,8 +89,8 @@ func (s *spotlights) post(token string, events *Events) http.HandlerFunc {
 				http.Error(w, "spotlight's end card needs learned and next", http.StatusBadRequest)
 				return
 			}
-		case !spotHookRe.MatchString(sp.Walk) || sp.Title == "":
-			http.Error(w, "spotlight needs walk (a data-walk hook: lower-case words joined by hyphens) and title, or end", http.StatusBadRequest)
+		case !spotHookRe.MatchString(sp.Walk) || sp.Title == "" || (sp.Ready != "" && !spotHookRe.MatchString(sp.Ready)):
+			http.Error(w, "spotlight needs walk (a data-walk hook: lower-case words joined by hyphens) and title, or end; ready, when set, is a hook too", http.StatusBadRequest)
 			return
 		}
 		sp.Forward = ""

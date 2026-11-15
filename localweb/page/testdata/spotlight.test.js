@@ -348,6 +348,36 @@ test('spotlight: while the control is missing the note is the preparing line wit
   clearSpotlight();
 });
 
+test('spotlight: with ready, the doing note shows with no ring once the ready element is there, and the ring lands when the control appears (galley: the README, then Add instruction after a selection)', async () => {
+  const fx = fixture();
+  fx.innerHTML = '';
+  await spotlight(step({ n: 1, of: 3, tool: 'galley', walk: 'add-instruction', ready: 'select-passage', prepare: 'Your agent is writing the README.', title: 'Select a sentence in the README, then press Add instruction.', note: 'This is galley.' }));
+  await sleep(30);
+  const card = document.querySelector('.kit-spot-card');
+  const ring = document.querySelector('.kit-spot-ring');
+  const shown = sel => { const e = card.querySelector(sel); return !!e && !e.hidden; };
+  assert(shown('.kit-spot-wait') && !shown('.kit-spot-title') && ring.hidden, 'preparing while neither is there');
+  fx.innerHTML = '<div data-walk="select-passage" style="position:fixed;left:200px;top:40px;width:300px">' + '<p>A line of the README the learner selects.</p>'.repeat(6) + '</div>';
+  await sleep(30);
+  assert(!shown('.kit-spot-wait') && shown('.kit-spot-title') && shown('.kit-spot-note'), 'the doing note once the ready element is there');
+  assert(ring.hidden, 'no ring: the control is not there yet');
+  assert(card.classList.contains('kit-spot-lost'), 'placed as the waiting note is');
+  eq(overText(card), [], 'off the README');
+  fx.insertAdjacentHTML('beforeend', '<button data-walk="add-instruction" style="position:fixed;left:520px;top:40px">Add instruction</button>');
+  await sleep(30);
+  const r = fx.querySelector('button').getBoundingClientRect();
+  assert(!ring.hidden && near(r.x, ring.getBoundingClientRect().x), 'ringed once the control appears');
+  assert(!card.classList.contains('kit-spot-lost'), 'beside it now');
+  const got = [];
+  const on = e => got.push(e.data);
+  addEventListener('message', on);
+  fx.querySelector('button').click();
+  await sleep(30);
+  removeEventListener('message', on);
+  eq(got.filter(m => m && m.type === 'kit:spotlight-done').map(m => m.walk), ['add-instruction'], 'the click on the control ends the step');
+  clearSpotlight();
+});
+
 test('spotlight: a long note sits off the control and the text column, and scrolls inside itself when taller than about 40% of the window', async () => {
   const fx = fixture();
   fx.innerHTML = `<div style="position:fixed;left:16px;top:0;width:${Math.round(innerWidth * 0.45)}px">${'<p style="margin:0 0 6px">The page reads like this, line after line, down the column.</p>'.repeat(30)}</div>`

@@ -1,10 +1,11 @@
 # galley's walk
 
-Three clicks on the practice README in galley, from an instruction to an approved document. Each step has two notes: `prepare` shows while the agent is still getting the step ready, then the note once the control is there. The end card says what the learner learned and ends the walks.
+Three clicks on the practice README in galley, from an instruction to an approved document. Each step has two notes: `prepare` shows while the agent is still getting the step ready, then the note once the control is there (or, with `ready`, once that element is: galley's Add instruction appears only after a selection). The end card says what the learner learned and ends the walks.
 
 ## 1
 tool: galley
 target: add-instruction
+ready: select-passage
 look: Add instruction, after you select a sentence
 agent: Write the practice README at the practice README path that proj guide start printed (outside the plan's folder: diazo keeps its own README.md there), ten lines as the spec says, and open it with galley_open.
 prepare: Your agent is writing the README your plan asked for and opening it in galley. When it's there, you'll select a sentence and ask for a change.

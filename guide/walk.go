@@ -29,7 +29,9 @@ type Walk struct {
 // WalkStep is one click of a walk: the control a tool's page lights (its
 // data-walk hook) with two notes and what the agent does before it. Prepare
 // shows while the agent is still getting the step ready (empty when there is
-// nothing to prepare); Title and Note show once the control is there. The
+// nothing to prepare); Title and Note show once the control is there, or once
+// the Ready element is when the control appears only after the learner acts
+// (galley's Add instruction, after a selection). The
 // learner's click on the control moves the walk on (the page posts
 // kit:spotlight-done to proj's split page), so a step names no tool event.
 // Its JSON is the body pageserve's POST /api/kit/spotlight takes and the
@@ -40,6 +42,7 @@ type WalkStep struct {
 	Of      int    `json:"of"`
 	Tool    string `json:"tool"`
 	Target  string `json:"walk"`              // the control's data-walk hook: "reply"
+	Ready   string `json:"ready,omitempty"`   // a hook on the page once the step is ready, for a control that appears later
 	Press   string `json:"press,omitempty"`   // "ok": the note's ok button is the step's click
 	Look    string `json:"look"`              // the control in words, for the agent when the learner can't find it
 	Prepare string `json:"prepare,omitempty"` // the note while the agent prepares the step
@@ -229,6 +232,7 @@ func parseWalkStep(file, tool string, want int, lines []string) (WalkStep, []err
 		}
 	}
 	s.Tool, s.Target, s.Look, s.Agent, s.Press = kv["tool"], kv["target"], kv["look"], kv["agent"], kv["press"]
+	s.Ready = kv["ready"]
 	switch s.Press {
 	case "ok":
 		s.OK = true
@@ -244,6 +248,9 @@ func parseWalkStep(file, tool string, want int, lines []string) (WalkStep, []err
 	}
 	if !walkHookRe.MatchString(s.Target) {
 		bad("target %q is not a data-walk hook (lower-case words joined by hyphens)", s.Target)
+	}
+	if s.Ready != "" && !walkHookRe.MatchString(s.Ready) {
+		bad("ready %q is not a data-walk hook (lower-case words joined by hyphens)", s.Ready)
 	}
 	for _, k := range []string{"look", "agent", "prepare"} {
 		if kv[k] == "" {

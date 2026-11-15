@@ -5,7 +5,7 @@
 // page (pageserve's POST /api/kit/spotlight sends one), so a tool's page needs
 // no code of its own: only data-walk hooks.
 //
-// A step is { n, of, tool, walk, press, prepare, title, note, look, ok }: walk names the
+// A step is { n, of, tool, walk, ready, press, prepare, title, note, look, ok }: walk names the
 // control's data-walk hook. The learner's click is the signal the step is
 // done: a click on the ringed control (or, for a text box or a form, its form
 // being submitted) clears the ring and posts {type: "kit:spotlight-done", n,
@@ -17,7 +17,12 @@
 // prepare line (what the agent is doing, what the learner will do next), or
 // "Your agent is getting this ready…" under the title when it has none, with
 // no ring; the moment the control appears the note switches to the title and
-// note and the control is ringed. A note taller than about 40% of the window
+// note and the control is ringed. A step with ready names a data-walk hook
+// that is on the page once the step is ready though its control appears only
+// after the learner acts (galley's README, before a selection brings Add
+// instruction): once that is there the note shows the title and note, still
+// with no ring or ok button and placed as the waiting note is, and the ring
+// lands when the control appears. A note taller than about 40% of the window
 // scrolls inside itself.
 //
 // A walk's end card is { end: { tool, learned, next, next_tool } }: centred,
@@ -106,10 +111,14 @@ export async function spotlight(step) {
   };
   current = me;
 
-  const target = () => {
-    const e = document.querySelector(sel);
+  const shownEl = q => {
+    const e = document.querySelector(q);
     return e && e.getBoundingClientRect().width > 0 ? e : null;
   };
+  const target = () => shownEl(sel);
+  const readySel = step.ready ? `[data-walk="${CSS.escape(step.ready)}"]` : '';
+  // ready: the step is ready though its control isn't on the page yet.
+  const ready = () => !!readySel && !!shownEl(readySel);
   // place puts the ring on the control and the note beside it, or the note
   // waiting off the text while the control isn't on the page.
   function place() {
@@ -125,11 +134,14 @@ export async function spotlight(step) {
     const view = { width: innerWidth, height: innerHeight };
     card.hidden = false;
     card.classList.toggle('kit-spot-lost', !t);
-    waiting.hidden = !!t;
+    // doing: the title and note show, with the control or once the step is
+    // ready without it.
+    const doing = !!t || ready();
+    waiting.hidden = doing;
     // While preparing, a prepare line stands alone; with none, the title
     // shows above "getting this ready". The ok button waits for the control.
-    title.hidden = !t && !!step.prepare;
-    if (note) note.hidden = !t;
+    title.hidden = !doing && !!step.prepare;
+    if (note) note.hidden = !doing;
     if (acts) acts.hidden = !t;
     ring.hidden = !t;
     const cs = { width: card.offsetWidth, height: card.offsetHeight };

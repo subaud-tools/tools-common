@@ -83,6 +83,17 @@ func TestWalksAreProjDiazoGalley(t *testing.T) {
 	if !strings.Contains(diazo[0].Agent, "practice plan's folder") || !strings.Contains(galley[0].Agent, "practice README") {
 		t.Errorf("diazo's and galley's first steps name the paths proj guide start prints: %q / %q", diazo[0].Agent, galley[0].Agent)
 	}
+	// galley's first control appears only once a passage is selected; the
+	// editor being there is when the step is ready.
+	if galley[0].Ready != "select-passage" || slices.ContainsFunc(append(append([]WalkStep{}, proj...), diazo...), func(s WalkStep) bool { return s.Ready != "" }) {
+		t.Errorf("only galley's first step carries ready: %q", galley[0].Ready)
+	}
+	if b, _ := json.Marshal(galley[0]); !strings.Contains(string(b), `"ready":"select-passage"`) {
+		t.Errorf("galley step 1 JSON has no ready: %s", b)
+	}
+	if b, _ := json.Marshal(proj[1]); strings.Contains(string(b), `"ready"`) {
+		t.Errorf("a step with no ready has one in its JSON: %s", b)
+	}
 	if _, err := WalkFor("muster"); err == nil {
 		t.Error("WalkFor(muster) found a walk")
 	}
@@ -131,6 +142,7 @@ func TestWalkValidationCatches(t *testing.T) {
 		"a placeholder":   {step("## 1", "prepare: x", "Press <button>.\nWhy.") + end, "placeholder"},
 		"prep command":    {step("## 1", "prepare: Run $ x", "Press a.\nWhy.") + end, "to type"},
 		"bad hook":        {strings.Replace(ok, "target: a", "target: A b", 1) + end, "hook"},
+		"bad ready":       {step("## 1", "prepare: x\nready: Not A hook", "Press a.\nWhy.") + end, "ready"},
 		"no agent":        {strings.Replace(ok, "agent: x\n", "", 1) + end, "agent"},
 		"no prepare":      {step("## 1", "", "Press a.\nWhy.") + end, "prepare"},
 		"no note":         {step("## 1", "prepare: x", "Press a.") + end, "explanation"},
