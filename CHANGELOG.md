@@ -4,6 +4,16 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.80.0
+
+### Added
+- guide: the getting-started walk has an intro, `guide/intro.md`, shown before lesson 1: what subaud.tools are, why you're here, what you'll make, how it works and the six lessons. `guide.Intro()` returns its title and markdown body. The loader refuses an intro with no title, a `<word>` placeholder outside code, a line telling the user to type a family command, or a lesson listed by number whose title doesn't match that core lesson's.
+- guide: the getting-started skill says that when the walk starts at lesson 1 the lesson tab shows the intro first; the agent points to it in one line and waits for the learner to press Start.
+- guide: the getting-started skill runs `proj guide start --lesson N` when the learner sends "Start lesson N of the getting-started walk." from a recap's start lesson N button.
+
+### Fixed
+- guide: lesson 2's add-the-project step opens proj's page as a tab first if it isn't open (the same `proj window` line as step 1), so the step works when step 1's tab was closed or never opened.
+
 ## 0.79.2
 
 ### Fixed
