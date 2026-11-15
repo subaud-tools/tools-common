@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.80.1
+
+### Fixed
+- guide: lesson 2's servers step has the agent run `proj servers --json` (proj 0.36.0 and later) instead of asking the learner to read the servers tab out.
+
 ## 0.80.0
 
 ### Added
