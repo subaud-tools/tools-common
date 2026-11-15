@@ -36,7 +36,7 @@ Each real choice in a change comes to you as a card like this, with its options 
 tool: diazo
 target: approve-spec
 look: Approve on the spec
-agent: Write a short spec.md for the README in the practice plan's folder and print it with diazo_print_spec.
+agent: Write a short spec.md for the README in the practice plan's folder and print it with diazo_print_spec. Its sections, in order: Goal (with no Rests on line), one on what the README says, Left out, and How we'll know it works. Every section after Goal ends with the line "Rests on: DCSN1" and is printed citing DCSN1, the tone decision. Cite no other id: the direction (DIRN) is not a decision, and diazo refuses a spec that cites it.
 prepare: Your agent is writing a short spec from your decision: what will change and why. When it's there, you'll read it and approve it.
 
 Press Approve on the spec.
@@ -46,7 +46,7 @@ The spec says in plain words what will change. Nothing is planned until you agre
 tool: diazo
 target: approve-plan
 look: Approve on the plan
-agent: Declare one plan, write it with one task (write the README) and print it with diazo_print_plan.
+agent: Declare PLAN1 with diazo_update (topic write-readme, covering the README), write plans/1-write-readme.md in the practice plan's folder with "# PLAN1: Write the README" and the sections Spec, The change, Left out and Where, then one task, "### Task 1: Write the README", opening with the lines **Does:**, **Files:**, **Checks:** and "**Serves:** DCSN1", and print it with diazo_print_plan as TASK1 serving DCSN1. Cite no other id: the direction (DIRN) is not a decision, and diazo refuses a plan that cites it.
 prepare: Your agent is turning the spec into a plan with one task: write the README. When it's there, you'll approve it.
 
 Press Approve on the plan.

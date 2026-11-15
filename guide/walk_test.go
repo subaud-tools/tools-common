@@ -23,7 +23,7 @@ func TestWalksAreProjDiazoGalley(t *testing.T) {
 	}{
 		{"proj", "diazo", []string{"split", "proj-tab", "sessions-tab", "open-ghostty", "folders-tab", "saved-tab"}},
 		{"diazo", "galley", []string{"reply", "direction", "choose", "approve-spec", "approve-plan"}},
-		{"galley", "", []string{"add-instruction", "revise", "approve"}},
+		{"galley", "", []string{"add-instruction", "revise", "approve", "share"}},
 	}
 	if len(ws) != len(want) {
 		t.Fatalf("%d walks, want %d", len(ws), len(want))
@@ -93,6 +93,11 @@ func TestWalksAreProjDiazoGalley(t *testing.T) {
 	}
 	if b, _ := json.Marshal(proj[1]); strings.Contains(string(b), `"ready"`) {
 		t.Errorf("a step with no ready has one in its JSON: %s", b)
+	}
+	// diazo cites decisions only (and, in a spec, the agent's calls): the
+	// spec's and plan's agent lines say to cite the tone decision, not DIRN.
+	if !strings.Contains(diazo[3].Agent, `"Rests on: DCSN1"`) || !strings.Contains(diazo[4].Agent, `"**Serves:** DCSN1"`) {
+		t.Errorf("diazo steps 4 and 5 say what to cite: %q / %q", diazo[3].Agent, diazo[4].Agent)
 	}
 	if _, err := WalkFor("muster"); err == nil {
 		t.Error("WalkFor(muster) found a walk")

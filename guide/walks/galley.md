@@ -1,6 +1,6 @@
 # galley's walk
 
-Three clicks on the practice README in galley, from an instruction to an approved document. Each step has two notes: `prepare` shows while the agent is still getting the step ready, then the note once the control is there (or, with `ready`, once that element is: galley's Add instruction appears only after a selection). The end card says what the learner learned and ends the walks.
+Four clicks on the practice README in galley, from an instruction to an approved document and its Share menu. Each step has two notes: `prepare` shows while the agent is still getting the step ready, then the note once the control is there (or, with `ready`, once that element is: galley's Add instruction appears only after a selection). The end card says what the learner learned and ends the walks.
 
 ## 1
 tool: galley
@@ -33,9 +33,20 @@ prepare: Your agent is rewriting the passages you marked. When it has answered, 
 Read the rewrite, then press Approve.
 Approving ends the review with the document as it stands. Every round is kept, so you can always see what changed between versions.
 
+## 4
+tool: galley
+target: share
+look: Share at the bottom of the document, beside the time you approved it
+agent: Nothing: wait for the learner's click.
+prepare: Your approval is being saved. When it is, a Share button appears at the bottom of the document, beside the time you approved it.
+
+Press Share.
+Share hands the approved document to someone else. Download saves it as a web page or as Markdown. On a Mac, Share HTML and Share Markdown put the file on your clipboard, so pasting into a chat attaches it. Close the menu when you've looked.
+
 ## end
 learned: Select words and add an instruction to ask for a change.
 learned: Revise sends your instructions as one round, and your agent rewrites.
 learned: Approve ends the review with the document as it stands.
+learned: Share hands the approved document to a reader, as a page or as Markdown.
 next: That's the walk. Press Guide any time to see what each tool is for and what to ask.
 next_tool:

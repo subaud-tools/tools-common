@@ -102,6 +102,27 @@ test('spotlight: a text box is done when its form is submitted, not when it is c
   assert(!document.querySelector('.kit-spot-card'), 'cleared');
 });
 
+test('spotlight: a text box is also done when another walk control in its form is pressed, and says which', async () => {
+  // diazo's reply box: "This is the direction" sends the words typed and
+  // settles the direction in one press, which is no submit.
+  const fx = fixture();
+  fx.innerHTML = '<form><textarea data-walk="reply"></textarea><button type="button" data-walk="direction">This is the direction</button><button type="button">Explain this more</button><button type="submit">Send</button></form>';
+  fx.querySelector('form').addEventListener('submit', e => e.preventDefault());
+  let pressed = 0;
+  fx.querySelector('[data-walk=direction]').addEventListener('click', () => pressed++);
+  const d = done();
+  await spotlight(step({ n: 1, walk: 'reply' }));
+  fx.querySelectorAll('button')[1].click();
+  await sleep(30);
+  eq(d.got, [], 'a button with no walk hook');
+  fx.querySelector('[data-walk=direction]').click();
+  await sleep(30);
+  d.stop();
+  eq(d.got.map(m => [m.n, m.walk, m.also]), [[1, 'reply', 'direction']]);
+  eq(pressed, 1, "the tool's own handler still runs");
+  assert(!document.querySelector('.kit-spot-card'), 'cleared');
+});
+
 test('spotlight: while the control is not on the page the note waits off the text, and it is ringed the moment it appears', async () => {
   const fx = fixture();
   // A page of text in a column down the middle, the way a plan or a document reads.

@@ -8,9 +8,10 @@
 // A step is { n, of, tool, walk, ready, press, prepare, title, note, look, ok }: walk names the
 // control's data-walk hook. The learner's click is the signal the step is
 // done: a click on the ringed control (or, for a text box or a form, its form
-// being submitted) clears the ring and posts {type: "kit:spotlight-done", n,
-// tool, walk} to window.parent (proj's split page; the same channel as
-// kit.forward). The listener runs in the capture phase, so the tool's own
+// being submitted, or another data-walk control in its form being pressed,
+// which the message names as also) clears the ring and posts {type:
+// "kit:spotlight-done", n, tool, walk, also?} to window.parent (proj's split
+// page; the same channel as kit.forward). The listener runs in the capture phase, so the tool's own
 // handler still runs. A step with ok puts an ok button on the note, which is
 // the step's only done (the split page's first note). While the control isn't
 // on the page (the agent is still preparing it) the note shows the step's
@@ -165,24 +166,38 @@ export async function spotlight(step) {
   }
   // done is the learner's click landing: the ring goes and the split page
   // hears which step it was.
-  function done() {
+  // also names another walk control the same press used (a reply box's
+  // form whose other hooked button sends the words and does that step too).
+  function done(also) {
     if (current === me) current = null;
     me.stop(true);
     const to = globalThis.parent || globalThis;
-    to.postMessage({ type: 'kit:spotlight-done', n: step.n, tool: step.tool, walk: step.walk }, '*');
+    const msg = { type: 'kit:spotlight-done', n: step.n, tool: step.tool, walk: step.walk };
+    if (also) msg.also = also;
+    to.postMessage(msg, '*');
   }
   const inside = (t, n) => n instanceof Node && (t.contains(n) || n.contains(t));
   function onClick(e) {
     if (step.ok) return;
     const t = document.querySelector(sel);
-    if (t && !isTextBox(t) && e.target instanceof Node && t.contains(e.target)) done();
+    if (!t || !(e.target instanceof Element)) return;
+    if (!isTextBox(t)) {
+      if (t.contains(e.target)) done();
+      return;
+    }
+    // A text box is answered by its form's submit, or by a press on another
+    // walk control in that form (diazo's "This is the direction" sends the
+    // reply and settles the direction at once): done, naming that control.
+    const form = t.closest('form');
+    const other = e.target.closest('[data-walk]');
+    if (form && other && other !== t && !other.contains(t) && form.contains(other)) done(other.getAttribute('data-walk'));
   }
   function onSubmit(e) {
     if (step.ok) return;
     const t = document.querySelector(sel);
     if (t && isTextBox(t) && inside(t, e.target)) done();
   }
-  if (okBtn) okBtn.addEventListener('click', done);
+  if (okBtn) okBtn.addEventListener('click', () => done());
 
   place();
   watch.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-walk', 'hidden', 'class', 'style'] });
