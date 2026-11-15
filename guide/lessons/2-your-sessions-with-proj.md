@@ -60,7 +60,7 @@
    I'm looking at the servers tab on proj's page. Tell me in a line what each server there is for, and which say restart.
    ```
 
-   **Claude runs:** no command; it answers from what you see.
+   **Claude runs:** `proj servers --json`, which lists the same servers the tab shows, each up or down and whether a newer build waits for a restart.
 
    After an update, a running server says restart to run it: press restart there, or ask the agent to.
 
