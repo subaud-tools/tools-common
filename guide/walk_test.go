@@ -7,9 +7,11 @@ import (
 	"testing/fstest"
 )
 
-// The walk is the ten clicks the getting-started skill runs, each on a hook
-// diazo, galley and proj put on their pages under these exact names.
-func TestWalkIsTheTenClicks(t *testing.T) {
+// The walk is the nine clicks the getting-started skill runs, each on a hook
+// diazo, galley and proj put on their pages under these exact names. Galley
+// ends at Revise, then Approve: History hides Approve, so reading what changed
+// is the Guide's.
+func TestWalkIsTheNineClicks(t *testing.T) {
 	w, err := Walk()
 	if err != nil {
 		t.Fatal(err)
@@ -17,7 +19,7 @@ func TestWalkIsTheTenClicks(t *testing.T) {
 	want := []struct{ tool, target string }{
 		{"proj", "split"}, {"diazo", "reply"}, {"diazo", "direction"}, {"diazo", "choose"},
 		{"diazo", "approve-spec"}, {"diazo", "approve-plan"}, {"galley", "add-instruction"},
-		{"galley", "revise"}, {"galley", "history"}, {"galley", "approve"},
+		{"galley", "revise"}, {"galley", "approve"},
 	}
 	if len(w) != len(want) {
 		t.Fatalf("%d steps, want %d", len(w), len(want))
@@ -38,6 +40,15 @@ func TestWalkIsTheTenClicks(t *testing.T) {
 		if got := s.Selector(); got != `[data-walk="`+want[i].target+`"]` {
 			t.Errorf("step %d: selector %s", s.N, got)
 		}
+	}
+	if slices.ContainsFunc(w, func(s WalkStep) bool { return strings.Contains(s.Agent, "scratch place") && s.N > 1 }) {
+		t.Error("an agent line points at the scratch place; the plan folder and the practice README are separate paths (diazo writes its own README.md in a plan's folder)")
+	}
+	if !strings.Contains(w[1].Agent, "practice plan's folder") || !strings.Contains(w[6].Agent, "practice README") {
+		t.Errorf("steps 2 and 7 name the paths proj guide start prints: %q / %q", w[1].Agent, w[6].Agent)
+	}
+	if strings.Contains(w[1].Title, "Reply") || !strings.Contains(w[1].Title, "Send") {
+		t.Errorf("step 2 names what is there, a box and Send: %q", w[1].Title)
 	}
 	if !w[0].OK || slices.ContainsFunc(w[1:], func(s WalkStep) bool { return s.OK }) {
 		t.Error("only the split page's note carries an ok button")

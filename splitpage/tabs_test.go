@@ -420,3 +420,45 @@ func TestReplaceMovesATabInPlace(t *testing.T) {
 		t.Errorf("an unknown tab: %v", err)
 	}
 }
+
+// A tool's page opened while a tab shows that tool's front page moves that tab
+// to it, in place, as a tool's front-page browser tab is moved to the page:
+// the walk opens galley's front page as a tab, then galley_open opens the
+// document, and the learner should see one galley tab, which a reload of the
+// split page brings back on the document.
+func TestOpenMovesTheToolsFrontPageTabToThePage(t *testing.T) {
+	tabs := NewTabs()
+	front, _ := tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4005/?t=abc", Title: "galley"})
+	frontID := front.Selected
+	other, _ := tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4006/", Title: "diazo"})
+	l, err := tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4005/d/readme", Title: "README.md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := addresses(l); len(got) != 2 || got[0] != "http://127.0.0.1:4005/d/readme" || got[1] != "http://127.0.0.1:4006/" {
+		t.Fatalf("tabs = %v, want the front page moved in place", got)
+	}
+	if l.Tabs[0].ID != frontID || l.Tabs[0].Title != "README.md" || l.Selected != frontID {
+		t.Fatalf("moved tab %+v, selected %q; want id %q, the page's title, shown", l.Tabs[0], l.Selected, frontID)
+	}
+	// A tab already on one of the tool's pages is not a front page: another
+	// page of the tool opens beside it.
+	l, _ = tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4005/d/other"})
+	if len(l.Tabs) != 3 {
+		t.Fatalf("tabs = %v, want a third", addresses(l))
+	}
+	// diazo's plan is its front page's path with the plan in the query: the
+	// front page (only the token in its query) moves to it.
+	_, _ = tabs.Open(OpenRequest{Session: "d", Address: "http://127.0.0.1:4008/?t=abc", Title: "diazo"})
+	l, _ = tabs.Open(OpenRequest{Session: "d", Address: "http://127.0.0.1:4008/?t=abc&f=plan1"})
+	if got := addresses(l); len(got) != 1 || got[0] != "http://127.0.0.1:4008/?t=abc&f=plan1" {
+		t.Fatalf("diazo: tabs = %v, want the front page moved to the plan", got)
+	}
+	// Behind, the front page still moves, and what shows stays.
+	_, _ = tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4007/", Title: "proj"})
+	_, _ = tabs.Select("s", other.Selected)
+	l, _ = tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4007/guide", Behind: true})
+	if got := addresses(l); len(got) != 4 || got[3] != "http://127.0.0.1:4007/guide" || l.Selected != other.Selected {
+		t.Fatalf("behind: tabs = %v selected %q", got, l.Selected)
+	}
+}

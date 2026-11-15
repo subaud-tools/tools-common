@@ -799,8 +799,8 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 
 /* ---- the walk's spotlight (spotlight.js) -------------------------------- */
 /* The tour's ring and note, with nothing over the page: the learner presses
- * the real control. Lost: the control isn't on the page yet, so the note sits
- * in the middle and says the agent is getting it ready. */
+ * the real control. Lost: the control isn't on the page yet, so the note waits
+ * off the page's text and says the agent is getting it ready. */
 .kit-spot-ring {
   position: fixed;
   z-index: 190;

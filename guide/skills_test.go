@@ -89,7 +89,7 @@ func TestSkillsRenderFromTheContent(t *testing.T) {
 			}
 		}
 	}
-	for _, want := range []string{"Get me started with subaud.", "proj guide start", "proj guide show", "never watch a tool's events", "proj guide back", "proj guide skip", "proj guide stop", "never types anything"} {
+	for _, want := range []string{"Get me started with subaud.", "proj guide start", "proj guide show", "never watch a tool's events", "proj guide back", "proj guide skip", "proj guide stop", "never types anything", "one short line"} {
 		if !strings.Contains(walk, want) {
 			t.Errorf("getting-started does not say %q", want)
 		}
