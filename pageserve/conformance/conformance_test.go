@@ -14,7 +14,7 @@ import (
 func scratchServer(t *testing.T) Server {
 	t.Helper()
 	return Server{Tool: "scratch", Binary: Build(t, "./testdata/scratch"), Args: []string{"serve"}, Channel: true, Quiet: time.Second,
-		Delivery: true, Send: scratchSend, PresenceTTL: scratchTTL}
+		Send: scratchSend, PresenceTTL: scratchTTL}
 }
 
 // scratchTTL is scratch's presence TTL (its own short test clock).
@@ -109,12 +109,22 @@ func TestASkillNamedApartIsCheckedUnderItsName(t *testing.T) {
 	}
 }
 
-// A tool whose channel still long-polls has no delivers rule to pass.
-func TestAToolWithoutDeliveryIsNotCheckedForIt(t *testing.T) {
+// A tool with no channel has no delivers rule to pass.
+func TestAToolWithNoChannelIsNotCheckedForDelivery(t *testing.T) {
 	s := scratchServer(t)
-	s.Delivery = false
+	s.Channel = false
 	s.Env = []string{"SCRATCH_BREAK=delivers"}
 	if err := runRule(t, s, "delivers"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// A tool with a channel and no Send hook fails delivers, saying what is missing.
+func TestAChannelWithoutSendFailsDelivers(t *testing.T) {
+	s := scratchServer(t)
+	s.Send = nil
+	err := runRule(t, s, "delivers")
+	if err == nil || !regexp.MustCompile("Server.Send").MatchString(err.Error()) {
+		t.Fatalf("%v", err)
 	}
 }

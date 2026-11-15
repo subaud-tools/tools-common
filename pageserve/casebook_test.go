@@ -16,7 +16,6 @@ import (
 	"os/exec"
 	"reflect"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -89,14 +88,14 @@ func TestChannelReportsNeverStartServe(t *testing.T) {
 	}
 }
 
-// While no serve runs the loop logs nothing, poll after poll.
+// While no serve runs the loop logs nothing, try after try.
 func TestTheLoopIsQuietWhileNoServeRuns(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		spec func(Spec) Spec
 	}{
 		{"presence", func(s Spec) Spec { return s }},
-		{"wait", func(s Spec) Spec { s.NoPresence = true; return s }},
+		{"no presence", func(s Spec) Spec { s.NoPresence = true; return s }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			log := &syncBuf{}
@@ -169,14 +168,15 @@ func TestPresenceBodyHook(t *testing.T) {
 // entry's StartedAt changed), not on the first serve it finds; and the loop
 // registers presence with the new serve at once.
 func TestOnServeRunsWhenServeIsNew(t *testing.T) {
-	f := newFakeServe(t)
-	var mu sync.Mutex
+	first, next := newFakeServe(t), newFakeServe(t)
+	var moved atomic.Bool
 	started := time.Date(2026, 10, 27, 1, 0, 0, 0, time.UTC)
-	cl := f.client()
+	cl := first.client()
 	cl.Find = func() (Entry, error) {
-		mu.Lock()
-		defer mu.Unlock()
-		return Entry{Base: f.srv.URL, Token: "tok", PID: os.Getpid(), StartedAt: started}, nil
+		if moved.Load() {
+			return Entry{Base: next.srv.URL, Token: "tok", PID: os.Getpid(), StartedAt: started.Add(time.Hour)}, nil
+		}
+		return Entry{Base: first.srv.URL, Token: "tok", PID: os.Getpid(), StartedAt: started}, nil
 	}
 	seen := make(chan Entry, 4)
 	spec := cullSpec()
@@ -187,32 +187,30 @@ func TestOnServeRunsWhenServeIsNew(t *testing.T) {
 		seen <- e
 	}
 	ch := New(spec, Identity{Session: "s-1", Harness: "pi", CWD: t.TempDir()}, cl)
-	ch.Retry, ch.Presence, ch.Poll = 20*time.Millisecond, time.Hour, time.Second
+	ch.Retry, ch.Presence = 20*time.Millisecond, time.Hour
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { _ = ch.Watch(ctx); close(done) }()
 	t.Cleanup(func() { cancel(); <-done })
-	if !waitFor(5*time.Second, func() bool { return f.waits.Load() > 0 }) {
-		t.Fatal("never waited")
+	if !waitFor(5*time.Second, func() bool { return first.count("POST /api/agent/claim") > 0 }) {
+		t.Fatal("never claimed")
 	}
 	select {
 	case e := <-seen:
 		t.Fatalf("OnServe ran for the first serve: %+v", e)
 	case <-time.After(300 * time.Millisecond):
 	}
-	before := len(f.presences())
-	mu.Lock()
-	started = started.Add(time.Hour)
-	mu.Unlock()
+	moved.Store(true)
+	first.stop()
 	select {
 	case e := <-seen:
-		if !e.StartedAt.Equal(started) {
+		if !e.StartedAt.Equal(started.Add(time.Hour)) {
 			t.Fatalf("OnServe entry %+v", e)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("OnServe never ran for the new serve")
 	}
-	if !waitFor(5*time.Second, func() bool { return len(f.presences()) > before }) {
+	if !waitFor(5*time.Second, func() bool { return len(next.presences()) > 0 }) {
 		t.Fatal("no presence for the new serve")
 	}
 }

@@ -2,7 +2,7 @@
 // code for the server rules, which conformance must pass. SCRATCH_BREAK names
 // a rule to break, the one thing it does beyond that, which conformance must
 // fail: that is what proves the check can fail. Its channel (`scratch watch`)
-// takes Sends with Spec.Stream, and its serve wires pageserve.Delivery, with
+// listens and claims, and its serve wires pageserve.Delivery, with
 // POST /api/conformance-send to record one.
 package main
 
@@ -128,7 +128,7 @@ func handRolled(ctx context.Context, o pageserve.Options) error {
 
 // spec is scratch's channel: no tools, its folder as its scope, and a Send's
 // text pushed as is.
-var spec = pageserve.Spec{Tool: tool, Version: "1.2.3", Answers: "the sends", Stream: true,
+var spec = pageserve.Spec{Tool: tool, Version: "1.2.3", Answers: "the sends",
 	Scope: func(cwd string) string { return cwd },
 	Wake: func(body json.RawMessage) (string, map[string]string, bool) {
 		var got struct {

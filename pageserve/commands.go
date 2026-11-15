@@ -280,7 +280,7 @@ func (c Commands) ReportCommand() tools.Command {
 
 // ReportTimeout bounds `<tool> report`: the Claude Code plugin's hook runs
 // it and waits, so a serve that takes the connection and never answers must
-// not hold the hook for the client's long-poll timeout.
+// not hold the hook for the client's own timeout.
 var ReportTimeout = 5 * time.Second
 
 type agents []string
