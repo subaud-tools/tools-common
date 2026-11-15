@@ -1,7 +1,7 @@
 // Package guide holds the family guide's text, embedded in every binary that
 // builds on tools-common: one section per tool (tools/<name>.md), how the
-// tools fit together (fit.md), and the getting-started walk's lessons
-// (lessons/<n>-<topic>.md). The Guide tab, the walk and the agent's map all
+// tools fit together (fit.md), the getting-started walk's intro (intro.md)
+// and its lessons (lessons/<n>-<topic>.md). The Guide tab, the walk and the agent's map all
 // read it from here rather than restating it.
 //
 // Every ask in it is something the user says to their agent; no text tells
@@ -22,7 +22,7 @@ import (
 	"sync"
 )
 
-//go:embed fit.md tools/*.md lessons/*.md
+//go:embed fit.md intro.md tools/*.md lessons/*.md
 var content embed.FS
 
 // Family is every family tool a guide text may name, by command name, in the
@@ -70,6 +70,9 @@ type set struct {
 	tools   []Tool
 	lessons map[int]LessonPage
 	fit     string
+	// The walk's intro, shown before lesson 1: its # title and the markdown
+	// after it.
+	introTitle, intro string
 }
 
 var loaded = sync.OnceValues(func() (set, error) { return load(content) })
@@ -108,6 +111,13 @@ func LessonNumbers() []int {
 func Fit() string {
 	s, _ := loaded()
 	return s.fit
+}
+
+// Intro returns the walk's intro, shown before lesson 1: its title and its
+// markdown body, without the # title line.
+func Intro() (title, body string) {
+	s, _ := loaded()
+	return s.introTitle, s.intro
 }
 
 // Named returns the family tools text names, by whole word (diazo_open names
@@ -175,7 +185,46 @@ func load(fsys fs.FS) (set, error) {
 		}
 		s.lessons[l.N] = l
 	}
+	b, err := fs.ReadFile(fsys, "intro.md")
+	if err != nil {
+		return s, err
+	}
+	errs = append(errs, s.parseIntro(string(b))...)
 	return s, errors.Join(errs...)
+}
+
+// introLessonRe is a lesson the intro lists: "3. **Plan with diazo.** ...".
+var introLessonRe = regexp.MustCompile(`^(\d+)\. \*\*(.+?)\*\*`)
+
+// parseIntro reads intro.md into s: a # title first, the rules every guide
+// text keeps, and each lesson it lists by number named by that core lesson's
+// title, so the intro can't drift from the lessons.
+func (s *set) parseIntro(text string) []error {
+	const file = "intro.md"
+	var errs []error
+	errs = append(errs, commands(file, text)...)
+	errs = append(errs, placeholders(file, text, false)...)
+	title, body, _ := strings.Cut(strings.TrimLeft(text, "\n"), "\n")
+	if t, ok := strings.CutPrefix(title, "# "); ok && strings.TrimSpace(t) != "" {
+		s.introTitle, s.intro = strings.TrimSpace(t), strings.TrimLeft(body, "\n")
+	} else {
+		errs = append(errs, fmt.Errorf("%s: no # title on its first line", file))
+	}
+	for i, line := range strings.Split(text, "\n") {
+		m := introLessonRe.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		n, _ := strconv.Atoi(m[1])
+		got := strings.TrimRight(strings.TrimSpace(m[2]), ".:")
+		switch l, ok := s.lessons[n]; {
+		case !ok || l.Offered != "":
+			errs = append(errs, fmt.Errorf("%s:%d: lists lesson %d, which isn't a core lesson", file, i+1, n))
+		case got != l.Title:
+			errs = append(errs, fmt.Errorf("%s:%d: lists lesson %d as %q; its title is %q", file, i+1, n, got, l.Title))
+		}
+	}
+	return errs
 }
 
 // commands finds lines that tell the user to type a family command: a line in

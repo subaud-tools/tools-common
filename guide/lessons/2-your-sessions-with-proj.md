@@ -24,7 +24,7 @@
    I added ~/subaud on the folders tab of proj's page. Tell me when proj lists practice as a project.
    ```
 
-   **Claude runs:** `proj list --json`, which shows practice among the projects once your add arrives.
+   **Claude runs:** `proj window --socket ‹socket› --pane ‹pane› --right ‹proj's page›` first if proj's page isn't open as a tab, the same as step 1, then `proj list --json`, which shows practice among the projects once your add arrives.
 
    You did it on the page and the agent saw it from the terminal; asking the agent to add a folder works too, and the page shows it either way.
 

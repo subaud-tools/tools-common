@@ -26,7 +26,11 @@ func TestContentIsValid(t *testing.T) {
 			t.Errorf("%s has no file in guide/tools", name)
 		}
 	}
-	texts := map[string]string{"fit.md": Fit()}
+	title, body := Intro()
+	if title == "" || body == "" || strings.Contains(body, "# "+title) {
+		t.Errorf("Intro() = %q, %d bytes of body; want a title and the body without it", title, len(body))
+	}
+	texts := map[string]string{"fit.md": Fit(), "intro.md": body}
 	for _, n := range LessonNumbers() {
 		l, err := Lesson(n)
 		if err != nil {
@@ -80,6 +84,8 @@ const goodLesson = "# Plan a change\n\n**Goal:** Take an idea to a plan.\n\n## W
 	"1. **Say the idea**\n\n   A plan starts from one line.\n\n   ```\n   Plan this with diazo: a README.\n   ```\n\n   **Claude runs:** `diazo_open`\n\n" +
 	"2. **Confirm the understanding**\n\n   The agent says back what it understood.\n\n   ```\n   Show me the understanding on the page.\n   ```\n\n   **Claude runs:** `diazo_status`\n"
 
+const goodIntro = "# Getting started\n\n## What you'll make\n\nA practice repo with a README.\n\n## The lessons\n\n3. **Plan a change.** An idea to a plan.\n"
+
 // Each rule a file can break is caught, naming the file.
 func TestValidationCatches(t *testing.T) {
 	cases := []struct {
@@ -98,6 +104,11 @@ func TestValidationCatches(t *testing.T) {
 		{"angle-bracket placeholder in an ask", "tools/diazo.md", strings.Replace(goodTool, "Plan this with diazo.", "Plan this with diazo: <idea>.", 1), "placeholder"},
 		{"angle-bracket placeholder in a lesson ask", "lessons/3-plan.md", strings.Replace(goodLesson, "a README.", "<idea>.", 1), "placeholder"},
 		{"angle-bracket placeholder in fit", "fit.md", "# How they fit\n\nAsk about <topic>.\n", "placeholder"},
+		{"intro without a title", "intro.md", strings.Replace(goodIntro, "# Getting started\n", "", 1), "title"},
+		{"intro lists a lesson by the wrong title", "intro.md", strings.Replace(goodIntro, "**Plan a change.**", "**Plan with diazo.**", 1), "lesson 3"},
+		{"intro lists a lesson there isn't", "intro.md", strings.Replace(goodIntro, "3. **Plan a change.**", "9. **Plan a change.**", 1), "lesson 9"},
+		{"angle-bracket placeholder in the intro", "intro.md", strings.Replace(goodIntro, "a README.", "<thing>.", 1), "placeholder"},
+		{"user told to type a command in the intro", "intro.md", goodIntro + "\n```\nproj guide start\n```\n", "family command"},
 		{"choose step", "lessons/3-plan.md", goodLesson + "\n   **Choose:**\n\n   - **It asks me first**: I think it asks me first. Am I right?\n   - **It writes code first**: I think it writes code first. Am I right?\n", "Choose"},
 	}
 	for _, c := range cases {
@@ -106,6 +117,7 @@ func TestValidationCatches(t *testing.T) {
 				"tools/diazo.md":    {Data: []byte(goodTool)},
 				"lessons/3-plan.md": {Data: []byte(goodLesson)},
 				"fit.md":            {Data: []byte("# How they fit\n")},
+				"intro.md":          {Data: []byte(goodIntro)},
 			}
 			if _, err := load(fsys); err != nil {
 				t.Fatalf("good content refused: %v", err)
@@ -125,6 +137,7 @@ func TestPlaceholdersInCodePass(t *testing.T) {
 		"tools/diazo.md":    {Data: []byte(strings.Replace(goodTool, "A one-line fix.", "A fix to ‹file›, or `<file>` in code.", 1))},
 		"lessons/3-plan.md": {Data: []byte(goodLesson)},
 		"fit.md":            {Data: []byte("# How they fit\n\n```\n<b>tag</b>\n```\n")},
+		"intro.md":          {Data: []byte(goodIntro)},
 	}
 	if _, err := load(fsys); err != nil {
 		t.Fatal(err)
