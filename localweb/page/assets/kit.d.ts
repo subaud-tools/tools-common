@@ -1129,16 +1129,23 @@ export interface SpotlightStep {
   title: string;
   /** Its second line: why. */
   note?: string;
-  /** What to look for when the control isn't on the page. */
+  /** The control in words, for the agent; the page doesn't draw it. */
   look?: string;
-  /** An ok button on the note: pressing it clears it and fires kit:spotlight-ok on window with the step. */
+  /** An ok button on the note: pressing it is the step's click (a click on the control isn't). */
   ok?: boolean;
   /** The tab id the serve asks to come forward. */
   forward?: string;
 }
 
-/** Rings the step's control with its note beside it (n of N), following the page as it moves; nothing blocks the page, and a click on the control clears it. Waits up to o.wait ms (default 5000) for the control; without it the note sits in the middle with "Look for …". */
-export function spotlight(step: SpotlightStep, o?: { wait?: number }): Promise<void>;
+/** Rings the step's control with its note beside it (n of N), following the page as it moves; nothing blocks the page. The learner's click on the control (for a text box or form, its submit; for an ok step, the ok button) clears it and posts {type: "kit:spotlight-done", n, tool, walk} to window.parent. While the control isn't on the page the note sits in the middle with "Your agent is getting this ready…", and the control is ringed the moment it appears. */
+export function spotlight(step: SpotlightStep): Promise<void>;
+/** The message spotlight() posts to window.parent when the learner's click lands. */
+export interface SpotlightDone {
+  type: 'kit:spotlight-done';
+  n: number;
+  tool: string;
+  walk: string;
+}
 /** Takes the step shown away. */
 export function clearSpotlight(): void;
 /** Draws the step the serve holds now (GET url, default /api/kit/spotlight; 204 for none). live() calls it when its stream first opens. */

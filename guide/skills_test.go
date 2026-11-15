@@ -83,18 +83,18 @@ func TestSkillsRenderFromTheContent(t *testing.T) {
 	walk := string(sk[1].Body)
 	steps, _ := Walk()
 	for _, s := range steps {
-		for _, want := range []string{s.Selector(), s.Title, s.Agent, s.Advance} {
+		for _, want := range []string{s.Selector(), s.Title, s.Agent} {
 			if !strings.Contains(walk, want) {
 				t.Errorf("getting-started does not carry step %d's %q", s.N, want)
 			}
 		}
 	}
-	for _, want := range []string{"Get me started with subaud.", "proj guide start", "proj guide show", "proj guide next", "proj guide back", "proj guide skip", "proj guide stop", "never types anything"} {
+	for _, want := range []string{"Get me started with subaud.", "proj guide start", "proj guide show", "never watch a tool's events", "proj guide back", "proj guide skip", "proj guide stop", "never types anything"} {
 		if !strings.Contains(walk, want) {
 			t.Errorf("getting-started does not say %q", want)
 		}
 	}
-	for _, gone := range []string{"lesson", "Lesson", "proj guide result", "Send to Claude"} {
+	for _, gone := range []string{"lesson", "Lesson", "proj guide result", "Send to Claude", "Advance", "advance event"} {
 		if strings.Contains(walk, gone) {
 			t.Errorf("getting-started still says %q", gone)
 		}

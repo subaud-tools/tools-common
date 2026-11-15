@@ -42,38 +42,97 @@ test('spotlight: follows the control when the page scrolls', async () => {
   scrollTo(0, 0);
 });
 
-test('spotlight: waits for a control that appears late', async () => {
+// done collects the kit:spotlight-done messages posted to the parent (this
+// page is the top window, so they come back to it).
+function done() {
+  const got = [];
+  const on = e => { if (e.data && e.data.type === 'kit:spotlight-done') got.push(e.data); };
+  addEventListener('message', on);
+  return { got, stop: () => removeEventListener('message', on) };
+}
+
+test('spotlight: a click on the ringed control posts kit:spotlight-done with n, tool and walk, and the tool still gets the click', async () => {
   const fx = fixture();
-  setTimeout(() => { fx.innerHTML = '<button data-walk="choose">Choose</button>'; }, 150);
-  await spotlight(step({ walk: 'choose' }), { wait: 2000 });
-  assert(!document.querySelector('.kit-spot-ring').hidden, 'ringed once it showed');
-  assert(!document.querySelector('.kit-spot-card').classList.contains('kit-spot-lost'));
+  fx.innerHTML = '<button data-walk="choose"><span>Choose</span></button>';
+  let clicked = 0;
+  fx.querySelector('button').addEventListener('click', () => clicked++);
+  const d = done();
+  await spotlight(step({ n: 4, walk: 'choose' }));
+  fx.querySelector('span').click();
+  await sleep(30);
+  d.stop();
+  eq(d.got, [{ type: 'kit:spotlight-done', n: 4, tool: 'diazo', walk: 'choose' }]);
+  eq(clicked, 1);
+  assert(!document.querySelector('.kit-spot-ring'), 'the ring goes');
+});
+
+test('spotlight: a click elsewhere is not the step done', async () => {
+  const fx = fixture();
+  fx.innerHTML = '<button data-walk="choose">Choose</button><button id="other">Other</button>';
+  const d = done();
+  await spotlight(step({ walk: 'choose' }));
+  fx.querySelector('#other').click();
+  await sleep(30);
+  d.stop();
+  eq(d.got, []);
+  assert(document.querySelector('.kit-spot-ring'), 'still ringed');
   clearSpotlight();
 });
 
-test('spotlight: a control not on the page gets the note centred with look for', async () => {
-  fixture();
-  await spotlight(step({ walk: 'nowhere' }), { wait: 60 });
+test('spotlight: a text box is done when its form is submitted, not when it is clicked', async () => {
+  const fx = fixture();
+  fx.innerHTML = '<form data-walk="reply"><textarea></textarea><button type="submit">Send</button></form>';
+  let submitted = 0;
+  fx.querySelector('form').addEventListener('submit', e => { e.preventDefault(); submitted++; });
+  const d = done();
+  await spotlight(step({ n: 2, walk: 'reply' }));
+  fx.querySelector('textarea').click();
+  await sleep(30);
+  eq(d.got, [], 'clicking into the box');
+  fx.querySelector('button').click();
+  await sleep(30);
+  d.stop();
+  eq(d.got.map(m => m.n), [2]);
+  eq(submitted, 1);
+  assert(!document.querySelector('.kit-spot-card'), 'cleared');
+});
+
+test('spotlight: while the control is not on the page the note waits centred, and it is ringed the moment it appears', async () => {
+  const fx = fixture();
+  await spotlight(step({ walk: 'approve-spec', title: 'Press Approve on the spec.' }));
+  await sleep(300);
   const card = document.querySelector('.kit-spot-card');
-  assert(document.querySelector('.kit-spot-ring').hidden, 'no ring');
+  assert(card && !card.hidden, 'the note shows');
   assert(card.classList.contains('kit-spot-lost'), 'centred');
-  eq(card.querySelector('.kit-spot-look').textContent, 'Look for Reply under the take.');
+  assert(document.querySelector('.kit-spot-ring').hidden, 'no ring yet');
+  eq(card.querySelector('.kit-spot-title').textContent, 'Press Approve on the spec.');
+  eq(card.querySelector('.kit-spot-wait').textContent, 'Your agent is getting this ready…');
   const c = card.getBoundingClientRect();
   assert(Math.abs(c.x + c.width / 2 - innerWidth / 2) < 20, 'centred across');
+  fx.innerHTML = '<button data-walk="approve-spec" style="margin:40px">Approve</button>';
+  await sleep(30);
+  const r = fx.querySelector('button').getBoundingClientRect();
+  const ring = document.querySelector('.kit-spot-ring');
+  assert(!ring.hidden, 'ringed once it showed');
+  assert(near(r.x, ring.getBoundingClientRect().x), 'on the control');
+  assert(!card.classList.contains('kit-spot-lost'), 'beside it now');
+  assert(card.querySelector('.kit-spot-wait').hidden, 'no waiting line');
   clearSpotlight();
   assert(!document.querySelector('.kit-spot-card'), 'cleared');
 });
 
-test('spotlight: ok on the note clears it and tells the page', async () => {
+test('spotlight: ok on the note clears it and posts kit:spotlight-done; a click on the lit area does not', async () => {
   const fx = fixture();
   fx.innerHTML = '<div data-walk="split" style="width:200px;height:80px"></div>';
-  let heard = null;
-  const on = e => { heard = e.detail; };
-  addEventListener('kit:spotlight-ok', on);
-  await spotlight(step({ n: 1, walk: 'split', ok: true }));
+  const d = done();
+  await spotlight(step({ n: 1, tool: 'proj', walk: 'split', ok: true }));
+  fx.querySelector('div').click();
+  await sleep(30);
+  eq(d.got, [], 'the area itself');
   document.querySelector('.kit-spot-ok').click();
-  removeEventListener('kit:spotlight-ok', on);
-  eq(heard && heard.n, 1);
+  await sleep(30);
+  d.stop();
+  eq(d.got, [{ type: 'kit:spotlight-done', n: 1, tool: 'proj', walk: 'split' }]);
   assert(!document.querySelector('.kit-spot-card'), 'cleared');
 });
 

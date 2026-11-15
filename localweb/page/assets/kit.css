@@ -799,8 +799,8 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 
 /* ---- the walk's spotlight (spotlight.js) -------------------------------- */
 /* The tour's ring and note, with nothing over the page: the learner presses
- * the real control. Lost: the control isn't on the page, so the note sits in
- * the middle and says what to look for. */
+ * the real control. Lost: the control isn't on the page yet, so the note sits
+ * in the middle and says the agent is getting it ready. */
 .kit-spot-ring {
   position: fixed;
   z-index: 190;
@@ -826,7 +826,7 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-spot-card p { margin: 0; }
 .kit-spot-count { font: 10.5px var(--kit-mono); letter-spacing: 0.06em; color: var(--kit-muted); margin-bottom: 3px !important; }
 .kit-spot-title { font-weight: 600; }
-.kit-spot-look { margin-top: 6px !important; color: var(--kit-muted); font-size: 12.5px; }
+.kit-spot-wait { margin-top: 6px !important; color: var(--kit-muted); font-size: 12.5px; }
 .kit-spot-acts { display: flex; justify-content: flex-end; margin-top: 8px; }
 
 /* ---- the Guide (guide.js) ------------------------------------------------ */

@@ -29,11 +29,8 @@ func TestWalkIsTheTenClicks(t *testing.T) {
 		if !slices.Contains(Family, s.Tool) {
 			t.Errorf("step %d: %s is not a family tool", s.N, s.Tool)
 		}
-		if s.Title == "" || s.Look == "" || s.Agent == "" || s.Advance == "" {
+		if s.Title == "" || s.Look == "" || s.Agent == "" {
 			t.Errorf("step %d: a part is empty: %+v", s.N, s)
-		}
-		if !strings.HasPrefix(s.Advance, s.Tool+": ") {
-			t.Errorf("step %d: advance %q does not name its tool's event", s.N, s.Advance)
 		}
 		if strings.ContainsAny(s.Title+s.Note, "`<>$") {
 			t.Errorf("step %d: its note holds something to type or a placeholder: %q / %q", s.N, s.Title, s.Note)
@@ -49,13 +46,14 @@ func TestWalkIsTheTenClicks(t *testing.T) {
 
 func TestWalkValidationCatches(t *testing.T) {
 	for name, tc := range map[string]struct{ body, want string }{
-		"unknown tool":  {"## 1\ntool: nope\ntarget: a\nlook: x\nagent: x\nadvance: nope: x\n\nPress a.\n", "not a family tool"},
-		"three lines":   {"## 1\ntool: diazo\ntarget: a\nlook: x\nagent: x\nadvance: diazo: x\n\nOne.\nTwo.\nThree.\n", "two lines at most"},
-		"a command":     {"## 1\ntool: diazo\ntarget: a\nlook: x\nagent: x\nadvance: diazo: x\n\nRun `diazo open`.\n", "to type"},
-		"a placeholder": {"## 1\ntool: diazo\ntarget: a\nlook: x\nagent: x\nadvance: diazo: x\n\nPress <button>.\n", "placeholder"},
-		"bad hook":      {"## 1\ntool: diazo\ntarget: A b\nlook: x\nagent: x\nadvance: diazo: x\n\nPress a.\n", "hook"},
-		"no agent":      {"## 1\ntool: diazo\ntarget: a\nlook: x\nadvance: diazo: x\n\nPress a.\n", "agent"},
-		"out of order":  {"## 2\ntool: diazo\ntarget: a\nlook: x\nagent: x\nadvance: diazo: x\n\nPress a.\n", "step 2"},
+		"unknown tool":  {"## 1\ntool: nope\ntarget: a\nlook: x\nagent: x\n\nPress a.\n", "not a family tool"},
+		"three lines":   {"## 1\ntool: diazo\ntarget: a\nlook: x\nagent: x\n\nOne.\nTwo.\nThree.\n", "two lines at most"},
+		"a command":     {"## 1\ntool: diazo\ntarget: a\nlook: x\nagent: x\n\nRun `diazo open`.\n", "to type"},
+		"a placeholder": {"## 1\ntool: diazo\ntarget: a\nlook: x\nagent: x\n\nPress <button>.\n", "placeholder"},
+		"bad hook":      {"## 1\ntool: diazo\ntarget: A b\nlook: x\nagent: x\n\nPress a.\n", "hook"},
+		"no agent":      {"## 1\ntool: diazo\ntarget: a\nlook: x\n\nPress a.\n", "agent"},
+		"an advance":    {"## 1\ntool: diazo\ntarget: a\nlook: x\nagent: x\nadvance: diazo: x\n\nPress a.\n", "the click moves the walk on"},
+		"out of order":  {"## 2\ntool: diazo\ntarget: a\nlook: x\nagent: x\n\nPress a.\n", "step 2"},
 	} {
 		_, err := parseWalk(fstest.MapFS{"walk.md": {Data: []byte("# Walk\n\nIntro.\n\n" + tc.body)}})
 		if err == nil || !strings.Contains(err.Error(), tc.want) {

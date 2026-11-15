@@ -16,21 +16,21 @@ import (
 var walkContent embed.FS
 
 // WalkStep is one click of the getting-started walk: the control a tool's page
-// lights (its data-walk hook) with a two-line note, what the agent does before
-// it, and the tool event that means the click landed. Its JSON is the body
-// pageserve's POST /api/kit/spotlight takes and the kit's spotlight() draws;
-// Agent and Advance are for the agent and are left out of it.
+// lights (its data-walk hook) with a two-line note and what the agent does
+// before it. The learner's click on the control moves the walk on (the page
+// posts kit:spotlight-done to proj's split page), so a step names no tool
+// event. Its JSON is the body pageserve's POST /api/kit/spotlight takes and the
+// kit's spotlight() draws; Agent is for the agent and is left out of it.
 type WalkStep struct {
-	N       int    `json:"n"`
-	Of      int    `json:"of"`
-	Tool    string `json:"tool"`
-	Walk    string `json:"walk"`  // the control's data-walk hook: "reply"
-	Title   string `json:"title"` // the note's first line: what to press
-	Note    string `json:"note"`  // its second line: why (may be empty)
-	Look    string `json:"look"`  // what to look for when the control isn't on the page
-	OK      bool   `json:"ok"`    // the note carries an ok button, which moves the walk on
-	Agent   string `json:"-"`     // what the agent does first
-	Advance string `json:"-"`     // "<tool>: <the event that means the click landed>"
+	N     int    `json:"n"`
+	Of    int    `json:"of"`
+	Tool  string `json:"tool"`
+	Walk  string `json:"walk"`  // the control's data-walk hook: "reply"
+	Title string `json:"title"` // the note's first line: what to press
+	Note  string `json:"note"`  // its second line: why (may be empty)
+	Look  string `json:"look"`  // the control in words, for the agent when the learner can't find it
+	OK    bool   `json:"ok"`    // the note carries an ok button, which is the step's click
+	Agent string `json:"-"`     // what the agent does first
 }
 
 // Selector is the step's control on the page: [data-walk="reply"].
@@ -48,7 +48,7 @@ var (
 
 // parseWalk reads walk.md: a # title and intro, then one "## n" section per
 // step, numbered from 1, each key: value lines (tool, target, press, look,
-// agent, advance), a blank line and the note's one or two lines. It refuses a
+// agent), a blank line and the note's one or two lines. It refuses a
 // note with anything to type (a code span, a $ prompt) or a placeholder.
 func parseWalk(fsys fs.FS) ([]WalkStep, error) {
 	const file = "walk.md"
@@ -116,7 +116,7 @@ func parseWalkStep(file string, want int, lines []string) (WalkStep, []error) {
 			kv[strings.TrimSpace(k)] = strings.TrimSpace(v)
 		}
 	}
-	s.Tool, s.Walk, s.Look, s.Agent, s.Advance = kv["tool"], kv["target"], kv["look"], kv["agent"], kv["advance"]
+	s.Tool, s.Walk, s.Look, s.Agent = kv["tool"], kv["target"], kv["look"], kv["agent"]
 	switch p := kv["press"]; p {
 	case "ok":
 		s.OK = true
@@ -130,13 +130,13 @@ func parseWalkStep(file string, want int, lines []string) (WalkStep, []error) {
 	if !walkHookRe.MatchString(s.Walk) {
 		bad("target %q is not a data-walk hook (lower-case words joined by hyphens)", s.Walk)
 	}
-	for _, k := range []string{"look", "agent", "advance"} {
+	for _, k := range []string{"look", "agent"} {
 		if kv[k] == "" {
 			bad("no %s", k)
 		}
 	}
-	if s.Advance != "" && !strings.HasPrefix(s.Advance, s.Tool+": ") {
-		bad("advance %q does not start with its tool, %s: ", s.Advance, s.Tool)
+	if _, ok := kv["advance"]; ok {
+		bad("has an advance; the click moves the walk on, so a step names no tool event")
 	}
 	switch {
 	case len(note) == 0:
