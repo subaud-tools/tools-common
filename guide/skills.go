@@ -28,23 +28,27 @@ type skillData struct {
 	Fit           string
 	Lessons       []LessonPage
 	Core, Offered []LessonPage
-	Walk          []WalkStep
+	Walks         []Walk
+	Clicks        int
 }
 
 var blankRuns = regexp.MustCompile(`\n{3,}`)
 
 // Skills renders the two family skills from the guide content: the agent's
-// map (using-the-tools) and the walk (getting-started-with-subaud).
+// map (using-the-tools) and the walks (getting-started-with-subaud).
 func Skills() ([]Skill, error) {
 	s, err := loaded()
 	if err != nil {
 		return nil, err
 	}
-	walk, err := Walk()
+	walks, err := Walks()
 	if err != nil {
 		return nil, err
 	}
-	d := skillData{Tools: s.tools, Fit: s.fit, Walk: walk}
+	d := skillData{Tools: s.tools, Fit: s.fit, Walks: walks}
+	for _, w := range walks {
+		d.Clicks += len(w.Steps)
+	}
 	for _, n := range LessonNumbers() {
 		l := s.lessons[n]
 		d.Lessons = append(d.Lessons, l)

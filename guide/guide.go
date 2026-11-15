@@ -2,7 +2,7 @@
 // builds on tools-common: one section per tool (tools/<name>.md), how the
 // tools fit together (fit.md), the lesson walk's intro (intro.md) and lessons
 // (lessons/<n>-<topic>.md), which proj's lesson tab still reads, and the
-// getting-started walk (walk.md, walk.go). The Guide tab, the walk and the
+// getting-started walks (walks/<tool>.md, walk.go). The Guide tab, the walk and the
 // agent's map all read it from here rather than restating it.
 //
 // Every ask in it is something the user says to their agent; no text tells
