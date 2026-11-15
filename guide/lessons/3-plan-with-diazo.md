@@ -12,7 +12,7 @@
    Plan this with diazo: in my practice repo, add a README that says what the repo is for, a notes file for what I learn in each lesson, and a license.
    ```
 
-   **Claude runs:** `diazo_open`, which opens the plan's real page as a tab on the right, beside the terminal, then posts its first take on the idea there.
+   **Claude runs:** a check that `~/subaud/practice` exists, saying so if it doesn't, then `diazo_open`, which opens the plan's real page as a tab on the right, beside the terminal, then posts its first take on the idea there.
 
    You asked in the terminal and the answer landed on the page; the rest of the lesson works the same way.
 

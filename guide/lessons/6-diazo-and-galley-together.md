@@ -12,7 +12,7 @@
    Post a step on diazo's page to review my practice-repo spec in galley, and open the spec in galley for me.
    ```
 
-   **Claude runs:** `diazo_update` with a step linked to `spec.md`, then `galley_open`, which opens the spec as a galley tab on the right, beside diazo's.
+   **Claude runs:** a check that `~/subaud/practice` exists, saying so if it doesn't, then `diazo_update` with a step linked to `spec.md`, then `galley_open`, which opens the spec as a galley tab on the right, beside diazo's.
 
    Both pages are tabs on the same split page now; switch between them as you would any tabs.
 

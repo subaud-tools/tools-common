@@ -72,21 +72,31 @@ func TestSkillsRenderFromTheContent(t *testing.T) {
 			t.Errorf("using-the-tools has no section for %s with its summary", x.Name)
 		}
 	}
-	for _, want := range []string{"record.json", "Sessions talk", "you have two sessions running", "Find waste with muda", "How a change usually goes", "one-line fix"} {
+	for _, want := range []string{"record.json", "How a change usually goes", "one-line fix"} {
 		if !strings.Contains(using, want) {
 			t.Errorf("using-the-tools does not say %q", want)
 		}
 	}
+	if strings.Contains(using, "lesson") {
+		t.Error("using-the-tools still offers lessons; the walk replaced them")
+	}
 	walk := string(sk[1].Body)
-	for _, n := range LessonNumbers() {
-		l, _ := Lesson(n)
-		if !strings.Contains(walk, l.Title) || !strings.Contains(walk, l.Steps[0].Ask) {
-			t.Errorf("getting-started does not carry lesson %d", n)
+	steps, _ := Walk()
+	for _, s := range steps {
+		for _, want := range []string{s.Selector(), s.Title, s.Agent} {
+			if !strings.Contains(walk, want) {
+				t.Errorf("getting-started does not carry step %d's %q", s.N, want)
+			}
 		}
 	}
-	for _, want := range []string{"proj guide start", "proj guide result --lesson", "--ran", "--happened", "--means", "proj guide done --lesson"} {
+	for _, want := range []string{"Get me started with subaud.", "proj guide start", "proj guide show", "never watch a tool's events", "proj guide back", "proj guide skip", "proj guide stop", "never types anything"} {
 		if !strings.Contains(walk, want) {
 			t.Errorf("getting-started does not say %q", want)
+		}
+	}
+	for _, gone := range []string{"lesson", "Lesson", "proj guide result", "Send to Claude", "Advance", "advance event"} {
+		if strings.Contains(walk, gone) {
+			t.Errorf("getting-started still says %q", gone)
 		}
 	}
 	if regexp.MustCompile(`\n{3,}`).MatchString(using + walk) {

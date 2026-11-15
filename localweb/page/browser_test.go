@@ -184,3 +184,4 @@ func TestJSDecision(t *testing.T)  { runBrowser(t, "decision") }
 func TestJSRecord(t *testing.T)    { runBrowser(t, "record") }
 func TestJSTour(t *testing.T)      { runBrowser(t, "tour") }
 func TestJSGuide(t *testing.T)     { runBrowser(t, "guide") }
+func TestJSSpotlight(t *testing.T) { runBrowser(t, "spotlight") }

@@ -63,14 +63,39 @@ func MarkFeature(name string) error {
 // Read returns the record; a missing file is an empty record.
 func Read() (Record, error) { return read(Path()) }
 
-// mark adds name to the map in under the lock, keeping a date already there.
-// The read-modify-write holds an exclusive lock on record.json.lock, shared
-// with every process on the machine, and the write is a rename, so two tools
-// marking at once both land and a reader never sees half a file.
+// ClearLessons forgets every finished lesson, keeping tools and features: the
+// getting-started walk's start over.
+func ClearLessons() error {
+	return update(func(r *Record) bool {
+		if len(r.Lessons) == 0 {
+			return false
+		}
+		r.Lessons = map[string]Mark{}
+		return true
+	})
+}
+
+// mark adds name to the map in, keeping a date already there.
 func mark(in func(*Record) map[string]Mark, name string) error {
 	if name == "" {
 		return errors.New("record: empty name")
 	}
+	return update(func(r *Record) bool {
+		m := in(r)
+		if _, ok := m[name]; ok {
+			return false
+		}
+		m[name] = Mark{Date: time.Now().UTC().Truncate(time.Second)}
+		return true
+	})
+}
+
+// update changes the record with change under the lock, writing it when
+// change reports a change. The read-modify-write holds an exclusive lock on
+// record.json.lock, shared with every process on the machine, and the write
+// is a rename, so two tools marking at once both land and a reader never sees
+// half a file.
+func update(change func(*Record) bool) error {
 	p := Path()
 	if err := tools.EnsureDir(filepath.Dir(p)); err != nil {
 		return err
@@ -84,11 +109,9 @@ func mark(in func(*Record) map[string]Mark, name string) error {
 	if err != nil {
 		return err
 	}
-	m := in(&r)
-	if _, ok := m[name]; ok {
+	if !change(&r) {
 		return nil
 	}
-	m[name] = Mark{Date: time.Now().UTC().Truncate(time.Second)}
 	b, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return err

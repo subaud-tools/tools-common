@@ -104,8 +104,9 @@ type Options struct {
 // tabs keep working, and marks itself stale once its binary is replaced (see
 // binaryWatch), which the next tool call acts on. Every API response carries
 // BuildHeader. Besides the tool's API it answers GET /api/events (Options.Stream, else
-// Events.Stream), GET /api/poll, GET /api/kit/guide (the kit's Guide tab) and
-// POST /api/stop, which takes only the token header.
+// Events.Stream), GET /api/poll, GET /api/kit/guide (the kit's Guide tab),
+// GET and POST /api/kit/spotlight (the walk's step on the page, spotlight.go)
+// and POST /api/stop, which takes only the token header.
 func Run(ctx context.Context, o Options) error {
 	if o.Log == nil {
 		o.Log = io.Discard
@@ -166,6 +167,9 @@ func Run(ctx context.Context, o Options) error {
 	mux.HandleFunc("GET /api/events", stream)
 	mux.HandleFunc("GET /api/poll", o.Events.Poll)
 	mux.HandleFunc("GET /api/kit/guide", guideHandler(tool))
+	var spots spotlights
+	mux.HandleFunc("GET /api/kit/spotlight", spots.get)
+	mux.HandleFunc("POST /api/kit/spotlight", spots.post(token, o.Events))
 	// Only the token header stops serve: a page served by a tool holds the
 	// cookie, and it must not be able to.
 	mux.HandleFunc("POST /api/stop", func(w http.ResponseWriter, r *http.Request) {
