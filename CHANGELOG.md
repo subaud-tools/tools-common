@@ -4,6 +4,13 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.86.0
+
+### Changed
+- guide: each walk opens on an intro card, an `## intro` block in its `guide/walks/<tool>.md` with `title:` and `text:` (the words approved with PLAN6): what the tool is for and what the learner will do in it. `Walk` gains `Intro` (`WalkIntro{Tool, Title, Text}`), and the loader refuses a walk with no intro card, an intro with no title or text or with something to type, and an intro after a step.
+- localweb/page: a spotlight body `{"intro": {tool, title, text}}` draws a walk's intro card, built like the end card: centred, no ring, the tool, the title, the text and one filled button, Start, which clears it and posts `{type: "kit:walk-start", tool}` to `window.parent`. proj's split page shows it when a walk begins while the agent prepares step 1; Start shows step 1.
+- guide: the getting-started skill says each walk opens on its intro card and that `proj guide start` and `show` print step 1 while it shows, so the agent prepares step 1 while the learner reads.
+
 ## 0.85.0
 
 ### Changed

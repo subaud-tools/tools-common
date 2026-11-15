@@ -1,6 +1,10 @@
 # diazo's walk
 
-Five clicks on a practice plan on diazo's page, from the agent's take to an approved plan. Each step has two notes: `prepare` shows while the agent is still getting the step ready, then the note once the control is there. The end card says what the learner learned and leads to galley.
+Five clicks on a practice plan on diazo's page, from the agent's take to an approved plan. Each step has two notes: `prepare` shows while the agent is still getting the step ready, then the note once the control is there. The end card says what the learner learned and leads to galley. The intro card opens the walk: what the tool is for and what the learner will do, with Start, while the agent prepares step 1.
+
+## intro
+title: diazo: plan before you build.
+text: diazo is where you and your agent agree on a change before anything is built. Your agent is opening a small practice plan for a ten-line README. In five clicks you'll answer its take, make a decision, and approve a spec and a plan.
 
 ## 1
 tool: diazo

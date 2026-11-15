@@ -1,6 +1,10 @@
 # galley's walk
 
-Four clicks on the practice README in galley, from an instruction to an approved document and its Share menu. Each step has two notes: `prepare` shows while the agent is still getting the step ready, then the note once the control is there (or, with `ready`, once that element is: galley's Add instruction appears only after a selection). The end card says what the learner learned and ends the walks.
+Four clicks on the practice README in galley, from an instruction to an approved document and its Share menu. Each step has two notes: `prepare` shows while the agent is still getting the step ready, then the note once the control is there (or, with `ready`, once that element is: galley's Add instruction appears only after a selection). The end card says what the learner learned and ends the walks. The intro card opens the walk: what the tool is for and what the learner will do, with Start, while the agent prepares step 1.
+
+## intro
+title: galley: edit with your agent.
+text: galley is where you and your agent revise a document together. Your agent is writing the README your plan asked for. In four clicks you'll ask for a change, send it, approve the result, and see how to share it.
 
 ## 1
 tool: galley

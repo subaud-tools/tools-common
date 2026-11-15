@@ -1143,6 +1143,16 @@ export interface SpotlightStep {
   forward?: string;
 }
 
+/** A walk's intro card, as a spotlight body: {intro: {...}}. */
+export interface SpotlightIntroCard {
+  intro: {
+    tool: string;
+    /** What the tool is for, in a line. */
+    title: string;
+    /** What the learner will do in the walk. */
+    text: string;
+  };
+}
 /** A walk's end card, as a spotlight body: {end: {...}}. */
 export interface SpotlightEndCard {
   end: {
@@ -1155,8 +1165,13 @@ export interface SpotlightEndCard {
     next_tool: string;
   };
 }
-/** Rings the step's control with its note beside it (n of N), following the page as it moves; nothing blocks the page. The learner's click on the control (for a text box or form, its submit; for an ok step, the ok button) clears it and posts {type: "kit:spotlight-done", n, tool, walk} to window.parent; a press on another data-walk control in a text box's form also ends it, naming that control as also. While the control isn't on the page the note shows the step's prepare line off the page's text with no ring, and switches to the title and note with the ring the moment the control appears. An end card shows centred with what was learned and one button, "Go on to ‹next_tool›" or Done, which posts {type: "kit:walk-next", tool, next_tool} to window.parent. */
-export function spotlight(step: SpotlightStep | SpotlightEndCard): Promise<void>;
+/** Rings the step's control with its note beside it (n of N), following the page as it moves; nothing blocks the page. The learner's click on the control (for a text box or form, its submit; for an ok step, the ok button) clears it and posts {type: "kit:spotlight-done", n, tool, walk} to window.parent; a press on another data-walk control in a text box's form also ends it, naming that control as also. While the control isn't on the page the note shows the step's prepare line off the page's text with no ring, and switches to the title and note with the ring the moment the control appears. An intro card shows centred with its title, text and one button, Start, which posts {type: "kit:walk-start", tool} to window.parent. An end card shows centred with what was learned and one button, "Go on to ‹next_tool›" or Done, which posts {type: "kit:walk-next", tool, next_tool} to window.parent. */
+export function spotlight(step: SpotlightStep | SpotlightIntroCard | SpotlightEndCard): Promise<void>;
+/** The message an intro card's Start posts to window.parent: the walk's first step shows. */
+export interface WalkStart {
+  type: 'kit:walk-start';
+  tool: string;
+}
 /** The message an end card's button posts to window.parent: next_tool is empty for Done. */
 export interface WalkNext {
   type: 'kit:walk-next';

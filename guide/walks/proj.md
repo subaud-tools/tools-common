@@ -1,6 +1,10 @@
 # proj's walk
 
-Six clicks on the split page and proj's own page. Each step has two notes: `prepare` shows while the agent is still getting the step ready (what it is doing, what the learner will do next; "Nothing to prepare." means the step has none), then the note once the control is there: its first line is what to press, the rest what is happening. The end card says what the learner learned and leads to the next walk.
+Six clicks on the split page and proj's own page. Each step has two notes: `prepare` shows while the agent is still getting the step ready (what it is doing, what the learner will do next; "Nothing to prepare." means the step has none), then the note once the control is there: its first line is what to press, the rest what is happening. The end card says what the learner learned and leads to the next walk. The intro card opens the walk: what the tool is for and what the learner will do, with Start, while the agent prepares step 1.
+
+## intro
+title: proj: your sessions.
+text: proj keeps your work in sessions: one terminal for each piece of work, in its project. In six clicks you'll see your session's split page and the tabs beside it, proj's lists of your sessions and projects, and how a session comes back after a restart.
 
 ## 1
 tool: proj
