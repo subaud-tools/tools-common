@@ -829,7 +829,7 @@ func TestANewServeGetsTheLastActivity(t *testing.T) {
 	c.notify("notifications/channels/report", map[string]any{"event": "activity", "working": true})
 	expectActivity(t, first, channelmcp.ActivityWorking)
 	moved.Store(true)
-	first.srv.Close()
+	first.stop() // ends its stream first: Close alone waits on the open stream
 	expectActivity(t, next, channelmcp.ActivityWorking)
 }
 
