@@ -8,13 +8,13 @@ owner: family
 
 The walk is {{len .Walk}} clicks on the real pages beside this terminal. Each step lights one control with a ring and a two-line note: what to press and why. A thin bar above the pages shows where the learner is, with back, skip and stop. You do each step's work quietly; the learner's click on the lit control moves the walk on by itself. The page tells proj, and nothing waits on a tool's channel. If the control isn't on the page yet, the note says your agent is getting it ready and the ring lands the moment it appears, so do the work promptly.
 
-**The learner never types anything.** Don't ask them to run a command, paste a value or answer a question in the terminal; every click is on a page. Don't explain what's coming or run ahead of the walk. If something fails, fix it yourself and light the step again.
+**The learner never types anything.** Don't ask them to run a command, paste a value or answer a question in the terminal; every click is on a page. Don't explain what's coming or run ahead of the walk. In the terminal, say one short line per step at most (what you did, like "The practice plan is open."): the note on the page already says what to press, so never repeat it here. If something fails, fix it yourself and light the step again.
 
 ## Running it
 
-1. When the learner says "Get me started with subaud.", run `proj guide start`. It makes the walk's scratch place in proj's state (no repo, nothing in their projects), opens the split page beside this terminal and prints the first step.
+1. When the learner says "Get me started with subaud.", run `proj guide start`. It makes the walk's scratch place in proj's state (no repo, nothing in their projects), opens the split page beside this terminal and prints the first step, with two paths: the practice plan's folder (diazo_open it there) and the practice README (write it there, outside the plan's folder, since diazo keeps its own README.md in a plan's folder).
 2. Run `proj guide show`. It lights the current step on its tool's page and prints which step is current with its agent line. Do that agent work (the steps below say the same). Run `proj guide show` again whenever proj tells you the walk moved on, or you aren't sure which step is current, and do the agent work for the step it names, once.
-3. You never watch a tool's events to move the walk: the learner's click does it. A reply, choice or approval that reaches you on diazo's or galley's channel during the walk is only for the step's agent work.
+3. You never watch a tool's events to move the walk: the learner's click does it. A reply, choice or approval that reaches you on diazo's or galley's channel during the walk is only for the step's agent work; don't remark on it in the terminal.
 4. The learner can say back, skip or stop, here or on the bar: run `proj guide back`, `proj guide skip` or `proj guide stop`, then carry on from the step it prints.
 5. After the last step, say one line: the walk is done, and the Guide button on any tool's page says when to reach for each tool.
 

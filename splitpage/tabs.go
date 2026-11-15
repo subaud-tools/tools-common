@@ -138,6 +138,10 @@ func pageTitle(address string) string {
 // at that address. With r.Behind it adds the tab, marked New, and leaves the
 // tab that shows (in one change, so the page never shows the new tab), and an
 // address already open is left as it is; a bar with nothing showing shows it.
+// A tab showing the front page of the same server ("/", only a token in its query)
+// moves to r.Address in place, keeping its id, pin and types, as a tool's
+// front-page browser tab is moved to a page: one tab per tool, which a reload
+// brings back on the page.
 func (t *Tabs) Open(r OpenRequest) (TabList, error) {
 	if !localAddress(r.Address) {
 		return TabList{}, ErrNotLocal
@@ -158,6 +162,15 @@ func (t *Tabs) Open(r OpenRequest) (TabList, error) {
 			return copyList(s.list), nil
 		}
 	}
+	if i := frontPageOf(s.list.Tabs, r.Address); i >= 0 {
+		tb := &s.list.Tabs[i]
+		tb.Address, tb.Title = r.Address, r.Title
+		if !r.Behind || s.list.Selected == "" {
+			s.show(tb.ID)
+		}
+		s.changed()
+		return copyList(s.list), nil
+	}
 	t.next++
 	tb := Tab{ID: "tab-" + strconv.Itoa(t.next), Address: r.Address, Title: r.Title, Pinned: r.Pinned, Types: r.Types}
 	behind := r.Behind && s.list.Selected != ""
@@ -168,6 +181,34 @@ func (t *Tabs) Open(r OpenRequest) (TabList, error) {
 	}
 	s.changed()
 	return copyList(s.list), nil
+}
+
+// frontPageOf is the index of the tab showing the front page of address's
+// server, or -1; none when address is that front page itself. A front page
+// is the server's "/" with nothing in its query but the token (t): diazo's
+// plan is "/" with the plan in its query, so it is a page, not the front.
+func frontPageOf(tabs []Tab, address string) int {
+	front := func(u *url.URL) bool {
+		if u.Path != "" && u.Path != "/" {
+			return false
+		}
+		for k := range u.Query() {
+			if k != "t" {
+				return false
+			}
+		}
+		return true
+	}
+	a, err := url.Parse(address)
+	if err != nil || front(a) {
+		return -1
+	}
+	for i, tb := range tabs {
+		if u, err := url.Parse(tb.Address); err == nil && u.Scheme == a.Scheme && u.Host == a.Host && front(u) {
+			return i
+		}
+	}
+	return -1
 }
 
 // Replace moves tab id to address in place, keeping its id, title, pin and

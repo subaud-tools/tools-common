@@ -4,6 +4,15 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.83.0
+
+### Changed
+- guide: the walk is nine clicks: galley ends at Revise, then Approve (History hides Approve, so reading what changed is the Guide's). Step 2's note names what is there, a box and Send. Step 4's Choose sends the choice (diazo makes the walk's press the whole step). The agent lines name the practice plan's folder and the practice README, the two paths `proj guide start` prints, never the scratch place itself: diazo keeps its own README.md in a plan's folder. Step 9 waits for the agent's answer to the round before Approve lights.
+- guide: the getting-started skill keeps the terminal to one short line per step and names the two paths `proj guide start` prints.
+- localweb/page: the spotlight's note never covers what the learner reads or selects. It goes beside the control on a side with no text (right, left, below, above), else in the window's margin at the control's height, else in a corner; the waiting note takes the corner with the least text under it, not the middle of the page.
+- localweb/page: the lit control carries `data-walk-lit` while its step shows and through the click that ends it, so a tool can make the walk's press do the whole step.
+- splitpage: `Tabs.Open` moves a tab showing a server's front page to a page of the same server in place (one tab per tool), as a tool's front-page browser tab is moved to a page; a reload of the split page brings it back on that page.
+
 ## 0.82.0
 
 ### Added
