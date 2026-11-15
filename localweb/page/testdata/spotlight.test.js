@@ -423,7 +423,9 @@ test('spotlight: an end card shows centred with what was learned, no ring, and i
   eq([...card.querySelectorAll('li')].map(l => l.textContent), ['A session is a terminal.', 'It keeps running.']);
   assert(card.textContent.includes("Plan a small change on diazo's page."), 'what is next');
   const c = card.getBoundingClientRect();
-  assert(Math.abs((c.left + c.right) / 2 - innerWidth / 2) <= 2 && Math.abs((c.top + c.bottom) / 2 - innerHeight / 2) <= 2, `centred: ${JSON.stringify([c.left, c.right, c.top, c.bottom])}`);
+  // Centred in the viewport a fixed box sees, which leaves out scrollbars (innerWidth counts them).
+  const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+  assert(Math.abs((c.left + c.right) / 2 - vw / 2) <= 2 && Math.abs((c.top + c.bottom) / 2 - vh / 2) <= 2, `centred: ${JSON.stringify([c.left, c.right, c.top, c.bottom, vw, vh])}`);
   const btn = card.querySelector('button.kit-btn.fill');
   eq(btn.textContent, 'Go on to diazo');
   btn.click();
