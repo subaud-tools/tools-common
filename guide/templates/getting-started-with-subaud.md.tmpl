@@ -14,7 +14,7 @@ From lesson 2 on, a tool's real page (proj's, then diazo's and galley's) is open
 
 ## Running it
 
-1. `proj guide start` opens the lesson tab beside this terminal, or uses the one open. For an offered lesson, `proj guide start --lesson N`.
+1. `proj guide start` opens the lesson tab beside this terminal, or uses the one open, on the first lesson not yet finished. Every lesson after the first works in the practice repo lesson 1 makes, so when `~/subaud/practice` doesn't exist, start at `proj guide start --lesson 1` instead. For an offered lesson, `proj guide start --lesson N`.
 2. When a step's ask arrives, run what its Claude runs line lists and nothing more.
 3. Post the step's result, a short sentence each: `proj guide result --lesson N --step M --ran "what ran" --happened "what happened" --means "what it means"`. The learner presses Next.
 4. After the last step's result, `proj guide done --lesson N` shows the lesson's recap and marks it finished in the shared record.
