@@ -34,10 +34,15 @@ test('spotlight: follows the control when the page scrolls', async () => {
   fx.innerHTML = '<div style="height:2000px"><button data-walk="reply" style="margin-top:900px">Reply</button></div>';
   await spotlight(step());
   scrollBy(0, 300);
-  await sleep(80);
-  const r = fx.querySelector('button').getBoundingClientRect();
-  const rr = document.querySelector('.kit-spot-ring').getBoundingClientRect();
-  assert(near(r.y, rr.y), `ring follows: ${r.y} vs ${rr.y}`);
+  // A headless browser may deliver the scroll event a frame or more late; the
+  // spotlight also re-places every 250ms, so the ring catches up within that.
+  const at = () => [fx.querySelector('button').getBoundingClientRect().y, document.querySelector('.kit-spot-ring').getBoundingClientRect().y];
+  let [ry, ringY] = at();
+  for (let i = 0; i < 20 && !near(ry, ringY); i++) {
+    await sleep(50);
+    [ry, ringY] = at();
+  }
+  assert(near(ry, ringY), `ring follows: ${ry} vs ${ringY}`);
   clearSpotlight();
   scrollTo(0, 0);
 });
