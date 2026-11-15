@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.79.2
+
+### Fixed
+- guide: lesson 2's add-the-project step says where to do it: open the proj tab, then its folders tab, type `~/subaud` under add a root and press add root, then send the ask, which now says it's done.
+
 ## 0.79.1
 
 ### Fixed
