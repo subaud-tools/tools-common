@@ -4,6 +4,16 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.84.0
+
+### Changed
+- guide: the getting-started walk is three walks, one per tool, in `guide/walks/proj.md`, `diazo.md` and `galley.md` (replacing `walk.md`), with the words approved in review. proj's walk is six clicks on the split page and proj's own page (`split`, `proj-tab`, `sessions-tab`, `open-ghostty`, `folders-tab`, `saved-tab`); diazo's is five, galley's three. Each step has two notes: `prepare:`, what the agent is getting ready and what the learner will do next ("Nothing to prepare." for none), and the note once the control is there, its first line what to press and the rest what is happening. Each walk ends on an end card: `learned:` lines, `next:` and `next_tool:` (diazo after proj, galley after diazo, none after galley). The loader refuses a step with no prepare line or no explanation, a step of another tool, a walk with no end card and a next_tool that isn't another walk.
+- guide: `guide.Walks()` (proj, diazo, galley) and `guide.WalkFor(tool)` replace `guide.Walk()`; `Walk{Tool, Steps, End}`, `WalkStep` gains `Press` and `Prepare` (its hook field is `Target`, still `walk` in JSON, and N and Of count within its walk), and `EndCard{Tool, Learned, Next, NextTool}`.
+- guide: the getting-started skill runs all three walks on "Get me started with subaud." (`proj guide start`) and one on "Show me around ‹tool›." (`proj guide start ‹tool›`), and lists each walk's steps and end card.
+- localweb/page: the spotlight shows a step's preparing line, with no ring, while its control isn't on the page, then switches to the title and note and rings the control when it appears. A note taller than about 40% of the window scrolls inside itself; the placement still keeps it off the control and the page's text.
+- localweb/page: a spotlight body `{"end": {tool, learned, next, next_tool}}` draws a walk's end card in the middle of the window with no ring: "You learned", the lines, what is next and one button, "Go on to ‹next_tool›" or Done, which posts `{type: "kit:walk-next", tool, next_tool}` to `window.parent`.
+- pageserve: `POST /api/kit/spotlight` carries a step's `press` and `prepare`, and takes an end card (`{"end": …}`, needing learned and next) as well as a step.
+
 ## 0.83.0
 
 ### Changed

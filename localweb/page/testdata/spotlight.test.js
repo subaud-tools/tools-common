@@ -269,3 +269,106 @@ test('live: a spotlight event draws on any kit page, and an empty one clears, wi
   eq(seen, []);
   l.stop();
 });
+
+test('spotlight: while the control is missing the note is the preparing line with no ring, then the title and note with the ring once it appears', async () => {
+  const fx = fixture();
+  fx.innerHTML = '';
+  await spotlight(step({ n: 2, of: 6, tool: 'proj', walk: 'proj-tab', prepare: "Your agent is opening proj's own page as a tab on the right. When it's there, you'll press its tab.", title: 'Press the proj tab.', note: 'The right side holds the pages.' }));
+  await sleep(30);
+  const card = document.querySelector('.kit-spot-card');
+  const shown = sel => { const e = card.querySelector(sel); return !!e && !e.hidden; };
+  assert(card && !card.hidden, 'the note shows');
+  assert(document.querySelector('.kit-spot-ring').hidden, 'no ring while preparing');
+  eq(card.querySelector('.kit-spot-wait').textContent, "Your agent is opening proj's own page as a tab on the right. When it's there, you'll press its tab.");
+  assert(shown('.kit-spot-wait') && !shown('.kit-spot-title') && !shown('.kit-spot-note'), 'only the preparing line');
+  eq(card.querySelector('.kit-spot-count').textContent, '2 of 6');
+  fx.innerHTML = '<button data-walk="proj-tab" style="margin:40px">proj</button>';
+  await sleep(30);
+  assert(!document.querySelector('.kit-spot-ring').hidden, 'ringed once it showed');
+  assert(!shown('.kit-spot-wait') && shown('.kit-spot-title') && shown('.kit-spot-note'), 'the doing note now');
+  eq(card.querySelector('.kit-spot-title').textContent, 'Press the proj tab.');
+  fx.innerHTML = '';
+  await sleep(300);
+  assert(shown('.kit-spot-wait') && document.querySelector('.kit-spot-ring').hidden, 'back to preparing when it goes');
+  clearSpotlight();
+});
+
+test('spotlight: a long note sits off the control and the text column, and scrolls inside itself when taller than about 40% of the window', async () => {
+  const fx = fixture();
+  fx.innerHTML = `<div style="position:fixed;left:16px;top:0;width:${Math.round(innerWidth * 0.45)}px">${'<p style="margin:0 0 6px">The page reads like this, line after line, down the column.</p>'.repeat(30)}</div>`
+    + '<button data-walk="sessions-tab" style="position:fixed;left:40px;top:160px">sessions</button>';
+  const long = 'These are the sessions running now, grouped by project; the one you are in is among them. Starting a new piece of work starts a new session, so each keeps its own terminal and pages. ';
+  await spotlight(step({ walk: 'sessions-tab', title: 'Press sessions.', note: long }));
+  await sleep(30);
+  let card = document.querySelector('.kit-spot-card');
+  eq(overText(card), [], 'a long note covers none of the text');
+  assert(inView(card), 'in the window');
+  assert(!hit(card.getBoundingClientRect(), fx.querySelector('button').getBoundingClientRect()), 'nor the control');
+  await spotlight(step({ walk: 'sessions-tab', title: 'Press sessions.', note: long.repeat(12) }));
+  await sleep(30);
+  card = document.querySelector('.kit-spot-card');
+  assert(card.offsetHeight <= innerHeight * 0.4 + 2, `at most about 40% tall: ${card.offsetHeight} of ${innerHeight}`);
+  assert(card.scrollHeight > card.clientHeight, 'scrolls inside itself');
+  assert(getComputedStyle(card).overflowY === 'auto', 'overflow auto');
+  assert(inView(card), 'in the window');
+  clearSpotlight();
+});
+
+// next collects the kit:walk-next messages posted to the parent.
+function next() {
+  const got = [];
+  const on = e => { if (e.data && e.data.type === 'kit:walk-next') got.push(e.data); };
+  addEventListener('message', on);
+  return { got, stop: () => removeEventListener('message', on) };
+}
+const endCard = o => ({ end: { tool: 'proj', learned: ['A session is a terminal.', 'It keeps running.'], next: "Plan a small change on diazo's page.", next_tool: 'diazo', ...o } });
+
+test('spotlight: an end card shows centred with what was learned, no ring, and its button posts kit:walk-next with next_tool', async () => {
+  const fx = fixture();
+  fx.innerHTML = '<p>Some page.</p>';
+  const d = next();
+  await spotlight(endCard());
+  await sleep(30);
+  const card = document.querySelector('.kit-spot-card');
+  assert(card && !card.hidden && card.classList.contains('kit-spot-end'), 'the end card shows');
+  const ring = document.querySelector('.kit-spot-ring');
+  assert(!ring || ring.hidden, 'no ring');
+  eq(card.querySelector('.kit-spot-title').textContent, 'You learned');
+  eq([...card.querySelectorAll('li')].map(l => l.textContent), ['A session is a terminal.', 'It keeps running.']);
+  assert(card.textContent.includes("Plan a small change on diazo's page."), 'what is next');
+  const c = card.getBoundingClientRect();
+  assert(Math.abs((c.left + c.right) / 2 - innerWidth / 2) <= 2 && Math.abs((c.top + c.bottom) / 2 - innerHeight / 2) <= 2, `centred: ${JSON.stringify([c.left, c.right, c.top, c.bottom])}`);
+  const btn = card.querySelector('button.kit-btn.fill');
+  eq(btn.textContent, 'Go on to diazo');
+  btn.click();
+  await sleep(30);
+  d.stop();
+  eq(d.got, [{ type: 'kit:walk-next', tool: 'proj', next_tool: 'diazo' }]);
+  assert(!document.querySelector('.kit-spot-card'), 'cleared');
+});
+
+test('spotlight: the last end card says Done, which posts kit:walk-next with an empty next_tool', async () => {
+  fixture();
+  const d = next();
+  await spotlight(endCard({ tool: 'galley', next: "That's the walk.", next_tool: '' }));
+  const btn = document.querySelector('.kit-spot-card button.kit-btn.fill');
+  eq(btn.textContent, 'Done');
+  btn.click();
+  await sleep(30);
+  d.stop();
+  eq(d.got, [{ type: 'kit:walk-next', tool: 'galley', next_tool: '' }]);
+  assert(!document.querySelector('.kit-spot-card'), 'cleared');
+});
+
+test('live: an end-card spotlight event draws the end card', async () => {
+  fixture();
+  const fes = fakeEventSource();
+  const l = live({ events: '/e', poll: '/p', EventSource: fes.FakeES, fetch: async () => new Response('{}'), onEvent: () => {}, spotlight: false });
+  const es = fes.last();
+  es.emitOpen();
+  es.emitMessage('c1', { type: 'spotlight', data: endCard() });
+  await sleep(50);
+  assert(document.querySelector('.kit-spot-end'), 'drawn');
+  clearSpotlight();
+  l.stop();
+});

@@ -5,7 +5,7 @@
 // page (pageserve's POST /api/kit/spotlight sends one), so a tool's page needs
 // no code of its own: only data-walk hooks.
 //
-// A step is { n, of, tool, walk, title, note, look, ok }: walk names the
+// A step is { n, of, tool, walk, press, prepare, title, note, look, ok }: walk names the
 // control's data-walk hook. The learner's click is the signal the step is
 // done: a click on the ringed control (or, for a text box or a form, its form
 // being submitted) clears the ring and posts {type: "kit:spotlight-done", n,
@@ -13,9 +13,18 @@
 // kit.forward). The listener runs in the capture phase, so the tool's own
 // handler still runs. A step with ok puts an ok button on the note, which is
 // the step's only done (the split page's first note). While the control isn't
-// on the page (the agent is still preparing it) the note waits with "Your
-// agent is getting this ready…", and the control is ringed the moment it
-// appears.
+// on the page (the agent is still preparing it) the note shows the step's
+// prepare line (what the agent is doing, what the learner will do next), or
+// "Your agent is getting this ready…" under the title when it has none, with
+// no ring; the moment the control appears the note switches to the title and
+// note and the control is ringed. A note taller than about 40% of the window
+// scrolls inside itself.
+//
+// A walk's end card is { end: { tool, learned, next, next_tool } }: centred,
+// no ring, "You learned" with the lines and what is next, and one filled
+// button, "Go on to ‹next_tool›" or Done, which clears it and posts {type:
+// "kit:walk-next", tool, next_tool} to window.parent (next_tool empty for
+// Done).
 //
 // The note never covers what the learner reads or selects: it goes beside the
 // control on a side with no text (right, left, below, above), else in the
@@ -51,17 +60,18 @@ const isTextBox = e => e.matches('form, textarea, [contenteditable=""], [content
 
 export async function spotlight(step) {
   clearSpotlight();
+  if (step && step.end) return endCard(step.end);
   if (!step || !step.walk) return;
   const sel = `[data-walk="${CSS.escape(step.walk)}"]`;
   const ring = h('div', { class: 'kit-spot-ring', hidden: true });
-  const waiting = h('p', { class: 'kit-spot-wait', hidden: true }, 'Your agent is getting this ready…');
+  const waiting = h('p', { class: step.prepare ? 'kit-spot-wait kit-spot-prep' : 'kit-spot-wait', hidden: true }, step.prepare || 'Your agent is getting this ready…');
+  const title = h('p', { class: 'kit-spot-title' }, step.title || '');
+  const note = step.note ? h('p', { class: 'kit-spot-note' }, step.note) : null;
   const okBtn = step.ok ? h('button', { class: 'kit-btn fill kit-spot-ok', type: 'button' }, 'ok') : null;
+  const acts = okBtn ? h('div', { class: 'kit-spot-acts' }, okBtn) : null;
   const card = h('div', { class: 'kit-spot-card', role: 'status', 'aria-live': 'polite', hidden: true, 'data-walk-step': String(step.n || '') },
     h('p', { class: 'kit-spot-count' }, step.n && step.of ? `${step.n} of ${step.of}` : ''),
-    h('p', { class: 'kit-spot-title' }, step.title || ''),
-    step.note ? h('p', { class: 'kit-spot-note' }, step.note) : null,
-    waiting,
-    okBtn ? h('div', { class: 'kit-spot-acts' }, okBtn) : null);
+    title, note, waiting, acts);
   document.body.append(ring, card);
 
   let stopped = false, timer = 0, seen = false, lit = null, centred = false;
@@ -113,6 +123,11 @@ export async function spotlight(step) {
     card.hidden = false;
     card.classList.toggle('kit-spot-lost', !t);
     waiting.hidden = !!t;
+    // While preparing, a prepare line stands alone; with none, the title
+    // shows above "getting this ready". The ok button waits for the control.
+    title.hidden = !t && !!step.prepare;
+    if (note) note.hidden = !t;
+    if (acts) acts.hidden = !t;
     ring.hidden = !t;
     const cs = { width: card.offsetWidth, height: card.offsetHeight };
     let p;
@@ -162,6 +177,30 @@ export async function spotlight(step) {
   document.addEventListener('submit', onSubmit, true);
   // The page moves under it too (a card opening, a pane folding).
   timer = setInterval(place, 250);
+}
+
+// endCard draws a walk's end card in the middle of the window: what the
+// learner learned, what is next, and the button that starts the next walk
+// (or ends them).
+function endCard(end) {
+  const label = end.next_tool ? `Go on to ${end.next_tool}` : 'Done';
+  const btn = h('button', { class: 'kit-btn fill kit-spot-next', type: 'button' }, label);
+  const card = h('div', { class: 'kit-spot-card kit-spot-end', role: 'dialog', 'aria-label': `${end.tool || 'Walk'}: you learned`, 'data-walk-end': end.tool || '' },
+    h('p', { class: 'kit-spot-count' }, end.tool || ''),
+    h('p', { class: 'kit-spot-title' }, 'You learned'),
+    h('ul', { class: 'kit-spot-learned' }, ...(end.learned || []).map(l => h('li', {}, l))),
+    end.next ? h('p', { class: 'kit-spot-note' }, end.next) : null,
+    h('div', { class: 'kit-spot-acts' }, btn));
+  document.body.append(card);
+  const me = { stop() { card.remove(); } };
+  current = me;
+  btn.addEventListener('click', () => {
+    if (current === me) current = null;
+    me.stop();
+    const to = globalThis.parent || globalThis;
+    to.postMessage({ type: 'kit:walk-next', tool: end.tool || '', next_tool: end.next_tool || '' }, '*');
+  });
+  btn.focus({ preventScroll: true });
 }
 
 // beside lists where the note may go for a control at r, best first: beside
@@ -241,7 +280,7 @@ export async function resumeSpotlight(url = '/api/kit/spotlight') {
     const res = await fetch(url, { credentials: 'same-origin' });
     if (res.status !== 200) return;
     const step = await res.json();
-    if (step && step.walk) await spotlight(step);
+    if (step && (step.walk || step.end)) await spotlight(step);
   } catch {
     // no spotlight route here: nothing to resume
   }
