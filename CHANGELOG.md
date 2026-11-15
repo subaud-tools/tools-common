@@ -4,6 +4,15 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.81.0
+
+### Removed (breaking)
+- pageserve: the channel's long poll. `Spec.Stream` is gone: every channel loop (`<tool> channel` under pi, `<tool> watch` under Claude Code) posts presence, holds serve's `GET /api/events` open and claims with `POST /api/agent/claim` when it connects and on every `deliver` event; it never calls `GET /api/agent/wait`. `Spec.Wake` reads the claim's 200 body. A tool drops `Stream: true` from its spec and can delete its wait route. `Channel.Poll` no longer does anything; it stays so a caller that sets it still builds.
+- conformance: `Server.Delivery` is gone. The `delivers` rule runs for every `Server` with `Channel` set, and fails, naming `Server.Send`, when `Send` isn't set.
+
+### Added
+- pageserve: `WaitOne(ctx, c, Wait{Session, Harness, Label, Root, Deadline})`, one Send for a tool's `wait` command (a session with no channel): it posts presence and keeps it fresh, listens on `/api/events`, claims on connect and on each `deliver`, and returns the first claimed body. At `Deadline` it returns `ErrNothingSent`; any other failure, a stream that ends included, it returns as it is.
+
 ## 0.80.1
 
 ### Fixed

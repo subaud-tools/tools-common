@@ -3,10 +3,10 @@ package pageserve
 // The channel: the MCP server each agent session starts (Claude Code through
 // the tool's plugin, pi through channels.tools). It gives the agent the
 // tool's tools, and a tool call starts serve when it isn't running. Under pi
-// it registers the session's presence, holds a long poll open for the human's
-// Sends (with Spec.Stream, serve's event stream, claiming on each deliver
-// event) and injects each one as a notifications/claude/channel event; that
-// loop never starts serve. Under Claude Code
+// it registers the session's presence, holds serve's event stream open,
+// claims the human's Sends with POST /api/agent/claim when it connects and on
+// each deliver event, and injects each one as a notifications/claude/channel
+// event; that loop never starts serve. Under Claude Code
 // `<tool> watch` runs that loop instead and prints each Send as a JSON line
 // for the plugin's mod. Moved from cull's internal/cull/channel/channel.go.
 //
@@ -24,7 +24,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -43,34 +42,29 @@ type Spec struct {
 	// Call runs one of Tools for the agent.
 	Call func(ctx context.Context, ch *Channel, name string, args json.RawMessage) (string, error)
 	// Root resolves the session's project from its folder: the loop runs only
-	// when it does, and presence and wait name the session's folder as the
-	// root its Sends come from. nil: the tool has no project, and they name
-	// no root.
+	// when it does, and presence and the claim name the session's folder as
+	// the root its Sends come from. nil: the tool has no project, and they
+	// name no root.
 	Root func(cwd string) (string, error)
-	// Scope is the root presence and wait name, from the session's folder,
+	// Scope is the root presence and the claim name, from the session's folder,
 	// for a tool whose loop runs in any folder; it takes Root's place there
 	// and gates nothing.
 	Scope func(cwd string) string
-	// Wake reads one answer of GET /api/agent/wait into the event pushed to
-	// the agent; ok is false when there is nothing to push (the wait timed
-	// out).
+	// Wake reads one claimed Send, the 200 body of POST /api/agent/claim
+	// (serve wires Delivery), into the event pushed to the agent; ok is false
+	// when it is not one to push, which is logged.
 	Wake func(body json.RawMessage) (text string, meta map[string]string, ok bool)
-	// Stream: the loop hears of Sends on serve's GET /api/events instead of
-	// long-polling GET /api/agent/wait, and claims with POST /api/agent/claim
-	// once each time it connects and on every deliver event (serve wires
-	// Delivery). Wake reads the claim's answer, the same body as wait's.
-	Stream bool
 	// Answers names what the human sends, in the channel's log lines:
 	// "the user's answers".
 	Answers string
-	// NoPresence: serve has no POST /api/agent/presence (diazo's), so the
-	// loop only waits.
+	// NoPresence: serve has no POST /api/agent/presence, so the loop only
+	// listens and claims.
 	NoPresence bool
 	// PresenceBody is the body of POST /api/agent/presence for id (nil:
 	// {session, harness, label, root, tmux_socket, tmux_pane}, root left out when
 	// the tool has no project and the tmux fields outside tmux).
 	PresenceBody func(id Identity) any
-	// OnServe runs in the wait loop when the serve it reaches is a new
+	// OnServe runs in the loop when the serve it reaches is a new
 	// process (its entry's StartedAt changed since the loop last looked),
 	// not for the first serve the loop finds; the loop then registers
 	// presence with the new serve. A tool that tells the agent what a restart
@@ -119,12 +113,14 @@ type Channel struct {
 	// Open opens a URL in the human's browser (tests replace it).
 	Open func(url string) error
 	// Retry is how long to wait before trying serve again; Presence how often
-	// to refresh presence; Poll the long-poll timeout. Tests shorten them.
+	// to refresh presence. Tests shorten them.
 	Retry    time.Duration
 	Presence time.Duration
-	Poll     time.Duration
+	// Poll is unused: it was the long poll's timeout, gone in 0.81.0. It is
+	// kept so a caller that still sets it builds.
+	Poll time.Duration
 
-	// Push is where the wait loop sends each Send: Server for `<tool>
+	// Push is where the loop sends each Send: Server for `<tool>
 	// channel`, a JSON line on stdout for `<tool> watch`. One loop, two
 	// outputs.
 	Push channelmcp.Pusher
@@ -133,6 +129,9 @@ type Channel struct {
 	// and never waits. Two takers would split a session's sends.
 	ServeOnly bool
 
+	// take, when set, gets each claimed Send instead of Push (WaitOne's);
+	// true ends the claim with errTaken.
+	take    func(json.RawMessage) bool
 	findFor time.Duration // how long after a tear rest looks fast for a new serve
 	root    string        // the session's project root; "" when it can't be resolved
 	rootErr error
@@ -175,7 +174,7 @@ func New(spec Spec, id Identity, c *Client) *Channel {
 			if ctx == nil {
 				ctx = context.Background()
 			}
-			// A tool call is where a stale serve gets replaced (the wait loop
+			// A tool call is where a stale serve gets replaced (the loop
 			// never does it), so no tool has to ask.
 			if err := c.Fresh(ctx); err != nil {
 				return "", err
@@ -339,12 +338,12 @@ func (ch *Channel) Announce(ctx context.Context, c *Client) error {
 	return err
 }
 
-// loop keeps presence fresh and long-polls for sends, emitting each claimed
-// send as one channel event. The next poll is armed as soon as an event is
-// queued (Notify only queues), so nothing sent meanwhile is missed. serve
-// claims a send for exactly one caller, so an event is never duplicated. A
-// delivery the tool's Wake refuses is logged with its first 200 bytes, so a
-// lost one leaves a trace. It
+// loop keeps presence fresh, listens on serve's event stream and claims the
+// session's Sends (see listen), emitting each as one channel event. serve
+// claims a Send for exactly one caller, so an event is never duplicated. A
+// delivery the tool's Wake refuses is logged by its size and field names, so
+// a lost one leaves a trace. A dropped stream or a new serve goes round the
+// loop again, and the claim on connect brings anything sent meanwhile. It
 // never starts serve (only a tool call does), and while no serve runs it logs
 // nothing.
 func (ch *Channel) loop(ctx context.Context) {
@@ -398,44 +397,17 @@ func (ch *Channel) loop(ctx context.Context) {
 			lastPresence, lastErr = time.Now(), ""
 			ch.nudge()
 		}
-		if ch.Spec.Stream {
-			err := ch.listen(ctx, c, &lastPresence, func() { lastErr = "" })
-			if ctx.Err() != nil {
-				return
-			}
-			var se *StatusError
-			if errors.As(err, &se) {
-				lastPresence = time.Time{}
-			}
-			logOnce(err)
-			if rest(at) {
-				lastPresence = time.Time{}
-			}
-			continue
+		err := ch.listen(ctx, c, &lastPresence, func() { lastErr = "" })
+		if ctx.Err() != nil {
+			return
 		}
-		var got json.RawMessage
-		code, err := c.Do(ctx, http.MethodGet, "/api/agent/wait?"+Query(
-			"session", ch.ID.Session, "root", ch.scope(), "timeout", strconv.Itoa(max(int(ch.Poll.Seconds()), 1))), nil, &got)
-		switch {
-		case err != nil:
-			if ctx.Err() != nil || errors.Is(err, context.Canceled) {
-				return
-			}
-			var se *StatusError
-			if errors.As(err, &se) {
-				lastPresence = time.Time{}
-			}
-			logOnce(err)
-			if rest(at) {
-				lastPresence = time.Time{}
-			}
-		case code == http.StatusOK && len(got) > 0:
-			lastErr = ""
-			ch.nudge()
-			ch.push(got)
-		default:
-			lastErr = ""
-			ch.nudge()
+		var se *StatusError
+		if errors.As(err, &se) {
+			lastPresence = time.Time{}
+		}
+		logOnce(err)
+		if rest(at) {
+			lastPresence = time.Time{}
 		}
 	}
 }
@@ -452,7 +424,7 @@ func (ch *Channel) push(got json.RawMessage) {
 	}
 }
 
-// listen is the loop's turn with Spec.Stream: it holds serve's event stream
+// listen is one turn of the loop: it holds serve's event stream
 // open, claims once it is open and on every deliver event, and keeps presence
 // fresh meanwhile (lastPresence is the loop's), until ctx ends or the stream
 // or a call fails, which it returns for the loop's retry. ok runs once the
@@ -509,8 +481,11 @@ func (ch *Channel) listen(ctx context.Context, c *Client, lastPresence *time.Tim
 	}
 }
 
+// errTaken ends claim, and listen, once take has the Send it wanted.
+var errTaken = errors.New("took a Send")
+
 // claim takes the session's Sends from serve, one claim at a time, pushing
-// each, until serve answers that nothing is left.
+// each, until serve answers that nothing is left (or take says it is done).
 func (ch *Channel) claim(ctx context.Context, c *Client) error {
 	for {
 		var got json.RawMessage
@@ -520,6 +495,12 @@ func (ch *Channel) claim(ctx context.Context, c *Client) error {
 		}
 		if code != http.StatusOK || len(got) == 0 {
 			return nil
+		}
+		if ch.take != nil {
+			if ch.take(got) {
+				return errTaken
+			}
+			continue
 		}
 		ch.push(got)
 	}

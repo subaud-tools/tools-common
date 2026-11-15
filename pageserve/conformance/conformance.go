@@ -43,7 +43,9 @@ type Server struct {
 	Binary string   // the built tool (see Build)
 	Args   []string // run serve in the foreground, opening no browser
 	Env    []string // added to the serve's environment: a tool's own short test clock
-	// Channel: the tool has a channel, so it must ship a skill.
+	// Channel: the tool has a channel, so it must ship a skill, and its
+	// channel must deliver Sends (the delivers rule, with two `<tool> watch`
+	// sessions), so Send must be set.
 	Channel bool
 	// SkillName names the skill when it isn't named after the tool. "": Tool.
 	SkillName string
@@ -51,10 +53,6 @@ type Server struct {
 	// Nothing in pageserve exits for being idle: a tool that adds a timer of its
 	// own is caught only when Env shortens it to under this.
 	Quiet time.Duration
-	// Delivery: the tool's channel takes Sends with Spec.Stream and its serve
-	// wires pageserve.Delivery, so the delivers rule runs, with two `<tool>
-	// watch` sessions. Send must be set.
-	Delivery bool
 	// Send records one Send for the project at folder through the tool's API on
 	// e (e.Loopback(), e.Token), as the page's Send button does.
 	Send func(e pageserve.Entry, folder string) error

@@ -13,7 +13,8 @@
 //     starts, finds and stops it from outside.
 //   - Client and Channel: what an agent session runs, `<tool> channel` and
 //     `<tool> watch`: find or start serve, call it, register the session,
-//     long-poll for the human's Sends and push each one to the agent.
+//     listen on serve's event stream, claim the human's Sends and push each
+//     one to the agent. WaitOne is the same for one Send, for a `wait` command.
 //   - Commands: the serve, channel, watch, report and skills commands.
 //   - conformance (its own package): the test a tool's CI runs against its
 //     server for the rules Run gives it.

@@ -1,8 +1,8 @@
 package conformance
 
-// The delivers rule: a tool whose channel takes Sends with Spec.Stream hands
-// each Send to exactly one session, all of several queued, a killed owner's
-// project to another session, and nothing is lost across a serve restart.
+// The delivers rule: a tool with a channel hands each Send to exactly one
+// session, all of several queued, a killed owner's project to another session,
+// and nothing is lost across a serve restart.
 // The sessions are the tool's own `<tool> watch`, each Send one JSON line.
 
 import (
@@ -121,11 +121,11 @@ func logs(ws []*watcher) string {
 // took it is killed, the next Send reaches the other within the presence TTL
 // and 5s; and a Send recorded just after a serve restart arrives.
 func delivers(t *testing.T, c *scratch) error {
-	if !c.s.Delivery {
+	if !c.s.Channel {
 		return nil
 	}
 	if c.s.Send == nil {
-		return errors.New("Server.Delivery is set without Server.Send to record a Send with")
+		return errors.New("Server.Channel is set without Server.Send: the delivers rule needs it to record a Send")
 	}
 	folder := t.TempDir()
 	if c.s.Folder != nil {

@@ -31,26 +31,40 @@ import (
 
 // ---- a fake serve -----------------------------------------------------------
 
-type fakeSend struct {
-	id      int64
-	root    string
-	text    string
-	claimed bool
-}
-
-// fakeServe is a serve's agent routes: presence, a wait that hands each Send
-// to exactly one session waiting from its root, and report.
+// fakeServe is a serve's agent routes: presence, the event stream, a claim
+// route from a Delivery that hands each Send queued for a root to exactly one
+// claim from that root, and report. It counts every request by route.
 type fakeServe struct {
-	mu       sync.Mutex
-	sends    []*fakeSend
-	presence []map[string]any
-	waits    atomic.Int32
-	reports  chan map[string]string
+	d        *Delivery
+	end      context.CancelFunc // ends every open stream
 	srv      *httptest.Server
+	reports  chan map[string]string
+	mu       sync.Mutex
+	queued   map[string][]map[string]any // root -> the Sends waiting there
+	sent     int
+	presence []map[string]any
+	requests map[string]int // "METHOD path" -> count
+	tokens   []string       // the token header of each stream
 }
 
 func newFakeServe(t *testing.T) *fakeServe {
-	f := &fakeServe{reports: make(chan map[string]string, 8)}
+	t.Helper()
+	f := &fakeServe{reports: make(chan map[string]string, 8), queued: map[string][]map[string]any{}, requests: map[string]int{}}
+	ev := NewEvents()
+	ctx, cancel := context.WithCancel(context.Background())
+	ev.bind(ctx)
+	f.end = cancel
+	f.d = &Delivery{Events: ev, Claim: func(_ context.Context, _ string, covered, _ []string) (any, bool, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		for _, root := range covered {
+			if q := f.queued[root]; len(q) > 0 {
+				f.queued[root] = q[1:]
+				return q[0], true, nil
+			}
+		}
+		return nil, false, nil
+	}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/agent/presence", func(w http.ResponseWriter, r *http.Request) {
 		var b map[string]any
@@ -60,28 +74,12 @@ func newFakeServe(t *testing.T) *fakeServe {
 		f.mu.Unlock()
 		w.WriteHeader(http.StatusNoContent)
 	})
-	mux.HandleFunc("GET /api/agent/wait", func(w http.ResponseWriter, r *http.Request) {
-		f.waits.Add(1)
-		root := r.URL.Query().Get("root")
-		deadline := time.Now().Add(200 * time.Millisecond)
-		for time.Now().Before(deadline) {
-			f.mu.Lock()
-			for _, s := range f.sends {
-				if !s.claimed && s.root == root {
-					s.claimed = true
-					f.mu.Unlock()
-					writeJSON(w, http.StatusOK, map[string]any{"id": s.id, "root": s.root, "text": s.text, "report": "0123456789abcdef"})
-					return
-				}
-			}
-			f.mu.Unlock()
-			select {
-			case <-r.Context().Done():
-				return
-			case <-time.After(10 * time.Millisecond):
-			}
-		}
-		w.WriteHeader(http.StatusNoContent)
+	mux.HandleFunc("POST /api/agent/claim", f.d.ServeClaim)
+	mux.HandleFunc("GET /api/events", func(w http.ResponseWriter, r *http.Request) {
+		f.mu.Lock()
+		f.tokens = append(f.tokens, r.Header.Get(localweb.TokenHeader))
+		f.mu.Unlock()
+		ev.Stream(w, r)
 	})
 	mux.HandleFunc("POST /api/agent/report", func(w http.ResponseWriter, r *http.Request) {
 		var b map[string]string
@@ -89,15 +87,44 @@ func newFakeServe(t *testing.T) *fakeServe {
 		f.reports <- b
 		w.WriteHeader(http.StatusNoContent)
 	})
-	f.srv = httptest.NewServer(mux)
-	t.Cleanup(f.srv.Close)
+	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f.mu.Lock()
+		f.requests[r.Method+" "+r.URL.Path]++
+		f.mu.Unlock()
+		mux.ServeHTTP(w, r)
+	}))
+	t.Cleanup(f.stop)
 	return f
 }
 
-func (f *fakeServe) send(root, text string) {
+// stop ends the serve as a restart does: its streams end and it stops answering.
+func (f *fakeServe) stop() {
+	f.end()
+	f.srv.CloseClientConnections()
+	f.srv.Close()
+}
+
+// queue records Sends for root without telling anyone, as one recorded while
+// no stream is open is.
+func (f *fakeServe) queue(root string, texts ...string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.sends = append(f.sends, &fakeSend{id: int64(len(f.sends) + 1), root: root, text: text})
+	for _, text := range texts {
+		f.sent++
+		f.queued[root] = append(f.queued[root], map[string]any{"id": f.sent, "root": root, "text": text, "report": "0123456789abcdef"})
+	}
+}
+
+// send records a Send for root and emits deliver, as a tool's serve does.
+func (f *fakeServe) send(root, text string) {
+	f.queue(root, text)
+	f.d.Deliver()
+}
+
+func (f *fakeServe) count(route string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.requests[route]
 }
 
 func (f *fakeServe) presences() []map[string]any {
@@ -106,10 +133,24 @@ func (f *fakeServe) presences() []map[string]any {
 	return append([]map[string]any(nil), f.presence...)
 }
 
+func (f *fakeServe) entry(pid int) Entry { return Entry{Base: f.srv.URL, Token: "tok", PID: pid} }
+
 func (f *fakeServe) client() *Client {
 	cl := NewClient(Live{Tool: "cull"}, nil)
-	cl.Find = func() (Entry, error) { return Entry{Base: f.srv.URL, Token: "tok", PID: os.Getpid()}, nil }
+	cl.Find = func() (Entry, error) { return f.entry(os.Getpid()), nil }
 	return cl
+}
+
+// awaitCount waits until f has answered route n times.
+func awaitCount(t *testing.T, f *fakeServe, route string, n int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for f.count(route) < n {
+		if time.Now().After(deadline) {
+			t.Fatalf("%s answered %d times, want %d", route, f.count(route), n)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 }
 
 // ---- cull's channel, as a Spec ----------------------------------------------
@@ -355,7 +396,7 @@ func TestARefusedDeliveryIsLoggedWithoutItsText(t *testing.T) {
 
 // Presence names the session and the folder its Sends come from; a tool
 // without a project names no root, and one whose serve has no presence
-// route (diazo's) only waits.
+// route only listens and claims.
 func TestPresence(t *testing.T) {
 	root := t.TempDir()
 	id := Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: root}
@@ -378,11 +419,11 @@ func TestPresence(t *testing.T) {
 			}
 			connect(t, New(tc.spec(cullSpec()), id, f.client()))
 			deadline := time.Now().Add(5 * time.Second)
-			for f.waits.Load() == 0 && time.Now().Before(deadline) {
+			for f.count("POST /api/agent/claim") == 0 && time.Now().Before(deadline) {
 				time.Sleep(10 * time.Millisecond)
 			}
-			if f.waits.Load() == 0 {
-				t.Fatal("the channel never waited")
+			if f.count("POST /api/agent/claim") == 0 {
+				t.Fatal("the channel never claimed")
 			}
 			got := f.presences()
 			if tc.want == nil && len(got) != 0 || tc.want != nil && (len(got) == 0 || !reflect.DeepEqual(got[0], tc.want[0])) {
@@ -421,11 +462,9 @@ func TestReportsReachServeInOrderWithoutBlockingToolCalls(t *testing.T) {
 			_ = json.NewDecoder(r.Body).Decode(&b)
 			<-release
 			posted <- b
-		case "/api/agent/wait":
-			select {
-			case <-r.Context().Done():
-			case <-time.After(100 * time.Millisecond):
-			}
+		case "/api/events":
+			<-r.Context().Done()
+			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -647,13 +686,13 @@ func TestQueryLeavesOutEmptyValues(t *testing.T) {
 	}
 }
 
-// tornServe takes presence and tears every wait, as a serve going down does.
+// tornServe takes presence and tears every stream, as a serve going down does.
 func tornServe(t *testing.T) (*httptest.Server, *atomic.Int32) {
 	t.Helper()
 	var waits atomic.Int32
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/agent/presence", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
-	mux.HandleFunc("GET /api/agent/wait", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET /api/events", func(w http.ResponseWriter, _ *http.Request) {
 		waits.Add(1)
 		conn, _, err := w.(http.Hijacker).Hijack()
 		if err == nil {
@@ -665,7 +704,7 @@ func tornServe(t *testing.T) (*httptest.Server, *atomic.Int32) {
 	return srv, &waits
 }
 
-// After a torn poll the loop goes straight to a serve Find returns that it
+// After a torn stream the loop goes straight to a serve Find returns that it
 // hasn't reached yet, and registers there: a restart must not leave a Send
 // unheard for Retry (galley refused a Revise for up to 5s). The gap while no
 // serve runs is the restart galley saw.
@@ -734,11 +773,11 @@ func TestALoopRestsOnTheSameServe(t *testing.T) {
 	time.Sleep(300 * time.Millisecond)
 	// Two: net/http itself retries a GET torn on a reused connection, once.
 	if n := waits.Load(); n > 2 {
-		t.Fatalf("%d waits in 300ms", n)
+		t.Fatalf("%d streams in 300ms", n)
 	}
 }
 
-// Spec.Scope sends the root on presence and the wait; unlike Spec.Root it
+// Spec.Scope sends the root on presence and the claim; unlike Spec.Root it
 // never stops the loop.
 func TestScopeSendsTheRootWithoutGatingTheLoop(t *testing.T) {
 	f := newFakeServe(t)
@@ -839,105 +878,31 @@ func awaitFailedPost(t *testing.T, ch *Channel, finds *atomic.Int32) {
 	}
 }
 
-// ---- the stream-and-claim path ----------------------------------------------
+// ---- the stream and the claim ----------------------------------------------
 
-// streamServe is a serve's routes for a channel with Spec.Stream: presence, the
-// event stream and the claim route, from a Delivery whose claim hands out the
-// Sends queued for a root, one per claim. It counts every request by route.
-type streamServe struct {
-	d        *Delivery
-	end      context.CancelFunc // ends every open stream
-	srv      *httptest.Server
-	mu       sync.Mutex
-	queued   map[string][]string // root -> Send texts
-	requests map[string]int      // "METHOD path" -> count
-	tokens   []string            // the token header of each stream
-}
-
-func newStreamServe(t *testing.T) *streamServe {
-	t.Helper()
-	f := &streamServe{queued: map[string][]string{}, requests: map[string]int{}}
-	ev := NewEvents()
-	ctx, cancel := context.WithCancel(context.Background())
-	ev.bind(ctx)
-	f.end = cancel
-	f.d = &Delivery{Events: ev, Claim: func(_ context.Context, _ string, covered, _ []string) (any, bool, error) {
-		f.mu.Lock()
-		defer f.mu.Unlock()
-		for _, root := range covered {
-			if q := f.queued[root]; len(q) > 0 {
-				f.queued[root] = q[1:]
-				f.requests["sent"]++
-				return map[string]any{"id": f.requests["sent"], "root": root, "text": q[0], "report": "0123456789abcdef"}, true, nil
-			}
-		}
-		return nil, false, nil
-	}}
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/agent/presence", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
-	mux.HandleFunc("POST /api/agent/claim", f.d.ServeClaim)
-	mux.HandleFunc("GET /api/events", func(w http.ResponseWriter, r *http.Request) {
-		f.mu.Lock()
-		f.tokens = append(f.tokens, r.Header.Get(localweb.TokenHeader))
-		f.mu.Unlock()
-		ev.Stream(w, r)
-	})
-	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		f.mu.Lock()
-		f.requests[r.Method+" "+r.URL.Path]++
-		f.mu.Unlock()
-		mux.ServeHTTP(w, r)
-	}))
-	t.Cleanup(f.stop)
-	return f
-}
-
-// stop ends the serve as a restart does: its streams end and it stops answering.
-func (f *streamServe) stop() {
-	f.end()
-	f.srv.CloseClientConnections()
-	f.srv.Close()
-}
-
-func (f *streamServe) queue(root string, texts ...string) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.queued[root] = append(f.queued[root], texts...)
-}
-
-func (f *streamServe) count(route string) int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.requests[route]
-}
-
-func (f *streamServe) entry(pid int) Entry { return Entry{Base: f.srv.URL, Token: "tok", PID: pid} }
-
-func streamSpec() Spec {
-	s := cullSpec()
-	s.Stream = true
-	return s
-}
-
-// awaitCount waits until f has answered route n times.
-func awaitCount(t *testing.T, f *streamServe, route string, n int) {
-	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for f.count(route) < n {
-		if time.Now().After(deadline) {
-			t.Fatalf("%s answered %d times, want %d", route, f.count(route), n)
-		}
-		time.Sleep(5 * time.Millisecond)
+// A channel's spec names no delivery path: a Send recorded before it connected
+// arrives once it does, and one recorded after it is listening arrives too.
+func TestAChannelGetsASendRecordedBeforeAndAfterItConnected(t *testing.T) {
+	f := newFakeServe(t)
+	root := t.TempDir()
+	f.queue(root, "before")
+	c := connect(t, New(cullSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: root}, f.client()))
+	if ev, ok := c.expectEvent(5 * time.Second); !ok || ev.Content != "before" {
+		t.Fatalf("got %q %v, want the Send recorded before (logs %s)", ev.Content, ok, c.logs.String())
+	}
+	f.send(root, "after")
+	if ev, ok := c.expectEvent(5 * time.Second); !ok || ev.Content != "after" {
+		t.Fatalf("got %q %v, want the Send recorded after (logs %s)", ev.Content, ok, c.logs.String())
 	}
 }
 
 // One deliver event with two Sends queued pushes both: the channel claims
 // until there is nothing left.
-func TestStreamOneDeliverPushesEveryQueuedSend(t *testing.T) {
-	f := newStreamServe(t)
+func TestOneDeliverPushesEveryQueuedSend(t *testing.T) {
+	f := newFakeServe(t)
 	root := t.TempDir()
 	cl := f.client()
-	c := connect(t, New(streamSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: root}, cl))
+	c := connect(t, New(cullSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: root}, cl))
 	awaitCount(t, f, "POST /api/agent/claim", 1)
 	f.queue(root, "first", "second")
 	f.d.Deliver()
@@ -959,9 +924,9 @@ func TestStreamOneDeliverPushesEveryQueuedSend(t *testing.T) {
 
 // An idle channel claims once, on connect, and then asks serve nothing but
 // presence: no deliver event, no claim, and no polling.
-func TestStreamIdleLoopMakesOnlyPresenceRequests(t *testing.T) {
-	f := newStreamServe(t)
-	connect(t, New(streamSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: t.TempDir()}, f.client()))
+func TestAnIdleLoopMakesOnlyPresenceRequests(t *testing.T) {
+	f := newFakeServe(t)
+	connect(t, New(cullSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: t.TempDir()}, f.client()))
 	awaitCount(t, f, "POST /api/agent/claim", 1)
 	f.mu.Lock()
 	before := maps.Clone(f.requests)
@@ -987,8 +952,8 @@ func TestStreamIdleLoopMakesOnlyPresenceRequests(t *testing.T) {
 // A serve restart mid-stream: the channel goes straight to the new serve,
 // opens its stream and claims once there, which brings what was sent while
 // no stream was open.
-func TestStreamReconnectsToARestartedServeAndClaimsOnce(t *testing.T) {
-	first, next := newStreamServe(t), newStreamServe(t)
+func TestALoopReconnectsToARestartedServeAndClaimsOnce(t *testing.T) {
+	first, next := newFakeServe(t), newFakeServe(t)
 	root := t.TempDir()
 	cl := first.client()
 	var moved atomic.Bool
@@ -998,7 +963,7 @@ func TestStreamReconnectsToARestartedServeAndClaimsOnce(t *testing.T) {
 		}
 		return first.entry(1), nil
 	}
-	c := connectRetrying(t, New(streamSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: root}, cl), time.Minute)
+	c := connectRetrying(t, New(cullSpec(), Identity{Session: "s-1", Harness: "pi", Label: "pi · a", CWD: root}, cl), time.Minute)
 	awaitCount(t, first, "POST /api/agent/claim", 1)
 	next.queue(root, "sent while restarting")
 	moved.Store(true)
@@ -1013,10 +978,4 @@ func TestStreamReconnectsToARestartedServeAndClaimsOnce(t *testing.T) {
 	if n := next.count("POST /api/agent/claim"); n != 2 {
 		t.Fatalf("%d claims on the new serve, want the claim on connect and its 204", n)
 	}
-}
-
-func (f *streamServe) client() *Client {
-	cl := NewClient(Live{Tool: "cull"}, nil)
-	cl.Find = func() (Entry, error) { return f.entry(os.Getpid()), nil }
-	return cl
 }

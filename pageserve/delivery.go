@@ -1,8 +1,8 @@
 package pageserve
 
-// The serve side of stream-and-claim delivery: a channel with Spec.Stream set
-// listens on GET /api/events and claims with POST /api/agent/claim on each
-// deliver event and once each time it connects. serve emits deliver when there
+// The serve side of stream-and-claim delivery: every channel listens on
+// GET /api/events and claims with POST /api/agent/claim on each deliver event
+// and once each time it connects. serve emits deliver when there
 // may be a Send for someone to take: the tool calls Deliver when it records a
 // Send or takes a delivery back, and one timer, set to the next moment any
 // session's presence lapses, calls it so a gone owner's project can be taken
@@ -157,7 +157,7 @@ func (d *Delivery) Deliver() {
 }
 
 // Wake returns a channel that closes at the next Deliver (or lapse): what a
-// tool's long poll, kept for channels from before the stream, waits on.
+// tool's own route that holds a request until there is a Send waits on.
 func (d *Delivery) Wake() <-chan struct{} {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -211,7 +211,7 @@ func (d *Delivery) scopes(ctx context.Context, session, root string) ([]string, 
 
 // Take is one claim for session, whose folder is root: it touches the
 // session (a claiming session is a live one) and runs Claim once over what the
-// session covers. The claim route answers with it; a tool's own long poll can
+// session covers. The claim route answers with it; a tool's own route can
 // call it on each Wake.
 func (d *Delivery) Take(ctx context.Context, session, root string) (any, bool, error) {
 	d.Touch(session)
