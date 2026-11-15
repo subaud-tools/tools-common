@@ -27,4 +27,5 @@ export * from './prose.js';
 export * from './decision.js';
 export * from './record.js';
 export * from './tour.js';
+export * from './spotlight.js';
 export * from './guide.js';

@@ -7,11 +7,17 @@ tags and PRs.
 ## 0.82.0
 
 ### Added
-- record: `ClearLessons()` forgets every finished lesson and keeps the tools used and features reached, for the getting-started walk's start over.
+- guide: `walk.md` and `guide.Walk()`, the getting-started walk as ten clicks on the real pages (proj `split`; diazo `reply`, `direction`, `choose`, `approve-spec`, `approve-plan`; galley `add-instruction`, `revise`, `history`, `approve`). Each `WalkStep` names its tool, the control's `data-walk` hook, a two-line note (what to press, why), what to look for when the control isn't there, what the agent does first and the tool event that moves it on. The loader refuses an unknown tool, a bad hook, a note over two lines, anything in a note for the learner to type, and a placeholder. A step's JSON is the spotlight body.
+- localweb/page: `spotlight.js`, `spotlight(step)` and `clearSpotlight()`: the tour's ring on `[data-walk=…]` with the note and "n of N" beside it, following the page on scroll, resize and layout changes, never blocking it; the learner's click on the control clears it. It waits up to 5s for the control, and without it puts the note in the middle with "Look for …". A step with `ok` gets an ok button that fires `kit:spotlight-ok` on window. `live()` draws every `spotlight` event itself (they never reach `onEvent`), and when its stream first opens draws the step the serve holds (`resumeSpotlight`; `spotlight: false` turns it off), so every kit page gets it with no tool code. The tab a step names as `forward` focuses its window and posts `{type: "kit.forward", tool}` to its parent frame.
+- pageserve: `POST /api/kit/spotlight` (token header only) takes a step's JSON and sends it to the page's open tabs as a `spotlight` event, naming the tab showing its `page` (else the front-page tab, moved there) as `forward`, and answers `{"forward": tab}`; an empty body clears it (the event's data is `{}`). `GET /api/kit/spotlight` answers the step shown now, or 204.
+- record: `ClearLessons()` forgets every finished lesson and keeps the tools used and features reached.
+
+### Changed
+- guide: the getting-started-with-subaud skill runs the walk: `proj guide start`, then each step's agent work and `proj guide show`, and `proj guide next` when the step's event arrives from its tool's channel; back, skip and stop run `proj guide back`, `skip` and `stop`. The learner never types anything. The lessons are gone from the skill, and using-the-tools no longer offers lessons (the lesson files stay for proj until it drops the lesson tab).
 
 ### Fixed
 - guide: lessons 2 to 6 start by checking that `~/subaud/practice` exists, and say so when it doesn't.
-- guide: when the learner presses the recap's start lesson N button, it sends "Lesson M is done. Start lesson N of the getting-started walk.", and the agent runs `proj guide done --lesson M`, then `proj guide start --lesson N`, so the walk moves on even when the agent had not run done after the last step's result.
+- guide: when the learner presses the recap's start lesson N button, it sends "Lesson M is done. Start lesson N of the getting-started walk.", and the agent runs `proj guide done --lesson M`, then `proj guide start --lesson N`.
 
 ## 0.81.0
 

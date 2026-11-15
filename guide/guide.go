@@ -1,8 +1,9 @@
 // Package guide holds the family guide's text, embedded in every binary that
 // builds on tools-common: one section per tool (tools/<name>.md), how the
-// tools fit together (fit.md), the getting-started walk's intro (intro.md)
-// and its lessons (lessons/<n>-<topic>.md). The Guide tab, the walk and the agent's map all
-// read it from here rather than restating it.
+// tools fit together (fit.md), the lesson walk's intro (intro.md) and lessons
+// (lessons/<n>-<topic>.md), which proj's lesson tab still reads, and the
+// getting-started walk (walk.md, walk.go). The Guide tab, the walk and the
+// agent's map all read it from here rather than restating it.
 //
 // Every ask in it is something the user says to their agent; no text tells
 // the user to type a family command. load refuses content that breaks a rule,

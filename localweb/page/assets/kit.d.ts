@@ -113,7 +113,7 @@ export interface LiveOptions {
   events: string;
   /** Poll endpoint: GET ?tab=&page=&since=<cursor> → {cursor, events: [{type, data}]}. A hidden tab checks in through it once a minute. */
   poll: string;
-  /** Every event except show events, which go to onShow. */
+  /** Every event except show events, which go to onShow, and spotlight events, which every kit page draws itself (spotlight.js). */
   onEvent(e: LiveEvent): void;
   onStatus?(s: LiveStatus): void;
   /** A stale event arrived (a new install; this serve runs the old code). Pass createApi's newBuild, so it and a changed X-Tool-Build make one notice. */
@@ -133,6 +133,8 @@ export interface LiveOptions {
   fetch?: typeof fetch;
   setTimeout?: (fn: () => void, ms: number) => unknown;
   clearTimeout?: (id: unknown) => void;
+  /** false: don't draw the step the serve holds (GET /api/kit/spotlight) when the stream first opens. Default true. */
+  spotlight?: boolean;
 }
 
 /** tab(): this page load's id, sent as tab on every request (send it when asking the server to move this tab). */
@@ -1115,6 +1117,32 @@ export function placeNote(
   view: { width: number; height: number },
   gap?: number,
 ): { x: number; y: number };
+
+/** One step of the getting-started walk, as pageserve's POST /api/kit/spotlight takes it and a spotlight event carries it. */
+export interface SpotlightStep {
+  n: number;
+  of: number;
+  tool: string;
+  /** The control's data-walk hook: [data-walk="<walk>"]. */
+  walk: string;
+  /** The note's first line: what to press. */
+  title: string;
+  /** Its second line: why. */
+  note?: string;
+  /** What to look for when the control isn't on the page. */
+  look?: string;
+  /** An ok button on the note: pressing it clears it and fires kit:spotlight-ok on window with the step. */
+  ok?: boolean;
+  /** The tab id the serve asks to come forward. */
+  forward?: string;
+}
+
+/** Rings the step's control with its note beside it (n of N), following the page as it moves; nothing blocks the page, and a click on the control clears it. Waits up to o.wait ms (default 5000) for the control; without it the note sits in the middle with "Look for …". */
+export function spotlight(step: SpotlightStep, o?: { wait?: number }): Promise<void>;
+/** Takes the step shown away. */
+export function clearSpotlight(): void;
+/** Draws the step the serve holds now (GET url, default /api/kit/spotlight; 204 for none). live() calls it when its stream first opens. */
+export function resumeSpotlight(url?: string): Promise<void>;
 
 /** One tool's section in the Guide, from tools-common's guide package. */
 export interface GuideTool {

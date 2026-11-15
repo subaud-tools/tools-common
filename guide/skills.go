@@ -28,6 +28,7 @@ type skillData struct {
 	Fit           string
 	Lessons       []LessonPage
 	Core, Offered []LessonPage
+	Walk          []WalkStep
 }
 
 var blankRuns = regexp.MustCompile(`\n{3,}`)
@@ -39,7 +40,11 @@ func Skills() ([]Skill, error) {
 	if err != nil {
 		return nil, err
 	}
-	d := skillData{Tools: s.tools, Fit: s.fit}
+	walk, err := Walk()
+	if err != nil {
+		return nil, err
+	}
+	d := skillData{Tools: s.tools, Fit: s.fit, Walk: walk}
 	for _, n := range LessonNumbers() {
 		l := s.lessons[n]
 		d.Lessons = append(d.Lessons, l)

@@ -28,6 +28,14 @@
 // as well as onEvent. Pass createApi's newBuild, so it and a changed
 // X-Tool-Build make one notice.
 //
+// A {type: "spotlight"} event is a step of the getting-started walk
+// (spotlight.js): every kit page draws it, and one with no walk clears it.
+// Spotlight events never reach onEvent. When the stream first opens, the
+// step the serve holds now is drawn (resumeSpotlight), so a page opened after
+// it was sent shows it too; spotlight: false turns that off. The tab the
+// event names as forward asks to come forward: it focuses its window and, in
+// a frame (proj's split page), posts {type: "kit.forward", tool} to its parent.
+//
 // A 401 from the poll means the server restarted and the token is gone:
 // status becomes "stale" and the client stops for good (no stream, no polls).
 //
@@ -41,6 +49,16 @@
 // anyway): one short request that checks the tab in and brings the events
 // since its cursor, such as a show. A tab that loads hidden checks in at once.
 // When shown, it stops polling and reopens the stream from its cursor.
+import { spotlight, clearSpotlight, resumeSpotlight } from './spotlight.js';
+
+function forward(tool) {
+  try {
+    globalThis.focus();
+    if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.postMessage({ type: 'kit.forward', tool }, '*');
+  } catch {
+    // a closed or foreign parent: it stays where it is
+  }
+}
 
 export function live(opts) {
   const ES = opts.EventSource || globalThis.EventSource;
@@ -61,6 +79,7 @@ export function live(opts) {
   let status = '';
   let stopped = false;
   let epoch = 0; // bumped whenever the stream opens; stale polls are dropped
+  let resumed = opts.spotlight === false;
 
   const withQuery = url =>
     `${url}${url.includes('?') ? '&' : '?'}tab=${encodeURIComponent(tab)}&page=${encodeURIComponent(page)}` +
@@ -81,6 +100,12 @@ export function live(opts) {
       } catch (err) {
         console.error('live: onNewBuild threw', err);
       }
+    }
+    if (type === 'spotlight') {
+      if (data && data.walk) void spotlight(data);
+      else clearSpotlight();
+      if (data && data.forward && data.forward === tab) forward(data.tool);
+      return;
     }
     try {
       if (type !== 'show') opts.onEvent({ type, data, cursor: c });
@@ -110,6 +135,10 @@ export function live(opts) {
       epoch++;
       cancelPoll();
       setStatus('live');
+      if (!resumed) {
+        resumed = true;
+        void resumeSpotlight();
+      }
     };
     s.onmessage = m => {
       if (stopped || es !== s) return;
