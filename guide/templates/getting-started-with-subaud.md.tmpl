@@ -18,7 +18,7 @@ From lesson 2 on, a tool's real page (proj's, then diazo's and galley's) is open
    When the walk starts at lesson 1, the lesson tab shows the walk's intro first: what the tools are, what the learner will make and the lessons ahead, with a Start button. Say one line pointing to it, such as "The lesson tab on the right starts with a short intro; read it and press Start when you're ready.", then wait for the learner to press Start and send lesson 1's first step.
 2. When a step's ask arrives, run what its Claude runs line lists and nothing more.
 3. Post the step's result, a short sentence each: `proj guide result --lesson N --step M --ran "what ran" --happened "what happened" --means "what it means"`. The learner presses Next.
-4. After the last step's result, `proj guide done --lesson N` shows the lesson's recap and marks it finished in the shared record. The recap has a start lesson N button for the next core lesson; when the learner sends "Start lesson N of the getting-started walk.", run `proj guide start --lesson N`.
+4. After the last step's result, the learner's Recap shows each step's result and a start lesson N button for the next core lesson; you may run `proj guide done --lesson M` yourself then, which marks lesson M finished in the shared record. When the learner sends "Lesson M is done. Start lesson N of the getting-started walk.", run `proj guide done --lesson M`, then `proj guide start --lesson N`.
 5. When a step fails, say so in `--happened`, fix it with the learner, and post the result again.
 
 After lesson {{len .Core}}, point the learner to the Guide tab on any tool's page, and name the lessons waiting for later, rather than listing every tool.

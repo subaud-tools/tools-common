@@ -12,7 +12,7 @@
    Build the plan I approved, and mark each task on diazo's page as you go.
    ```
 
-   **Claude runs:** `diazo_update` to mark each task building, then writes the files, commits them in your practice repo, and marks the task done with what it did.
+   **Claude runs:** a check that `~/subaud/practice` exists, saying so if it doesn't, then `diazo_update` to mark each task building, then writes the files, commits them in your practice repo, and marks the task done with what it did.
 
    The track at the top of the page counts the tasks done, so you can glance at it rather than ask.
 

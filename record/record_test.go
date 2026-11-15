@@ -79,3 +79,24 @@ func TestMissingFileReadsEmpty(t *testing.T) {
 		t.Fatalf("want empty, got %+v", r)
 	}
 }
+
+// Starting the walk over clears the finished lessons and nothing else: the
+// tools used and features reached stay.
+func TestClearLessonsKeepsToolsAndFeatures(t *testing.T) {
+	home(t)
+	for _, err := range []error{MarkLesson("1-what-you-have"), MarkTool("diazo"), MarkFeature("diazo.calls")} {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := ClearLessons(); err != nil {
+		t.Fatal(err)
+	}
+	r, err := Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Lessons) != 0 || !r.HasTool("diazo") || !r.HasFeature("diazo.calls") {
+		t.Fatalf("after ClearLessons: %+v", r)
+	}
+}

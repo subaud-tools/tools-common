@@ -12,7 +12,7 @@
    Open proj's page as a tab beside this terminal.
    ```
 
-   **Claude runs:** `proj window --socket ‹socket› --pane ‹pane› --right ‹proj's page›`, with this session's tmux socket and pane from `$TMUX` and `$TMUX_PANE`, which starts proj's server when it isn't running and opens the page as a tab on the right of this split page.
+   **Claude runs:** a check that `~/subaud/practice` exists, saying so if it doesn't, then `proj window --socket ‹socket› --pane ‹pane› --right ‹proj's page›`, with this session's tmux socket and pane from `$TMUX` and `$TMUX_PANE`, which starts proj's server when it isn't running and opens the page as a tab on the right of this split page.
 
    This window is a split page: the terminal on the left, tabs on the right. The lesson is one tab; proj's page is another, and later lessons open diazo's and galley's beside them.
 

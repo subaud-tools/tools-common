@@ -4,6 +4,15 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.82.0
+
+### Added
+- record: `ClearLessons()` forgets every finished lesson and keeps the tools used and features reached, for the getting-started walk's start over.
+
+### Fixed
+- guide: lessons 2 to 6 start by checking that `~/subaud/practice` exists, and say so when it doesn't.
+- guide: when the learner presses the recap's start lesson N button, it sends "Lesson M is done. Start lesson N of the getting-started walk.", and the agent runs `proj guide done --lesson M`, then `proj guide start --lesson N`, so the walk moves on even when the agent had not run done after the last step's result.
+
 ## 0.81.0
 
 ### Removed (breaking)

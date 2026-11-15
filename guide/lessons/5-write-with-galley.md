@@ -12,7 +12,7 @@
    Let's use galley to edit README.md in my practice repo.
    ```
 
-   **Claude runs:** `galley_open`, which opens the real review page as a tab on the right, beside the terminal.
+   **Claude runs:** a check that `~/subaud/practice` exists, saying so if it doesn't, then `galley_open`, which opens the real review page as a tab on the right, beside the terminal.
 
 2. **Ask for a change on a passage**
 
