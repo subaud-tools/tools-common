@@ -1155,7 +1155,7 @@ export interface SpotlightEndCard {
     next_tool: string;
   };
 }
-/** Rings the step's control with its note beside it (n of N), following the page as it moves; nothing blocks the page. The learner's click on the control (for a text box or form, its submit; for an ok step, the ok button) clears it and posts {type: "kit:spotlight-done", n, tool, walk} to window.parent. While the control isn't on the page the note shows the step's prepare line off the page's text with no ring, and switches to the title and note with the ring the moment the control appears. An end card shows centred with what was learned and one button, "Go on to ‹next_tool›" or Done, which posts {type: "kit:walk-next", tool, next_tool} to window.parent. */
+/** Rings the step's control with its note beside it (n of N), following the page as it moves; nothing blocks the page. The learner's click on the control (for a text box or form, its submit; for an ok step, the ok button) clears it and posts {type: "kit:spotlight-done", n, tool, walk} to window.parent; a press on another data-walk control in a text box's form also ends it, naming that control as also. While the control isn't on the page the note shows the step's prepare line off the page's text with no ring, and switches to the title and note with the ring the moment the control appears. An end card shows centred with what was learned and one button, "Go on to ‹next_tool›" or Done, which posts {type: "kit:walk-next", tool, next_tool} to window.parent. */
 export function spotlight(step: SpotlightStep | SpotlightEndCard): Promise<void>;
 /** The message an end card's button posts to window.parent: next_tool is empty for Done. */
 export interface WalkNext {
@@ -1169,6 +1169,8 @@ export interface SpotlightDone {
   n: number;
   tool: string;
   walk: string;
+  /** Another walk control in a text box's form that the press used (diazo's "This is the direction" under the reply box): the walk passes over that step too. */
+  also?: string;
 }
 /** Takes the step shown away. */
 export function clearSpotlight(): void;

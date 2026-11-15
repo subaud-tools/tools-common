@@ -4,6 +4,13 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.85.0
+
+### Changed
+- guide: galley's walk is four clicks: step 4 lights Share (`share`), at the bottom of the document beside the time it was approved, once the approval is saved; the step ends when the menu opens, so nothing is downloaded or copied. Its end card gains "Share hands the approved document to a reader, as a page or as Markdown."
+- guide: diazo's steps 4 and 5 tell the agent exactly what diazo accepts: the spec's sections after Goal end "Rests on: DCSN1" and are printed citing the tone decision, the plan's one task opens with "**Serves:** DCSN1" and is printed serving it, and neither cites the direction (DIRN), which diazo refuses as not a decision.
+- localweb/page: a step whose control is a text box is also done when another `data-walk` control in the box's form is pressed, and `kit:spotlight-done` then carries `also` with that control's hook. diazo's "This is the direction" under the reply box sends the words typed and settles the direction in one press, which is no submit, so the walk stayed on the reply step; proj now counts it and passes over the direction step.
+
 ## 0.84.0
 
 ### Changed
