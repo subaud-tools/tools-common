@@ -1125,6 +1125,8 @@ export interface SpotlightStep {
   tool: string;
   /** The control's data-walk hook: [data-walk="<walk>"]. */
   walk: string;
+  /** A data-walk hook that is on the page once the step is ready though its control isn't yet: while it is there and the control isn't, the note shows the title and note with no ring. */
+  ready?: string;
   /** "ok": the note's ok button is the step's click. */
   press?: string;
   /** The note while the agent prepares the step and the control isn't on the page yet; empty: the title with "Your agent is getting this ready…". */
