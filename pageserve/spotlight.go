@@ -16,18 +16,32 @@ import (
 // takes it and the spotlight event carries it to the page (the kit's
 // spotlight.js draws it): guide.WalkStep's JSON, plus page, the tool's name for
 // the page the step is on ("" for any), and forward, the tab serve asks to come
-// forward, which serve fills in.
+// forward, which serve fills in. A body with end set is a walk's end card
+// instead (guide.EndCard's JSON), with no hook or title.
 type Spotlight struct {
-	N       int    `json:"n"`
-	Of      int    `json:"of"`
-	Tool    string `json:"tool,omitempty"`
-	Walk    string `json:"walk"`
-	Title   string `json:"title"`
-	Note    string `json:"note,omitempty"`
-	Look    string `json:"look,omitempty"`
-	OK      bool   `json:"ok,omitempty"`
-	Page    string `json:"page,omitempty"`
-	Forward string `json:"forward,omitempty"`
+	N       int           `json:"n,omitempty"`
+	Of      int           `json:"of,omitempty"`
+	Tool    string        `json:"tool,omitempty"`
+	Walk    string        `json:"walk,omitempty"`
+	Ready   string        `json:"ready,omitempty"`
+	Press   string        `json:"press,omitempty"`
+	Prepare string        `json:"prepare,omitempty"`
+	Title   string        `json:"title,omitempty"`
+	Note    string        `json:"note,omitempty"`
+	Look    string        `json:"look,omitempty"`
+	OK      bool          `json:"ok,omitempty"`
+	End     *SpotlightEnd `json:"end,omitempty"`
+	Page    string        `json:"page,omitempty"`
+	Forward string        `json:"forward,omitempty"`
+}
+
+// SpotlightEnd is a walk's end card: what the learner learned, what comes
+// next and the next walk's tool (empty after the last: the card says Done).
+type SpotlightEnd struct {
+	Tool     string   `json:"tool"`
+	Learned  []string `json:"learned"`
+	Next     string   `json:"next"`
+	NextTool string   `json:"next_tool"`
 }
 
 var spotHookRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
@@ -69,8 +83,14 @@ func (s *spotlights) post(token string, events *Events) http.HandlerFunc {
 			http.Error(w, "spotlight: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		if !spotHookRe.MatchString(sp.Walk) || sp.Title == "" {
-			http.Error(w, "spotlight needs walk (a data-walk hook: lower-case words joined by hyphens) and title", http.StatusBadRequest)
+		switch {
+		case sp.End != nil:
+			if len(sp.End.Learned) == 0 || sp.End.Next == "" {
+				http.Error(w, "spotlight's end card needs learned and next", http.StatusBadRequest)
+				return
+			}
+		case !spotHookRe.MatchString(sp.Walk) || sp.Title == "" || (sp.Ready != "" && !spotHookRe.MatchString(sp.Ready)):
+			http.Error(w, "spotlight needs walk (a data-walk hook: lower-case words joined by hyphens) and title, or end; ready, when set, is a hook too", http.StatusBadRequest)
 			return
 		}
 		sp.Forward = ""

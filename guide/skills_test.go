@@ -81,15 +81,20 @@ func TestSkillsRenderFromTheContent(t *testing.T) {
 		t.Error("using-the-tools still offers lessons; the walk replaced them")
 	}
 	walk := string(sk[1].Body)
-	steps, _ := Walk()
-	for _, s := range steps {
-		for _, want := range []string{s.Selector(), s.Title, s.Agent} {
-			if !strings.Contains(walk, want) {
-				t.Errorf("getting-started does not carry step %d's %q", s.N, want)
+	walks, _ := Walks()
+	for _, w := range walks {
+		if !strings.Contains(walk, "### "+w.Tool+"\n") || !strings.Contains(walk, w.End.Next) {
+			t.Errorf("getting-started has no section for %s's walk with its end card", w.Tool)
+		}
+		for _, s := range w.Steps {
+			for _, want := range []string{s.Selector(), s.Title, s.Agent} {
+				if !strings.Contains(walk, want) {
+					t.Errorf("getting-started does not carry %s step %d's %q", w.Tool, s.N, want)
+				}
 			}
 		}
 	}
-	for _, want := range []string{"Get me started with subaud.", "proj guide start", "proj guide show", "never watch a tool's events", "proj guide back", "proj guide skip", "proj guide stop", "never types anything", "one short line"} {
+	for _, want := range []string{"Get me started with subaud.", "`proj guide start`: it runs all three walks in order", "Show me around ‹tool›.", "`proj guide start ‹tool›`", "proj guide show", "never watch a tool's events", "proj guide back", "proj guide skip", "proj guide stop", "never types anything", "one short line"} {
 		if !strings.Contains(walk, want) {
 			t.Errorf("getting-started does not say %q", want)
 		}

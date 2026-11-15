@@ -1125,9 +1125,15 @@ export interface SpotlightStep {
   tool: string;
   /** The control's data-walk hook: [data-walk="<walk>"]. */
   walk: string;
-  /** The note's first line: what to press. */
+  /** A data-walk hook that is on the page once the step is ready though its control isn't yet: while it is there and the control isn't, the note shows the title and note with no ring. */
+  ready?: string;
+  /** "ok": the note's ok button is the step's click. */
+  press?: string;
+  /** The note while the agent prepares the step and the control isn't on the page yet; empty: the title with "Your agent is getting this ready…". */
+  prepare?: string;
+  /** The note's first line once the control is there: what to press. */
   title: string;
-  /** Its second line: why. */
+  /** The rest: what is happening. */
   note?: string;
   /** The control in words, for the agent; the page doesn't draw it. */
   look?: string;
@@ -1137,8 +1143,26 @@ export interface SpotlightStep {
   forward?: string;
 }
 
-/** Rings the step's control with its note beside it (n of N), following the page as it moves; nothing blocks the page. The learner's click on the control (for a text box or form, its submit; for an ok step, the ok button) clears it and posts {type: "kit:spotlight-done", n, tool, walk} to window.parent. While the control isn't on the page the note sits in the middle with "Your agent is getting this ready…", and the control is ringed the moment it appears. */
-export function spotlight(step: SpotlightStep): Promise<void>;
+/** A walk's end card, as a spotlight body: {end: {...}}. */
+export interface SpotlightEndCard {
+  end: {
+    tool: string;
+    /** What the learner learned, one line each. */
+    learned: string[];
+    /** What comes next. */
+    next: string;
+    /** The next walk's tool; empty after the last (the button says Done). */
+    next_tool: string;
+  };
+}
+/** Rings the step's control with its note beside it (n of N), following the page as it moves; nothing blocks the page. The learner's click on the control (for a text box or form, its submit; for an ok step, the ok button) clears it and posts {type: "kit:spotlight-done", n, tool, walk} to window.parent. While the control isn't on the page the note shows the step's prepare line off the page's text with no ring, and switches to the title and note with the ring the moment the control appears. An end card shows centred with what was learned and one button, "Go on to ‹next_tool›" or Done, which posts {type: "kit:walk-next", tool, next_tool} to window.parent. */
+export function spotlight(step: SpotlightStep | SpotlightEndCard): Promise<void>;
+/** The message an end card's button posts to window.parent: next_tool is empty for Done. */
+export interface WalkNext {
+  type: 'kit:walk-next';
+  tool: string;
+  next_tool: string;
+}
 /** The message spotlight() posts to window.parent when the learner's click lands. */
 export interface SpotlightDone {
   type: 'kit:spotlight-done';

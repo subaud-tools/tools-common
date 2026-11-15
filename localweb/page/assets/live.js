@@ -29,7 +29,8 @@
 // X-Tool-Build make one notice.
 //
 // A {type: "spotlight"} event is a step of the getting-started walk
-// (spotlight.js): every kit page draws it, and one with no walk clears it.
+// (spotlight.js), or a walk's end card: every kit page draws it, and one
+// with neither walk nor end clears it.
 // Spotlight events never reach onEvent. When the stream first opens, the
 // step the serve holds now is drawn (resumeSpotlight), so a page opened after
 // it was sent shows it too; spotlight: false turns that off. The tab the
@@ -102,7 +103,7 @@ export function live(opts) {
       }
     }
     if (type === 'spotlight') {
-      if (data && data.walk) void spotlight(data);
+      if (data && (data.walk || data.end)) void spotlight(data);
       else clearSpotlight();
       if (data && data.forward && data.forward === tab) forward(data.tool);
       return;

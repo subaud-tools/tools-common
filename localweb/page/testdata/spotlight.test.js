@@ -193,11 +193,66 @@ test('spotlight: with no clear spot in view, the control is scrolled to the midd
   clearSpotlight();
 });
 
-// textUnder lists the words on the page the card lies over (every text node).
-function textUnder(card) {
+// The real walk's diazo spec step: a header of short labels, then the spec's
+// card filling the page, its optional box, Approve and a help line at its foot.
+// Every place the note can go covers some words: the header's big labels, or
+// the tips of the spec's lines (fewer, by area); it must take the labels, never the spec the learner is asked to read before approving.
+test('spotlight: with words everywhere, the note covers what is around the page before the words around the control', async () => {
+  const fx = fixture();
+  const W = innerWidth, H = innerHeight;
+  const HEAD = 200; // taller than the note: the band at the top covers none of the spec
+  const label = s => `<span style="display:inline-block;margin:0 6px;font-size:26px;line-height:28px">${s}</span>`;
+  // Each line of the spec runs to x=496, just past where a note at the right edge starts.
+  const line = '<p style="margin:0 0 10px;width:480px;white-space:nowrap;text-align:justify;text-align-last:justify">The README is ten lines and says what the tool is.</p>';
+  fx.innerHTML = `<div id="head" style="position:fixed;left:0;top:0;width:${W}px;height:${HEAD}px;overflow:hidden">${(label('Plan') + label('Record') + label('live') + label('Guide') + label('theme') + label('Share')).repeat(10)}</div>`
+    + `<section id="spec" style="position:fixed;left:16px;top:${HEAD}px;width:${W - 32}px">`
+    + line.repeat(Math.max(1, Math.floor((H - HEAD - 110) / 30)))
+    + '<textarea placeholder="Anything to add for the agent (optional)" style="display:block;width:40%;height:50px"></textarea>'
+    + '<div style="display:flex;gap:8px;margin-top:8px"><button data-walk="approve-spec">Approve spec</button>'
+    + '<span>Then the agent writes the plan.</span></div></section>';
+  const note = 'The spec says in plain words what will change. Nothing is planned until you agree with it, so this is where you catch a misunderstanding before any work starts.';
+  await spotlight(step({ n: 4, of: 5, walk: 'approve-spec', title: 'Press Approve on the spec.', note }));
+  await sleep(400);
+  const card = document.querySelector('.kit-spot-card');
+  eq(textUnder(card, 'spec'), [], 'the note covers none of the spec, its box or its help line: ' + JSON.stringify([card.getBoundingClientRect(), innerWidth, innerHeight]));
+  assert(inView(card), 'in the window');
+  assert(!hit(card.getBoundingClientRect(), fx.querySelector('button').getBoundingClientRect()), 'nor the control');
+  clearSpotlight();
+});
+
+// The same, with the spec in a scroller scrolled to its foot (as diazo's is
+// when Approve is lit): words it clips out of sight under the header are not
+// on the page, so the note still finds the place that covers none of it.
+test('spotlight: words a scroller clips out of sight do not count as text under the note', async () => {
+  const fx = fixture();
+  const W = innerWidth, H = innerHeight;
+  const HEAD = 200;
+  const label = s => `<span style="display:inline-block;margin:0 6px;font-size:26px;line-height:28px">${s}</span>`;
+  const line = '<p style="margin:0 0 10px;width:480px;white-space:nowrap;text-align:justify;text-align-last:justify">The README is ten lines and says what the tool is.</p>';
+  fx.innerHTML = `<div style="position:fixed;left:0;top:0;width:${W}px;height:${HEAD}px;overflow:hidden">${(label('Plan') + label('Record') + label('live') + label('Guide') + label('theme') + label('Share')).repeat(10)}</div>`
+    + `<div id="scroller" style="position:fixed;left:16px;top:${HEAD}px;width:${W - 32}px;height:${H - HEAD}px;overflow:auto"><section id="spec">`
+    + line.repeat(40)
+    + '<textarea style="display:block;width:40%;height:50px"></textarea>'
+    + '<div style="display:flex;gap:8px;margin-top:8px"><button data-walk="approve-spec">Approve spec</button><span>Then the agent writes the plan.</span></div></section></div>';
+  const sc = fx.querySelector('#scroller');
+  sc.scrollTop = sc.scrollHeight;
+  const note = 'The spec says in plain words what will change. Nothing is planned until you agree with it, so this is where you catch a misunderstanding before any work starts.';
+  await spotlight(step({ n: 4, of: 5, walk: 'approve-spec', title: 'Press Approve on the spec.', note }));
+  await sleep(400);
+  const card = document.querySelector('.kit-spot-card');
   const c = card.getBoundingClientRect();
-  const out = [];
-  const w = document.createTreeWalker(document.getElementById('fx'), NodeFilter.SHOW_TEXT);
+  const visible = textUnder(card, 'spec').length && c.bottom > HEAD;
+  assert(!visible, `the note covers none of the spec in sight: ${JSON.stringify([c.top, c.bottom, textUnder(card, 'spec')])}`);
+  clearSpotlight();
+});
+
+// textUnder lists the words on the page the card lies over (every text node,
+// or those under the element with id within), and any field under it there.
+function textUnder(card, within = 'fx') {
+  const c = card.getBoundingClientRect();
+  const root = document.getElementById(within);
+  const out = [...root.querySelectorAll('textarea')].filter(e => hit(c, e.getBoundingClientRect())).map(() => 'textarea');
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const r = document.createRange();
   for (let n = w.nextNode(); n; n = w.nextNode()) {
     if (!n.textContent.trim()) continue;
@@ -267,5 +322,141 @@ test('live: a spotlight event draws on any kit page, and an empty one clears, wi
   await sleep(20);
   assert(!document.querySelector('.kit-spot-card'), 'cleared');
   eq(seen, []);
+  l.stop();
+});
+
+test('spotlight: while the control is missing the note is the preparing line with no ring, then the title and note with the ring once it appears', async () => {
+  const fx = fixture();
+  fx.innerHTML = '';
+  await spotlight(step({ n: 2, of: 6, tool: 'proj', walk: 'proj-tab', prepare: "Your agent is opening proj's own page as a tab on the right. When it's there, you'll press its tab.", title: 'Press the proj tab.', note: 'The right side holds the pages.' }));
+  await sleep(30);
+  const card = document.querySelector('.kit-spot-card');
+  const shown = sel => { const e = card.querySelector(sel); return !!e && !e.hidden; };
+  assert(card && !card.hidden, 'the note shows');
+  assert(document.querySelector('.kit-spot-ring').hidden, 'no ring while preparing');
+  eq(card.querySelector('.kit-spot-wait').textContent, "Your agent is opening proj's own page as a tab on the right. When it's there, you'll press its tab.");
+  assert(shown('.kit-spot-wait') && !shown('.kit-spot-title') && !shown('.kit-spot-note'), 'only the preparing line');
+  eq(card.querySelector('.kit-spot-count').textContent, '2 of 6');
+  fx.innerHTML = '<button data-walk="proj-tab" style="margin:40px">proj</button>';
+  await sleep(30);
+  assert(!document.querySelector('.kit-spot-ring').hidden, 'ringed once it showed');
+  assert(!shown('.kit-spot-wait') && shown('.kit-spot-title') && shown('.kit-spot-note'), 'the doing note now');
+  eq(card.querySelector('.kit-spot-title').textContent, 'Press the proj tab.');
+  fx.innerHTML = '';
+  await sleep(300);
+  assert(shown('.kit-spot-wait') && document.querySelector('.kit-spot-ring').hidden, 'back to preparing when it goes');
+  clearSpotlight();
+});
+
+test('spotlight: with ready, the doing note shows with no ring once the ready element is there, and the ring lands when the control appears (galley: the README, then Add instruction after a selection)', async () => {
+  const fx = fixture();
+  fx.innerHTML = '';
+  await spotlight(step({ n: 1, of: 3, tool: 'galley', walk: 'add-instruction', ready: 'select-passage', prepare: 'Your agent is writing the README.', title: 'Select a sentence in the README, then press Add instruction.', note: 'This is galley.' }));
+  await sleep(30);
+  const card = document.querySelector('.kit-spot-card');
+  const ring = document.querySelector('.kit-spot-ring');
+  const shown = sel => { const e = card.querySelector(sel); return !!e && !e.hidden; };
+  assert(shown('.kit-spot-wait') && !shown('.kit-spot-title') && ring.hidden, 'preparing while neither is there');
+  // Lines that don't wrap, so the README is as tall on CI's fonts as here and a corner stays free of it.
+  fx.innerHTML = '<div data-walk="select-passage" style="position:fixed;left:200px;top:40px;width:300px">' + '<p style="margin:0;line-height:20px;white-space:nowrap;overflow:hidden">A line of the README the learner selects.</p>'.repeat(6) + '</div>';
+  await sleep(30);
+  assert(!shown('.kit-spot-wait') && shown('.kit-spot-title') && shown('.kit-spot-note'), 'the doing note once the ready element is there');
+  assert(ring.hidden, 'no ring: the control is not there yet');
+  assert(card.classList.contains('kit-spot-lost'), 'placed as the waiting note is');
+  eq(overText(card), [], 'off the README');
+  fx.insertAdjacentHTML('beforeend', '<button data-walk="add-instruction" style="position:fixed;left:520px;top:40px">Add instruction</button>');
+  await sleep(30);
+  const r = fx.querySelector('button').getBoundingClientRect();
+  assert(!ring.hidden && near(r.x, ring.getBoundingClientRect().x), 'ringed once the control appears');
+  assert(!card.classList.contains('kit-spot-lost'), 'beside it now');
+  const got = [];
+  const on = e => got.push(e.data);
+  addEventListener('message', on);
+  fx.querySelector('button').click();
+  await sleep(30);
+  removeEventListener('message', on);
+  eq(got.filter(m => m && m.type === 'kit:spotlight-done').map(m => m.walk), ['add-instruction'], 'the click on the control ends the step');
+  clearSpotlight();
+});
+
+test('spotlight: a long note sits off the control and the text column, and scrolls inside itself when taller than about 40% of the window', async () => {
+  const fx = fixture();
+  fx.innerHTML = `<div style="position:fixed;left:16px;top:0;width:${Math.round(innerWidth * 0.45)}px">${'<p style="margin:0 0 6px">The page reads like this, line after line, down the column.</p>'.repeat(30)}</div>`
+    + '<button data-walk="sessions-tab" style="position:fixed;left:40px;top:160px">sessions</button>';
+  const long = 'These are the sessions running now, grouped by project; the one you are in is among them. Starting a new piece of work starts a new session, so each keeps its own terminal and pages. ';
+  await spotlight(step({ walk: 'sessions-tab', title: 'Press sessions.', note: long }));
+  await sleep(30);
+  let card = document.querySelector('.kit-spot-card');
+  eq(overText(card), [], 'a long note covers none of the text');
+  assert(inView(card), 'in the window');
+  assert(!hit(card.getBoundingClientRect(), fx.querySelector('button').getBoundingClientRect()), 'nor the control');
+  await spotlight(step({ walk: 'sessions-tab', title: 'Press sessions.', note: long.repeat(12) }));
+  await sleep(30);
+  card = document.querySelector('.kit-spot-card');
+  assert(card.offsetHeight <= innerHeight * 0.4 + 2, `at most about 40% tall: ${card.offsetHeight} of ${innerHeight}`);
+  assert(card.scrollHeight > card.clientHeight, 'scrolls inside itself');
+  assert(getComputedStyle(card).overflowY === 'auto', 'overflow auto');
+  assert(inView(card), 'in the window');
+  clearSpotlight();
+});
+
+// next collects the kit:walk-next messages posted to the parent.
+function next() {
+  const got = [];
+  const on = e => { if (e.data && e.data.type === 'kit:walk-next') got.push(e.data); };
+  addEventListener('message', on);
+  return { got, stop: () => removeEventListener('message', on) };
+}
+const endCard = o => ({ end: { tool: 'proj', learned: ['A session is a terminal.', 'It keeps running.'], next: "Plan a small change on diazo's page.", next_tool: 'diazo', ...o } });
+
+test('spotlight: an end card shows centred with what was learned, no ring, and its button posts kit:walk-next with next_tool', async () => {
+  const fx = fixture();
+  fx.innerHTML = '<p>Some page.</p>';
+  const d = next();
+  await spotlight(endCard());
+  await sleep(30);
+  const card = document.querySelector('.kit-spot-card');
+  assert(card && !card.hidden && card.classList.contains('kit-spot-end'), 'the end card shows');
+  const ring = document.querySelector('.kit-spot-ring');
+  assert(!ring || ring.hidden, 'no ring');
+  eq(card.querySelector('.kit-spot-title').textContent, 'You learned');
+  eq([...card.querySelectorAll('li')].map(l => l.textContent), ['A session is a terminal.', 'It keeps running.']);
+  assert(card.textContent.includes("Plan a small change on diazo's page."), 'what is next');
+  const c = card.getBoundingClientRect();
+  // Centred in the viewport a fixed box sees, which leaves out scrollbars (innerWidth counts them).
+  const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+  assert(Math.abs((c.left + c.right) / 2 - vw / 2) <= 2 && Math.abs((c.top + c.bottom) / 2 - vh / 2) <= 2, `centred: ${JSON.stringify([c.left, c.right, c.top, c.bottom, vw, vh])}`);
+  const btn = card.querySelector('button.kit-btn.fill');
+  eq(btn.textContent, 'Go on to diazo');
+  btn.click();
+  await sleep(30);
+  d.stop();
+  eq(d.got, [{ type: 'kit:walk-next', tool: 'proj', next_tool: 'diazo' }]);
+  assert(!document.querySelector('.kit-spot-card'), 'cleared');
+});
+
+test('spotlight: the last end card says Done, which posts kit:walk-next with an empty next_tool', async () => {
+  fixture();
+  const d = next();
+  await spotlight(endCard({ tool: 'galley', next: "That's the walk.", next_tool: '' }));
+  const btn = document.querySelector('.kit-spot-card button.kit-btn.fill');
+  eq(btn.textContent, 'Done');
+  btn.click();
+  await sleep(30);
+  d.stop();
+  eq(d.got, [{ type: 'kit:walk-next', tool: 'galley', next_tool: '' }]);
+  assert(!document.querySelector('.kit-spot-card'), 'cleared');
+});
+
+test('live: an end-card spotlight event draws the end card', async () => {
+  fixture();
+  const fes = fakeEventSource();
+  const l = live({ events: '/e', poll: '/p', EventSource: fes.FakeES, fetch: async () => new Response('{}'), onEvent: () => {}, spotlight: false });
+  const es = fes.last();
+  es.emitOpen();
+  es.emitMessage('c1', { type: 'spotlight', data: endCard() });
+  await sleep(50);
+  assert(document.querySelector('.kit-spot-end'), 'drawn');
+  clearSpotlight();
   l.stop();
 });
