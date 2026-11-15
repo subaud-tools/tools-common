@@ -357,7 +357,8 @@ test('spotlight: with ready, the doing note shows with no ring once the ready el
   const ring = document.querySelector('.kit-spot-ring');
   const shown = sel => { const e = card.querySelector(sel); return !!e && !e.hidden; };
   assert(shown('.kit-spot-wait') && !shown('.kit-spot-title') && ring.hidden, 'preparing while neither is there');
-  fx.innerHTML = '<div data-walk="select-passage" style="position:fixed;left:200px;top:40px;width:300px">' + '<p>A line of the README the learner selects.</p>'.repeat(6) + '</div>';
+  // Lines that don't wrap, so the README is as tall on CI's fonts as here and a corner stays free of it.
+  fx.innerHTML = '<div data-walk="select-passage" style="position:fixed;left:200px;top:40px;width:300px">' + '<p style="margin:0;line-height:20px;white-space:nowrap;overflow:hidden">A line of the README the learner selects.</p>'.repeat(6) + '</div>';
   await sleep(30);
   assert(!shown('.kit-spot-wait') && shown('.kit-spot-title') && shown('.kit-spot-note'), 'the doing note once the ready element is there');
   assert(ring.hidden, 'no ring: the control is not there yet');
