@@ -104,6 +104,44 @@ func TestWalksAreProjDiazoGalley(t *testing.T) {
 	}
 }
 
+// Each walk opens on an intro card, in the words approved with PLAN6: what
+// the tool is for and what the learner will do in it. Its button is the
+// kit's Start.
+func TestEachWalkOpensOnItsIntroCard(t *testing.T) {
+	want := map[string]WalkIntro{
+		"proj": {Tool: "proj", Title: "proj: your sessions.",
+			Text: "proj keeps your work in sessions: one terminal for each piece of work, in its project. In six clicks you'll see your session's split page and the tabs beside it, proj's lists of your sessions and projects, and how a session comes back after a restart."},
+		"diazo": {Tool: "diazo", Title: "diazo: plan before you build.",
+			Text: "diazo is where you and your agent agree on a change before anything is built. Your agent is opening a small practice plan for a ten-line README. In five clicks you'll answer its take, make a decision, and approve a spec and a plan."},
+		"galley": {Tool: "galley", Title: "galley: edit with your agent.",
+			Text: "galley is where you and your agent revise a document together. Your agent is writing the README your plan asked for. In four clicks you'll ask for a change, send it, approve the result, and see how to share it."},
+	}
+	ws, err := Walks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range ws {
+		if w.Intro != want[w.Tool] {
+			t.Errorf("%s's intro card:\n got %+v\nwant %+v", w.Tool, w.Intro, want[w.Tool])
+		}
+	}
+	// diazo's and galley's end cards close on how to start the tool yourself:
+	// a request to the agent, quoted, with ‹›-marked parts the learner fills.
+	lastLearned := map[string]string{
+		"diazo":  `To plan your own change, tell your agent: "Start a new planning session in diazo for ‹your idea›."`,
+		"galley": `To work on any document with your agent, tell it: "Edit ‹file› in galley."`,
+	}
+	for _, w := range ws {
+		if want, ok := lastLearned[w.Tool]; ok && w.End.Learned[len(w.End.Learned)-1] != want {
+			t.Errorf("%s's end card's last learned line is %q, want %q", w.Tool, w.End.Learned[len(w.End.Learned)-1], want)
+		}
+	}
+	b, _ := json.Marshal(map[string]WalkIntro{"intro": ws[0].Intro})
+	if !strings.HasPrefix(string(b), `{"intro":{"tool":"proj","title":"proj: your sessions.","text":"proj keeps`) {
+		t.Errorf("intro card JSON: %s", b)
+	}
+}
+
 // A step's JSON is the spotlight body interface.md names; the agent's line
 // stays out of it.
 func TestWalkStepJSONIsTheSpotlightBody(t *testing.T) {
@@ -139,7 +177,7 @@ func TestWalkValidationCatches(t *testing.T) {
 	step := func(head, extra, note string) string {
 		return head + "\ntool: diazo\ntarget: a\nlook: x\nagent: x\n" + extra + "\n\n" + note + "\n\n"
 	}
-	ok := step("## 1", "prepare: Nothing to prepare.", "Press a.\nWhy.")
+	ok := "## intro\ntitle: T.\ntext: Why.\n\n" + step("## 1", "prepare: Nothing to prepare.", "Press a.\nWhy.")
 	for name, tc := range map[string]struct{ body, want string }{
 		"unknown tool":    {strings.Replace(ok, "diazo", "nope", 1) + end, "not a family tool"},
 		"other tool":      {strings.Replace(ok, "diazo", "galley", 1) + end, "walk is diazo's"},
@@ -152,8 +190,13 @@ func TestWalkValidationCatches(t *testing.T) {
 		"no prepare":      {step("## 1", "", "Press a.\nWhy.") + end, "prepare"},
 		"no note":         {step("## 1", "prepare: x", "Press a.") + end, "explanation"},
 		"an advance":      {step("## 1", "prepare: x\nadvance: diazo: x", "Press a.\nWhy.") + end, "the click moves the walk on"},
-		"out of order":    {step("## 2", "prepare: x", "Press a.\nWhy.") + end, "step 2"},
+		"out of order":    {"## intro\ntitle: T.\ntext: Why.\n\n" + step("## 2", "prepare: x", "Press a.\nWhy.") + end, "step 2"},
 		"no end card":     {ok, "no end card"},
+		"no intro":        {strings.Replace(ok, "## intro\ntitle: T.\ntext: Why.\n\n", "", 1) + end, "no intro card"},
+		"intro no title":  {strings.Replace(ok, "title: T.\n", "", 1) + end, "intro card: no title"},
+		"intro no text":   {strings.Replace(ok, "text: Why.\n", "", 1) + end, "intro card: no text"},
+		"intro to type":   {strings.Replace(ok, "text: Why.", "text: Run `x`.", 1) + end, "intro card: holds something"},
+		"intro after":     {step("## 1", "prepare: x", "Press a.\nWhy.") + "## intro\ntitle: T.\ntext: Why.\n\n" + end, "intro card comes after"},
 		"nothing learned": {ok + "## end\nnext: y\nnext_tool:\n", "learned"},
 		"no next":         {ok + "## end\nlearned: x\nnext_tool:\n", "next"},
 		"bad next tool":   {ok + "## end\nlearned: x\nnext: y\nnext_tool: nope\n", "next_tool"},

@@ -469,6 +469,54 @@ test('spotlight: the last end card says Done, which posts kit:walk-next with an 
   assert(!document.querySelector('.kit-spot-card'), 'cleared');
 });
 
+// started collects the kit:walk-start messages posted to the parent.
+function started() {
+  const got = [];
+  const on = e => { if (e.data && e.data.type === 'kit:walk-start') got.push(e.data); };
+  addEventListener('message', on);
+  return { got, stop: () => removeEventListener('message', on) };
+}
+const introCard = o => ({ intro: { tool: 'diazo', title: 'diazo: plan before you build.', text: 'diazo is where you and your agent agree on a change before anything is built.', ...o } });
+
+test('spotlight: an intro card shows centred with its title and text, no ring, and Start posts kit:walk-start with the tool', async () => {
+  const fx = fixture();
+  fx.innerHTML = '<p>Some page.</p>';
+  const d = started();
+  await spotlight(introCard());
+  await sleep(30);
+  const card = document.querySelector('.kit-spot-card');
+  assert(card && !card.hidden && card.classList.contains('kit-spot-intro'), 'the intro card shows');
+  eq(card.getAttribute('data-walk-intro'), 'diazo');
+  const ring = document.querySelector('.kit-spot-ring');
+  assert(!ring || ring.hidden, 'no ring');
+  eq(card.querySelector('.kit-spot-count').textContent, 'diazo');
+  eq(card.querySelector('.kit-spot-title').textContent, 'diazo: plan before you build.');
+  eq(card.querySelector('.kit-spot-note').textContent, 'diazo is where you and your agent agree on a change before anything is built.');
+  const c = card.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+  assert(Math.abs((c.left + c.right) / 2 - vw / 2) <= 2 && Math.abs((c.top + c.bottom) / 2 - vh / 2) <= 2, `centred: ${JSON.stringify([c.left, c.right, c.top, c.bottom, vw, vh])}`);
+  const btns = card.querySelectorAll('button');
+  eq(btns.length, 1);
+  const btn = card.querySelector('button.kit-btn.fill');
+  eq(btn.textContent, 'Start');
+  assert(document.activeElement === btn, 'Start has the focus');
+  btn.click();
+  await sleep(30);
+  d.stop();
+  eq(d.got, [{ type: 'kit:walk-start', tool: 'diazo' }]);
+  assert(!document.querySelector('.kit-spot-card'), 'cleared');
+});
+
+test('spotlight: a step after an intro card replaces it', async () => {
+  const fx = fixture();
+  fx.innerHTML = '<button data-walk="reply" style="margin:60px">Reply</button>';
+  await spotlight(introCard());
+  await spotlight(step());
+  eq(document.querySelectorAll('.kit-spot-card').length, 1);
+  assert(!document.querySelector('.kit-spot-intro'), 'the intro card is gone');
+  clearSpotlight();
+});
+
 test('live: an end-card spotlight event draws the end card', async () => {
   fixture();
   const fes = fakeEventSource();

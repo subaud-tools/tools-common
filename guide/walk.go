@@ -19,11 +19,22 @@ var walkContent embed.FS
 // "Get me started with subaud." runs them; walks/<tool>.md holds each.
 var WalkTools = []string{"proj", "diazo", "galley"}
 
-// Walk is one tool's getting-started walk: its clicks, then the end card.
+// Walk is one tool's getting-started walk: its intro card, its clicks, then
+// the end card.
 type Walk struct {
 	Tool  string
+	Intro WalkIntro
 	Steps []WalkStep
 	End   EndCard
+}
+
+// WalkIntro opens a walk: what the tool is for and what the learner will do
+// in it, centred with one button, Start, while the agent prepares step 1.
+// Its JSON, under "intro", is the spotlight body the kit draws as the card.
+type WalkIntro struct {
+	Tool  string `json:"tool"`
+	Title string `json:"title"`
+	Text  string `json:"text"`
 }
 
 // WalkStep is one click of a walk: the control a tool's page lights (its
@@ -94,14 +105,15 @@ func WalkFor(tool string) (Walk, error) {
 
 var (
 	walkHookRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
-	walkHeadRe = regexp.MustCompile(`^## (\d+|end)\s*$`)
+	walkHeadRe = regexp.MustCompile(`^## (\d+|intro|end)\s*$`)
 )
 
 // nothingToPrepare is a step's prepare line when it has nothing to prepare.
 const nothingToPrepare = "Nothing to prepare."
 
-// parseWalk reads walks/<tool>.md: a # title and intro, then one "## n"
-// section per step, numbered from 1, each key: value lines (tool, target,
+// parseWalk reads walks/<tool>.md: a # title and a word on the file, then
+// "## intro", the intro card's title: and text:, then one "## n" section per
+// step, numbered from 1, each key: value lines (tool, target,
 // press, look, agent, prepare), a blank line and the note (its first line the
 // title, the rest the explanation); then "## end", the end card's learned:
 // lines, next: and next_tool:. It refuses a note with anything to type (a
@@ -115,10 +127,16 @@ func parseWalk(fsys fs.FS, tool string) (Walk, error) {
 	}
 	var errs []error
 	var cur []string
-	ended := false
+	ended, introduced := false, false
 	flush := func() {
 		switch {
 		case cur == nil:
+		case cur[0] == "intro":
+			if len(w.Steps) > 0 || ended {
+				errs = append(errs, fmt.Errorf("%s: the intro card comes after a step; it opens the walk", file))
+			}
+			w.Intro, errs = parseIntro(file, tool, cur[1:], errs)
+			introduced = true
 		case cur[0] == "end":
 			w.End, errs = parseEndCard(file, tool, cur[1:], errs)
 			ended = true
@@ -144,6 +162,9 @@ func parseWalk(fsys fs.FS, tool string) (Walk, error) {
 	flush()
 	if len(w.Steps) == 0 {
 		errs = append(errs, fmt.Errorf("%s: no steps", file))
+	}
+	if !introduced {
+		errs = append(errs, fmt.Errorf("%s: no intro card (## intro)", file))
 	}
 	if !ended {
 		errs = append(errs, fmt.Errorf("%s: no end card (## end)", file))
@@ -175,6 +196,30 @@ func keyValues(lines []string, bad func(string, ...any)) (map[string][]string, [
 		kv[k] = append(kv[k], strings.TrimSpace(v))
 	}
 	return kv, nil
+}
+
+func parseIntro(file, tool string, lines []string, errs []error) (WalkIntro, []error) {
+	bad := func(format string, a ...any) {
+		errs = append(errs, fmt.Errorf("%s: intro card: "+format, append([]any{file}, a...)...))
+	}
+	kv, _ := keyValues(lines, bad)
+	in := WalkIntro{Tool: tool}
+	for k, p := range map[string]*string{"title": &in.Title, "text": &in.Text} {
+		if len(kv[k]) == 0 || kv[k][0] == "" {
+			bad("no %s", k)
+			continue
+		}
+		*p = kv[k][0]
+	}
+	for _, l := range []string{in.Title, in.Text} {
+		if strings.ContainsAny(l, "`$") {
+			bad("holds something for the learner to type: %q", l)
+		}
+		for _, pe := range placeholders(file, l, true) {
+			bad("%v", pe)
+		}
+	}
+	return in, errs
 }
 
 func parseEndCard(file, tool string, lines []string, errs []error) (EndCard, []error) {

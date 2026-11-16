@@ -26,6 +26,11 @@
 // lands when the control appears. A note taller than about 40% of the window
 // scrolls inside itself.
 //
+// A walk's intro card is { intro: { tool, title, text } }: centred, no ring,
+// the tool, the title and the text, and one filled button, Start, which
+// clears it and posts {type: "kit:walk-start", tool} to window.parent (proj's
+// split page shows it while the agent prepares the walk's first step).
+//
 // A walk's end card is { end: { tool, learned, next, next_tool } }: centred,
 // no ring, "You learned" with the lines and what is next, and one filled
 // button, "Go on to ‹next_tool›" or Done, which clears it and posts {type:
@@ -69,6 +74,7 @@ const isTextBox = e => e.matches('form, textarea, [contenteditable=""], [content
 
 export async function spotlight(step) {
   clearSpotlight();
+  if (step && step.intro) return introCard(step.intro);
   if (step && step.end) return endCard(step.end);
   if (!step || !step.walk) return;
   const sel = `[data-walk="${CSS.escape(step.walk)}"]`;
@@ -207,6 +213,28 @@ export async function spotlight(step) {
   document.addEventListener('submit', onSubmit, true);
   // The page moves under it too (a card opening, a pane folding).
   timer = setInterval(place, 250);
+}
+
+// introCard draws a walk's intro card in the middle of the window, built
+// like the end card: the tool, what it is for and what the learner will do,
+// and Start, which shows the walk's first step.
+function introCard(intro) {
+  const btn = h('button', { class: 'kit-btn fill kit-spot-start', type: 'button' }, 'Start');
+  const card = h('div', { class: 'kit-spot-card kit-spot-end kit-spot-intro', role: 'dialog', 'aria-label': intro.title || `${intro.tool || 'Walk'}: intro`, 'data-walk-intro': intro.tool || '' },
+    h('p', { class: 'kit-spot-count' }, intro.tool || ''),
+    h('p', { class: 'kit-spot-title' }, intro.title || ''),
+    intro.text ? h('p', { class: 'kit-spot-note' }, intro.text) : null,
+    h('div', { class: 'kit-spot-acts' }, btn));
+  document.body.append(card);
+  const me = { stop() { card.remove(); } };
+  current = me;
+  btn.addEventListener('click', () => {
+    if (current === me) current = null;
+    me.stop();
+    const to = globalThis.parent || globalThis;
+    to.postMessage({ type: 'kit:walk-start', tool: intro.tool || '' }, '*');
+  });
+  btn.focus({ preventScroll: true });
 }
 
 // endCard draws a walk's end card in the middle of the window: what the
@@ -350,7 +378,7 @@ export async function resumeSpotlight(url = '/api/kit/spotlight') {
     const res = await fetch(url, { credentials: 'same-origin' });
     if (res.status !== 200) return;
     const step = await res.json();
-    if (step && (step.walk || step.end)) await spotlight(step);
+    if (step && (step.walk || step.end || step.intro)) await spotlight(step);
   } catch {
     // no spotlight route here: nothing to resume
   }
