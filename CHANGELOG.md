@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.88.0
+
+### Added
+- skills: `InstallFiles` and `RefreshFiles` install and refresh a skill made of several files (a map of file name to body that must hold `SKILL.md`; every other name is one plain file name). The directory is the tool's when its `SKILL.md` is, as before; each extra file is written as `SKILL.md` is (through the skill directory's root, never through a symlink, to an O_EXCL temp file renamed into place, keeping an existing file's mode), and before `SKILL.md`. Refresh rewrites each file that differs or is missing and returns each path; it never creates an uninstalled skill, skips another skill's directory, and deletes nothing. `Install` and `Refresh` now call them with `SKILL.md` alone.
+- pageserve: `Commands.SkillFiles`, set instead of `Skill` when the skill has more than one file; the channel's refresh and `skills install` use it when set, so a refresh no longer leaves an old `feature.md` beside a new `SKILL.md`. `Skill` is unchanged for single-file tools.
+
 ## 0.87.0
 
 ### Changed

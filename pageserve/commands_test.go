@@ -323,3 +323,51 @@ func TestSkillsInstallAlsoWritesTheFamilySkills(t *testing.T) {
 		}
 	}
 }
+
+const testFeature = "# feature\nnew\n"
+
+func skillFiles() (map[string][]byte, error) {
+	return map[string][]byte{"SKILL.md": []byte(testSkill), "feature.md": []byte(testFeature)}, nil
+}
+
+// With SkillFiles set, `skills install` writes every file of the skill.
+func TestSkillsInstallWritesEverySkillFile(t *testing.T) {
+	pi := t.TempDir()
+	t.Setenv("PI_CODING_AGENT_DIR", pi)
+	var out, errw bytes.Buffer
+	c := Commands{Spec: Spec{Tool: "cull"}, SkillFiles: skillFiles}
+	if err := c.SkillsCommand().Run([]string{"install", "--agent", "pi"}, &out, &errw); err != nil {
+		t.Fatalf("%v: %s", err, errw.String())
+	}
+	for n, want := range map[string]string{"SKILL.md": testSkill, "feature.md": testFeature} {
+		if b, err := os.ReadFile(filepath.Join(pi, "skills", "cull", n)); err != nil || string(b) != want {
+			t.Errorf("%s: %q %v", n, b, err)
+		}
+	}
+}
+
+// With SkillFiles set, the channel refreshes every file of the skill.
+func TestChannelRefreshesEverySkillFile(t *testing.T) {
+	pi := t.TempDir()
+	t.Setenv("PI_CODING_AGENT_DIR", pi)
+	dir := filepath.Join(pi, "skills", "cull")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\nname: cull\n---\nold\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "feature.md"), []byte("old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var errw bytes.Buffer
+	Commands{Spec: Spec{Tool: "cull"}, SkillFiles: skillFiles}.refreshSkill(&errw)
+	for n, want := range map[string]string{"SKILL.md": testSkill, "feature.md": testFeature} {
+		if b, _ := os.ReadFile(filepath.Join(dir, n)); string(b) != want {
+			t.Errorf("%s not refreshed: %q", n, b)
+		}
+	}
+	if !strings.Contains(errw.String(), filepath.Join(dir, "feature.md")) {
+		t.Errorf("log %q", errw.String())
+	}
+}
