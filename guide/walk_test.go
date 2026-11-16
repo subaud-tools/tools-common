@@ -125,6 +125,17 @@ func TestEachWalkOpensOnItsIntroCard(t *testing.T) {
 			t.Errorf("%s's intro card:\n got %+v\nwant %+v", w.Tool, w.Intro, want[w.Tool])
 		}
 	}
+	// diazo's and galley's end cards close on how to start the tool yourself:
+	// a request to the agent, quoted, with ‹›-marked parts the learner fills.
+	lastLearned := map[string]string{
+		"diazo":  `To plan your own change, tell your agent: "Start a new planning session in diazo for ‹your idea›."`,
+		"galley": `To work on any document with your agent, tell it: "Edit ‹file› in galley."`,
+	}
+	for _, w := range ws {
+		if want, ok := lastLearned[w.Tool]; ok && w.End.Learned[len(w.End.Learned)-1] != want {
+			t.Errorf("%s's end card's last learned line is %q, want %q", w.Tool, w.End.Learned[len(w.End.Learned)-1], want)
+		}
+	}
 	b, _ := json.Marshal(map[string]WalkIntro{"intro": ws[0].Intro})
 	if !strings.HasPrefix(string(b), `{"intro":{"tool":"proj","title":"proj: your sessions.","text":"proj keeps`) {
 		t.Errorf("intro card JSON: %s", b)

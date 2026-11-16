@@ -60,5 +60,6 @@ The plan lists the tasks your agent will build. Nothing is built until you appro
 learned: Your agent's take comes first, and your reply is what it builds on.
 learned: Choices come to you as cards: your agent recommends, you decide.
 learned: A spec, then a plan, each waits for your approval before anything is built.
+learned: To plan your own change, tell your agent: "Start a new planning session in diazo for ‹your idea›."
 next: Your agent writes the README now; edit it with galley.
 next_tool: galley

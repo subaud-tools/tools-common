@@ -52,5 +52,6 @@ learned: Select words and add an instruction to ask for a change.
 learned: Revise sends your instructions as one round, and your agent rewrites.
 learned: Approve ends the review with the document as it stands.
 learned: Share hands the approved document to a reader, as a page or as Markdown.
+learned: To work on any document with your agent, tell it: "Edit ‹file› in galley."
 next: That's the walk. Press Guide any time to see what each tool is for and what to ask.
 next_tool:
