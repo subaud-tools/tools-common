@@ -416,3 +416,127 @@ func TestFamilySkillReplacesOnlyAFamilyCopy(t *testing.T) {
 		t.Error("FamilyOwned")
 	}
 }
+
+const feature = "# feature\nnew feature\n"
+
+func files() map[string][]byte {
+	return map[string][]byte{"SKILL.md": []byte(body), "feature.md": []byte(feature)}
+}
+
+func installFiles(fs map[string][]byte, agents ...string) (string, string, error) {
+	var out, errw bytes.Buffer
+	err := skills.InstallFiles("tool", fs, agents, &out, &errw)
+	return out.String(), errw.String(), err
+}
+
+// InstallFiles writes every file of the skill for each harness named.
+func TestInstallFilesWritesEveryFile(t *testing.T) {
+	h := home(t)
+	if out, errw, err := installFiles(files(), "claude-code", "pi"); err != nil {
+		t.Fatalf("%v: %s %s", err, out, errw)
+	}
+	for _, d := range []string{".claude/skills", ".pi/agent/skills"} {
+		if got := read(t, filepath.Join(h, d, "tool/SKILL.md")); got != body {
+			t.Errorf("%s SKILL.md: %q", d, got)
+		}
+		if got := read(t, filepath.Join(h, d, "tool/feature.md")); got != feature {
+			t.Errorf("%s feature.md: %q", d, got)
+		}
+	}
+}
+
+// RefreshFiles rewrites only the extra file that is stale, and creates a
+// missing one, returning each path it rewrote.
+func TestRefreshFilesRewritesStaleExtraFile(t *testing.T) {
+	h := home(t)
+	mkdir(t, filepath.Join(h, ".claude"))
+	dir := filepath.Join(h, ".claude/skills/tool")
+	write(t, filepath.Join(dir, "SKILL.md"), body)
+	write(t, filepath.Join(dir, "feature.md"), "old feature\n")
+	got, err := skills.RefreshFiles("tool", files())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{filepath.Join(dir, "feature.md")}; !slices.Equal(got, want) {
+		t.Errorf("rewrote %v, want %v", got, want)
+	}
+	if s := read(t, filepath.Join(dir, "feature.md")); s != feature {
+		t.Errorf("feature.md: %q", s)
+	}
+
+	fs := files()
+	fs["system.md"] = []byte("system\n")
+	got, err = skills.RefreshFiles("tool", fs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{filepath.Join(dir, "system.md")}; !slices.Equal(got, want) {
+		t.Errorf("rewrote %v, want %v", got, want)
+	}
+	if s := read(t, filepath.Join(dir, "system.md")); s != "system\n" {
+		t.Errorf("system.md: %q", s)
+	}
+}
+
+// A directory whose SKILL.md is another skill gets no extra file.
+func TestRefreshFilesSkipsAnotherSkill(t *testing.T) {
+	h := home(t)
+	mkdir(t, filepath.Join(h, ".claude"))
+	dir := filepath.Join(h, ".claude/skills/tool")
+	write(t, filepath.Join(dir, "SKILL.md"), "---\nname: other\n---\n")
+	got, err := skills.RefreshFiles("tool", files())
+	if err != nil || len(got) != 0 {
+		t.Fatalf("rewrote %v, %v", got, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "feature.md")); err == nil {
+		t.Error("wrote an extra file into another skill")
+	}
+}
+
+// An extra file that is a symlink is not written through, and is reported.
+func TestInstallFilesRefusesSymlinkedExtraFile(t *testing.T) {
+	h := home(t)
+	keep := filepath.Join(t.TempDir(), "feature.md")
+	write(t, keep, "keep me\n")
+	dir := filepath.Join(h, ".claude/skills/tool")
+	mkdir(t, dir)
+	if err := os.Symlink(keep, filepath.Join(dir, "feature.md")); err != nil {
+		t.Fatal(err)
+	}
+	_, errw, err := installFiles(files(), "claude-code")
+	if exitCode(err) != 1 || !strings.Contains(errw, "feature.md") || !strings.Contains(errw, "not tool's") {
+		t.Fatalf("%v %s", err, errw)
+	}
+	if got := read(t, keep); got != "keep me\n" {
+		t.Errorf("written through a symlink: %q", got)
+	}
+}
+
+// A map with no SKILL.md is refused, and so is a file name with a path in it.
+func TestInstallFilesRequiresSkillMD(t *testing.T) {
+	home(t)
+	_, _, err := installFiles(map[string][]byte{"feature.md": []byte(feature)}, "claude-code")
+	if err == nil || !strings.Contains(err.Error(), "SKILL.md") {
+		t.Errorf("no SKILL.md: %v", err)
+	}
+	if _, err := skills.RefreshFiles("tool", map[string][]byte{"feature.md": []byte(feature)}); err == nil || !strings.Contains(err.Error(), "SKILL.md") {
+		t.Errorf("refresh, no SKILL.md: %v", err)
+	}
+}
+
+func TestInstallFilesRefusesANestedPath(t *testing.T) {
+	h := home(t)
+	for _, n := range []string{"kinds/feature.md", "../feature.md", "..", ""} {
+		fs := files()
+		fs[n] = []byte(feature)
+		if _, _, err := installFiles(fs, "claude-code"); err == nil || !strings.Contains(err.Error(), "one file name") {
+			t.Errorf("%q: %v", n, err)
+		}
+		if _, err := skills.RefreshFiles("tool", fs); err == nil || !strings.Contains(err.Error(), "one file name") {
+			t.Errorf("refresh %q: %v", n, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(h, ".claude/skills/tool")); err == nil {
+		t.Error("a refused install wrote something")
+	}
+}

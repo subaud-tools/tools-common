@@ -460,7 +460,8 @@ func stopTakesHeader(_ *testing.T, c *scratch) error {
 	return c.stop()
 }
 
-// shipsSkill: a tool with a channel installs its skill.
+// shipsSkill: a tool with a channel installs its skill, whether its Commands
+// set Skill or SkillFiles: either way SKILL.md is written.
 func shipsSkill(_ *testing.T, c *scratch) error {
 	if !c.s.Channel {
 		return nil

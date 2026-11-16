@@ -42,6 +42,11 @@ type Commands struct {
 	// Skill reads the tool's skill as this binary was built with it; the
 	// channel refreshes each installed copy that differs. nil: none.
 	Skill func() ([]byte, error)
+	// SkillFiles reads the tool's skill when it is more than one file: each
+	// file name in the skill's directory to its body, SKILL.md among them.
+	// Set it instead of Skill for such a skill; the channel's refresh and
+	// `skills install` use it when set. nil: Skill.
+	SkillFiles func() (map[string][]byte, error)
 	// SkillName names the skill when it isn't named after the tool (galley's is
 	// reviewing-a-document). "": the tool's name.
 	SkillName string
@@ -212,14 +217,15 @@ func (c Commands) ChannelCommand(stdin io.Reader, h Help) tools.Command {
 // matches the binary it calls. It logs each path it rewrote; an error is
 // logged and the channel starts anyway.
 func (c Commands) refreshSkill(errw io.Writer) {
-	if c.Skill == nil {
+	read := c.skillFiles()
+	if read == nil {
 		return
 	}
 	tool, name := c.tool(), c.skillName()
-	body, err := c.Skill()
+	files, err := read()
 	if err == nil {
 		var paths []string
-		paths, err = skills.Refresh(name, body)
+		paths, err = skills.RefreshFiles(name, files)
 		for _, p := range paths {
 			_, _ = fmt.Fprintf(errw, "%s channel: refreshed the %s skill at %s\n", tool, name, p)
 		}
@@ -288,18 +294,42 @@ type agents []string
 func (a *agents) String() string     { return strings.Join(*a, ",") }
 func (a *agents) Set(v string) error { *a = append(*a, v); return nil }
 
+// skillFiles is c's skill as SkillFiles reads it, else Skill's one SKILL.md,
+// else nil.
+func (c Commands) skillFiles() func() (map[string][]byte, error) {
+	if c.SkillFiles != nil {
+		return c.SkillFiles
+	}
+	if c.Skill != nil {
+		return oneFile(c.Skill)
+	}
+	return nil
+}
+
+// oneFile reads skill as a skill of one file, SKILL.md.
+func oneFile(skill func() ([]byte, error)) func() (map[string][]byte, error) {
+	return func() (map[string][]byte, error) {
+		body, err := skill()
+		if err != nil {
+			return nil, err
+		}
+		return map[string][]byte{"SKILL.md": body}, nil
+	}
+}
+
 // SkillsCommand is `<tool> skills install [--agent NAME]…`: it installs the
 // tool's skill as skill reads it, for each agent harness found or named.
 func SkillsCommand(tool string, skill func() ([]byte, error)) tools.Command {
-	return skillsCommand(tool, tool, skill)
+	return skillsCommand(tool, tool, oneFile(skill))
 }
 
-// SkillsCommand is the skills command for c's Skill, installed under SkillName.
+// SkillsCommand is the skills command for c's SkillFiles, else its Skill,
+// installed under SkillName.
 func (c Commands) SkillsCommand() tools.Command {
-	return skillsCommand(c.tool(), c.skillName(), c.Skill)
+	return skillsCommand(c.tool(), c.skillName(), c.skillFiles())
 }
 
-func skillsCommand(tool, name string, skill func() ([]byte, error)) tools.Command {
+func skillsCommand(tool, name string, skill func() (map[string][]byte, error)) tools.Command {
 	usage := tool + " skills install [--agent NAME]…"
 	nf := newFlags("skills", usage,
 		"Installs the "+name+" skill this binary was built with, as <skills dir>/"+name+"/SKILL.md, for\n"+
@@ -321,7 +351,7 @@ func skillsCommand(tool, name string, skill func() ([]byte, error)) tools.Comman
 		if len(pos) != 1 || pos[0] != "install" {
 			return tools.UsageError{Msg: "expected: " + usage}
 		}
-		body, err := skill()
+		files, err := skill()
 		if err != nil {
 			return tools.Exitf(2, "%v", err)
 		}
@@ -330,7 +360,7 @@ func skillsCommand(tool, name string, skill func() ([]byte, error)) tools.Comman
 			return tools.Exitf(2, "%v", err)
 		}
 		as := *fs.Lookup("agent").Value.(*agents)
-		first := skills.Install(name, body, as, out, errw)
+		first := skills.InstallFiles(name, files, as, out, errw)
 		for _, f := range family {
 			if err := skills.Install(f.Name, f.Body, as, out, errw); err != nil && first == nil {
 				first = err

@@ -17,6 +17,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	tools "github.com/subaud-tools/tools-common"
@@ -77,7 +78,20 @@ func (h harness) installed() bool {
 // failure to errw, and fails with exit code 2 when there is no harness and
 // 1 when any harness was not installed.
 func Install(name string, body []byte, agents []string, out, errw io.Writer) error {
+	return InstallFiles(name, map[string][]byte{skillFile: body}, agents, out, errw)
+}
+
+// InstallFiles is Install for a skill made of several files: files maps each
+// file name in <skills dir>/<name> to its body, and must hold SKILL.md; every
+// other name is one plain file name. The directory is the tool's when its
+// SKILL.md is, and each file is written as SKILL.md is, the others before
+// SKILL.md so a reader that sees the new SKILL.md finds its files. A file
+// not in files is left as it is.
+func InstallFiles(name string, files map[string][]byte, agents []string, out, errw io.Writer) error {
 	if err := oneComponent(name); err != nil {
+		return err
+	}
+	if err := checkFiles(files); err != nil {
 		return err
 	}
 	var targets []harness
@@ -105,7 +119,7 @@ func Install(name string, body []byte, agents []string, out, errw io.Writer) err
 	}
 	failed := 0
 	for _, h := range targets {
-		dest, err := installOne(h, name, body)
+		dest, err := installOne(h, name, files)
 		if err != nil {
 			failed++
 			_, _ = fmt.Fprintf(errw, "%-12s %v\n", h.Label+":", err)
@@ -119,9 +133,35 @@ func Install(name string, body []byte, agents []string, out, errw io.Writer) err
 	return nil
 }
 
-// installOne writes body as the harness's <skills dir>/<name>/SKILL.md,
-// making the skills directory when missing.
-func installOne(h harness, name string, body []byte) (string, error) {
+// checkFiles refuses a skill's files with no SKILL.md, or with a name that is
+// not one plain file name.
+func checkFiles(files map[string][]byte) error {
+	if _, ok := files[skillFile]; !ok {
+		return fmt.Errorf("skill files: no %s", skillFile)
+	}
+	for n := range files {
+		if !plainName(n) {
+			return fmt.Errorf("skill file %q: must be one file name", n)
+		}
+	}
+	return nil
+}
+
+// extraFiles is the names in files other than SKILL.md, sorted.
+func extraFiles(files map[string][]byte) []string {
+	var names []string
+	for n := range files {
+		if n != skillFile {
+			names = append(names, n)
+		}
+	}
+	slices.Sort(names)
+	return names
+}
+
+// installOne writes files into the harness's <skills dir>/<name>, SKILL.md
+// last, making the skills directory when missing, and returns SKILL.md's path.
+func installOne(h harness, name string, files map[string][]byte) (string, error) {
 	home, err := h.dir()
 	if err != nil {
 		return "", err
@@ -135,10 +175,20 @@ func installOne(h harness, name string, body []byte) (string, error) {
 		return "", err
 	}
 	defer s.close()
+	body := files[skillFile]
 	if err := s.familyGuard(name, body); err != nil {
 		return "", err
 	}
-	if err := s.write(body); err != nil {
+	for _, f := range extraFiles(files) {
+		_, info, err := s.readFile(name, f)
+		if err != nil {
+			return "", err
+		}
+		if err := s.write(f, files[f], info); err != nil {
+			return "", err
+		}
+	}
+	if err := s.write(skillFile, body, s.info); err != nil {
 		return "", err
 	}
 	return s.dest, nil
@@ -210,27 +260,14 @@ func openSkill(dir, name string, mk bool) (*skill, error) {
 // read reads the skill's SKILL.md into s.old and s.info, checking it is a
 // regular file that is the named skill's own.
 func (s *skill) read(name string, mk bool) error {
-	notOwn := &notOwnError{fmt.Sprintf("%s is not a regular file: not %s's to replace", s.dest, name)}
-	st, err := s.dir.Lstat(skillFile)
+	old, st, err := s.readFile(name, skillFile)
 	switch {
-	case errors.Is(err, fs.ErrNotExist) && mk:
-		return nil
 	case err != nil:
 		return err
-	case !st.Mode().IsRegular():
-		return notOwn
-	}
-	f, err := s.dir.Open(skillFile)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
-	if now, err := f.Stat(); err != nil || !os.SameFile(st, now) {
-		return notOwn
-	}
-	old, err := io.ReadAll(f)
-	if err != nil {
-		return err
+	case st == nil && !mk:
+		return fs.ErrNotExist
+	case st == nil:
+		return nil
 	}
 	if n := skillName(old); n != name {
 		return &notOwnError{fmt.Sprintf("%s is another skill (name: %q), not %s's to replace", s.dest, n, name)}
@@ -239,19 +276,52 @@ func (s *skill) read(name string, mk bool) error {
 	return nil
 }
 
-// write writes body to a new temporary file beside SKILL.md (O_EXCL, which
+// path is file's path in the skill's directory, as the user sees it.
+func (s *skill) path(file string) string {
+	return filepath.Join(filepath.Dir(s.dest), file)
+}
+
+// readFile reads file in the skill's directory, checking it is a regular file
+// (else a *notOwnError naming it). A missing file is nil, nil, nil.
+func (s *skill) readFile(name, file string) ([]byte, fs.FileInfo, error) {
+	notOwn := &notOwnError{fmt.Sprintf("%s is not a regular file: not %s's to replace", s.path(file), name)}
+	st, err := s.dir.Lstat(file)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return nil, nil, nil
+	case err != nil:
+		return nil, nil, err
+	case !st.Mode().IsRegular():
+		return nil, nil, notOwn
+	}
+	f, err := s.dir.Open(file)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = f.Close() }()
+	if now, err := f.Stat(); err != nil || !os.SameFile(st, now) {
+		return nil, nil, notOwn
+	}
+	b, err := io.ReadAll(f)
+	if err != nil {
+		return nil, nil, err
+	}
+	return b, st, nil
+}
+
+// write writes body to a new temporary file beside file (O_EXCL, which
 // never follows a symlink, and a random name), synced and given the old
-// file's mode, then renames it into place: nothing already beside SKILL.md
-// is written through, and a SKILL.md hard-linked elsewhere keeps the other
-// file's bytes.
-func (s *skill) write(body []byte) error {
+// file's mode (info, nil for none), then renames it into place: nothing
+// already beside it is written through, and a file hard-linked elsewhere
+// keeps the other file's bytes.
+func (s *skill) write(file string, body []byte, info fs.FileInfo) error {
 	var (
 		tmp string
 		f   *os.File
 		err error
 	)
 	for range 10 {
-		tmp = "." + skillFile + "-" + rand.Text() + ".tmp"
+		tmp = "." + file + "-" + rand.Text() + ".tmp"
 		f, err = s.dir.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 		if !errors.Is(err, fs.ErrExist) {
 			break
@@ -268,8 +338,8 @@ func (s *skill) write(body []byte) error {
 	if _, err := f.Write(body); err != nil {
 		return fail(err)
 	}
-	if s.info != nil {
-		if err := f.Chmod(s.info.Mode().Perm()); err != nil {
+	if info != nil {
+		if err := f.Chmod(info.Mode().Perm()); err != nil {
 			return fail(err)
 		}
 	}
@@ -280,7 +350,7 @@ func (s *skill) write(body []byte) error {
 		_ = s.dir.Remove(tmp)
 		return err
 	}
-	if err := s.dir.Rename(tmp, skillFile); err != nil {
+	if err := s.dir.Rename(tmp, file); err != nil {
 		_ = s.dir.Remove(tmp)
 		return err
 	}
@@ -338,10 +408,16 @@ func frontmatterValue(b []byte, key string) (string, bool) {
 // oneComponent refuses a skill name that is not one plain directory name, so
 // no directory between the skills directory and the skill can be a symlink.
 func oneComponent(name string) error {
-	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\\`) {
+	if !plainName(name) {
 		return fmt.Errorf("skill name %q: must be one directory name", name)
 	}
 	return nil
+}
+
+// plainName reports whether name is one path component: not empty, . or ..,
+// and with no separator in it.
+func plainName(name string) bool {
+	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, `/\\`)
 }
 
 // OwnsWithMarkers applies Owns' name rule and requires every declared marker to
