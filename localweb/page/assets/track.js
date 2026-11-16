@@ -23,8 +23,8 @@ function stageTip(s) {
 
 // stagePill is one stage: its label and count, ✓ once done, a pulsing dot while
 // something runs in it, and an ⓘ when it has more to say. state is the class it
-// draws in (done, now, flagged or none); open, when given, is what a press on it
-// does.
+// draws in (done, now, flagged or none); other marks a current stage whose move
+// is someone else's. open, when given, is what a press on it does.
 export function stagePill(s, open) {
   const label = s.count ? `${s.label} · ${s.count}` : s.label;
   const tip = s.detail ? stageTip(s) : null;
@@ -32,7 +32,7 @@ export function stagePill(s, open) {
     ? h('span', { class: 'kit-more', role: 'button', tabindex: '0', 'aria-label': `More on ${label}` })
     : null;
   const pill = h(open ? 'button' : 'span', {
-    class: ['kit-stage', s.state, !open && 'plain', s.live && 'live'].filter(Boolean).join(' '),
+    class: ['kit-stage', s.state, !open && 'plain', s.live && 'live', s.other && 'other'].filter(Boolean).join(' '),
     type: open ? 'button' : null,
     'data-stage': s.key,
     'aria-current': s.state === 'now' ? 'step' : null,

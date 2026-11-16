@@ -632,6 +632,8 @@ export interface StageValue {
   state?: 'done' | 'now' | 'flagged' | '';
   /** A pulsing dot: something runs in it. */
   live?: boolean;
+  /** The current stage's move is someone else's: drawn outlined, not filled. */
+  other?: boolean;
   /** Adds an ⓘ with this in its tip. */
   detail?: StageDetail;
   /** What it opens: stageTrack passes this to open. Unset, the stage is plain. */
