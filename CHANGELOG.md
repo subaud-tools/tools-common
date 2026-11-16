@@ -4,7 +4,7 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
-## Unreleased
+## 0.90.0
 
 ### Changed
 - guide: the last walk (galley's) ends by naming what comes next, the subaud guide at subaud.tools/guide/ starting with Working this way, and the getting-started skill's closing line says the same; each tool's Guide button is mentioned for later.
