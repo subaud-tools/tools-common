@@ -1,7 +1,8 @@
 // Package auth signs a machine in to its subaud.tools account, once for
 // every family tool on it. Login asks the access service for a code and
 // prints where to type it; once the buyer allows the machine on the account
-// page, the next Login gets the machine's own token, kept in
+// page, the next Login gets the machine's own token (LoginWait, for a person
+// at a terminal, waits for that in the same run), kept in
 // ConfigDir("subaud")/token with mode 600. Token is what the downloaders
 // send.
 //
@@ -155,8 +156,14 @@ var errDenied = errors.New("the sign-in was denied on the account page: run logi
 
 var errExpired = errors.New("the code expired before it was allowed: run login again")
 
+// LoginWait's errors say what to do next to the person who was waiting.
+var (
+	errWaitDenied  = errors.New("the sign-in was denied on the account page: run login for a new code if that was a mistake")
+	errWaitExpired = errors.New("the code expired before this machine was allowed: run login for a new code and allow it while login waits")
+)
+
 // Login signs this machine in over two short runs, so nothing waits on a
-// person. The first run starts a sign-in, saves it at PendingPath and prints
+// person: for an agent, whose shell can't wait on a human inside a command. The first run starts a sign-in, saves it at PendingPath and prints
 // where to type the code. The next run asks once: allowed writes the token
 // file, still pending says so, and denied or expired drops the sign-in so
 // the run after starts a new one.
@@ -198,12 +205,14 @@ func (c *Client) Login(ctx context.Context, name, osName string, out io.Writer) 
 }
 
 // LoginWait signs this machine in in one run, for a person at a terminal:
-// it prints where to type the code (a sign-in already started keeps its
-// code), then asks every interval until the buyer decides or the code
-// expires.
+// it prints where to type the code (a sign-in already started, by login or
+// install.sh, keeps its code when it saved one), then asks every interval
+// until the buyer decides or the code expires. What it prints says only what
+// the person does.
 func (c *Client) LoginWait(ctx context.Context, name, osName string, out io.Writer) error {
 	p := c.readPending()
-	// One install.sh started carries no code to show, so start afresh.
+	// A pending sign-in with no code to show (an older install.sh's) can't
+	// be finished by a person, so start afresh.
 	if p == nil || p.expired() || p.UserCode == "" {
 		var err error
 		if p, err = c.start(ctx, name, osName); err != nil {
@@ -211,6 +220,7 @@ func (c *Client) LoginWait(ctx context.Context, name, osName string, out io.Writ
 		}
 	}
 	_, _ = fmt.Fprintf(out, "Go to %s and type %s\n", p.URL, p.UserCode)
+	_, _ = fmt.Fprintln(out, "Waiting for you to allow this machine…")
 	interval := time.Duration(p.Interval) * time.Second
 	if interval <= 0 {
 		interval = 5 * time.Second
@@ -219,7 +229,12 @@ func (c *Client) LoginWait(ctx context.Context, name, osName string, out io.Writ
 	for time.Now().Before(deadline) {
 		c.sleep(interval)
 		status, err := c.poll(ctx, p, out)
-		if err != nil {
+		switch {
+		case errors.Is(err, errDenied):
+			return errWaitDenied
+		case errors.Is(err, errExpired):
+			return errWaitExpired
+		case err != nil:
 			return err
 		}
 		switch status {
@@ -230,7 +245,7 @@ func (c *Client) LoginWait(ctx context.Context, name, osName string, out io.Writ
 		}
 	}
 	c.dropPending()
-	return errExpired
+	return errWaitExpired
 }
 
 // start asks the service for a code and saves it as the pending sign-in.

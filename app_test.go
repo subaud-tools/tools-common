@@ -264,7 +264,11 @@ func TestLoginAndLogoutAreBuiltIn(t *testing.T) {
 	if code := a.Dispatch([]string{"login", "--name", "ci-box"}, &out, &errw); code != 0 {
 		t.Fatalf("login: exit %d: %s", code, errw.String())
 	}
-	if started["name"] != "ci-box" || started["os"] != runtime.GOOS || !strings.Contains(out.String(), "type ZJQG-NLSQ") {
+	// Not a terminal (an agent's shell): the first run prints the code and
+	// exits with exactly the lines agents are told to relay.
+	want := "Go to https://subaud.tools/account/machine and type ZJQG-NLSQ\n" +
+		"Waiting for approval: run login again once you've allowed this machine.\n"
+	if started["name"] != "ci-box" || started["os"] != runtime.GOOS || out.String() != want {
 		t.Fatalf("started %v, out %q", started, out.String())
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -281,6 +285,44 @@ func TestLoginAndLogoutAreBuiltIn(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("token file after logout: %v", err)
+	}
+}
+
+// At a terminal, plain login waits in one run like --wait, and says only
+// what the person does.
+func TestLoginAtATerminalSignsInInOneRun(t *testing.T) {
+	polls := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /machine/start", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `{"device_code":"D","user_code":"ZJQG-NLSQ","url":"https://subaud.tools/account/machine","interval":5,"expires_in":600}`)
+	})
+	mux.HandleFunc("POST /machine/poll", func(w http.ResponseWriter, r *http.Request) {
+		polls++
+		if polls < 2 {
+			_, _ = io.WriteString(w, `{"status":"pending"}`)
+			return
+		}
+		_, _ = io.WriteString(w, `{"status":"allowed","token":"sbt_T","account":"court@example.test"}`)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	a := newTestApp()
+	a.terminal = func(io.Writer) bool { return true }
+	path := filepath.Join(t.TempDir(), "token")
+	a.auth = &auth.Client{API: srv.URL, Path: path, Sleep: func(time.Duration) {}}
+	var out, errw bytes.Buffer
+	if code := a.Dispatch([]string{"login"}, &out, &errw); code != 0 || polls != 2 {
+		t.Fatalf("login: exit %d, polls %d: %s", code, polls, errw.String())
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal(err)
+	}
+	want := "Go to https://subaud.tools/account/machine and type ZJQG-NLSQ\n" +
+		"Waiting for you to allow this machine…\n" +
+		"Signed in to court@example.test. Every subaud tool on this machine uses this sign-in.\n"
+	if out.String() != want {
+		t.Fatalf("out = %q, want %q", out.String(), want)
 	}
 }
 

@@ -448,3 +448,29 @@ func TestLoginFinishesASignInInstallShStarted(t *testing.T) {
 		t.Fatalf("no token after finishing install.sh's sign-in: %v (%s)", err, out.String())
 	}
 }
+
+// install.sh now saves the code it showed with the sign-in; a person's
+// login at a terminal shows that same code and finishes it, starting nothing.
+func TestLoginWaitReusesAPendingSignInWithItsCode(t *testing.T) {
+	c, f, _ := client(t, "pending", "allowed")
+	if err := os.MkdirAll(filepath.Dir(c.pendingPath()), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	body := fmt.Sprintf(`{"device_code":"DEVICECODE","user_code":"WXYZ-ABCD","url":"https://subaud.tools/account/machine","expires":%d}`, time.Now().Add(5*time.Minute).Unix())
+	if err := os.WriteFile(c.pendingPath(), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := c.LoginWait(context.Background(), "courts-mbp", "darwin", &out); err != nil {
+		t.Fatalf("%v: %s", err, out.String())
+	}
+	if f.started != nil || !strings.HasPrefix(out.String(), "Go to https://subaud.tools/account/machine and type WXYZ-ABCD\nWaiting for you to allow this machine…\n") {
+		t.Fatalf("started %v, out %q", f.started, out.String())
+	}
+	if strings.Contains(out.String(), "run login again") {
+		t.Fatalf("out %q", out.String())
+	}
+	if _, err := os.Stat(c.Path); err != nil {
+		t.Fatal(err)
+	}
+}

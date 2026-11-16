@@ -7,6 +7,8 @@ tags and PRs.
 ## Unreleased
 
 ### Changed
+- login: when its output is a terminal, `login` signs in in one run, as `--wait` does: it prints `Go to <url> and type <CODE>`, then `Waiting for you to allow this machine…`, and saves the token once the machine is allowed. When the output is not a terminal (an agent's shell) it keeps the two short runs and their exact lines. `--wait` still forces waiting. The waiting run's denied and expired errors say what to do, and it reuses a pending sign-in that carries its code (as install.sh now saves it).
+- update: an ungated build refused by its site (HTTP 403 or 404) says only what to do: install it again with the site's `install.sh`, which signs the machine in if it needs to. The account-page pointer is gone.
 - guide: the using-the-tools skill names the Guide button (the control a person sees) instead of the Guide tab, and offers a tool's walk ("Show me around ‹tool›.") for the tools in `WalkTools` when introducing one the user hasn't met.
 - README: documents the guide package (tool sections, the Guide tab, the walks, the two family skills, the lessons) and links to subaud.tools/start for a person's first walk.
 
