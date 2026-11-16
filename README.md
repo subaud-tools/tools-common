@@ -20,6 +20,7 @@ A tool's server and page follow [`PAGE-STANDARD.md`](PAGE-STANDARD.md): each rul
 | `tools-common/channelmcp` | claude/channel stdio server (newline-delimited JSON-RPC 2.0); `Pusher`, and `Lines`, which prints each event as a JSON line for `<tool> watch`; `Handler.OnReport` receives a harness's held/landed/turn_ended reports (`notifications/channels/report`) for the token in an event's `report` meta key, and `ReportCommand(deliver)` is the `<tool> report held <token>` / `report landed <token>` / `report turn-ended` command the plugin runs, delivering to the tool's server through the tool's own callback |
 | `tools-common/harness` | session identity: the family resolution rule over `CLAUDE_CODE_SESSION_ID`, `AGENT_SESSION_ID`, `AGENT_SESSION_CHILD`; `Capture.IsClaude` |
 | `tools-common/msgstate` | the page-message lifecycle: `State` (seven states, `Values()` for a wire generator's union), `Label`, `Final`, `Allowed(from, to)` |
+| `tools-common/guide` | the family guide's text, embedded in every binary: a section per tool, how they fit together, the getting-started walks and the two family skills; see [The family guide](#the-family-guide-guide) |
 | `tools-common/claudeplugin` | renders a tool's Claude Code plugin (manifest, `.mcp.json`, the mod that runs `<tool> watch` and reports back with `<tool> report`) from one template; `AssertCurrent` keeps a repo's copy equal to it |
 | `tools-common/localweb` | loopback local-page server: per-launch token, rebinding/CSRF guards, remembered port, `OpenBrowser`, `CanShare`/`PutFile` (a file on the macOS clipboard); `PublicDomain`, `PublicHome`, `PublicOrigin(tool)` and `PublicTool(address)` read `PAGE_PUBLIC_DOMAIN`, which on a hosted workspace puts each tool's page at `https://<tool>.<domain>`, and `PAGE_PUBLIC_HOME`, the one tool whose page is the bare `https://<domain>` (unset, nothing changes) |
 | `tools-common/localweb/page` | the galley-style page kit: tokens, bar, list panel, reading-column components, keyboard layer, API and live clients, served under `/_kit/` |
@@ -274,6 +275,42 @@ The kit's JS tests run in headless Chrome from `go test`. They skip without
 Chrome unless `KIT_BROWSER=required` (as in CI). `KIT_CHROME` names a binary.
 `localweb/page/demo/` rebuilds the approved casebook mock and a cull-shaped page
 for visual review.
+
+## The family guide (`guide`)
+
+The words a person reads about the family live once, in `guide/`, and every
+binary built on tools-common embeds them. A person starts as
+[subaud.tools/start](https://subaud.tools/start/) says: after buying and
+setting up a machine, they say "Get me started with subaud." in the proj
+session their agent opens, and the walks below run. After that, the Guide
+button on any tool's page says when to reach for each tool and what to ask.
+
+- **Tool sections** (`guide/tools/<name>.md`, one per name in `Family`):
+  front matter with the tool's `summary`, `weight` (core or light) and `asks`,
+  then When to reach for it, When to skip it, Where it sits and Pointers.
+  `fit.md` is how the tools hand off. `Data(tool, installed)` is what the
+  Guide draws: the installed tools' sections, the page's own tool first, and
+  the public guide page where one exists.
+- **The Guide tab**: `pageserve.Run` answers `GET /api/kit/guide` from
+  `Data`, and the page kit's Guide button (`guide.js`, above) draws it over
+  the page.
+- **Walks** (`guide/walks/<tool>.md`, `walk.go`): the getting-started walks
+  for the tools in `WalkTools` (proj, diazo, galley, in the order "Get me
+  started with subaud." runs them; "Show me around ‹tool›." runs one). Each
+  has an intro card, its steps (the control a page lights, the agent's work,
+  a preparing note and the note once the control is there) and an end card.
+  proj runs them (`proj guide start`) and the kit's spotlight draws them.
+- **Family skills** (`guide/templates/*.md.tmpl`, `Skills()`):
+  `using-the-tools`, the agent's map of which tool a request calls for, from
+  the tool sections and `fit.md`; and `getting-started-with-subaud`, how the
+  agent runs the walks, from `walks/`. They carry `owner: family`, so every
+  tool's `skills install` writes the same two.
+- **Lessons** (`guide/lessons/`, `intro.md`): the older lesson walk, which
+  proj's lesson tab still reads.
+
+Every ask in the guide is something the person says to their agent; `load`
+refuses text that tells them to type a family command, naming the file and
+the part.
 
 ## Session identity rule (`harness`)
 
