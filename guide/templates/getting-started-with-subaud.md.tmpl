@@ -16,7 +16,7 @@ There are {{len .Walks}} short walks, one per tool: {{range $i, $w := .Walks}}{{
 2. Run `proj guide show`. It lights the current step on its tool's page and prints which walk and step is current with its agent line. Do that step's agent line (the steps below say the same). Run `proj guide show` again whenever proj tells you the walk moved on, or you aren't sure which step is current, and do the agent line for the step it names, once. While a walk's intro card shows, start and show say so and print that walk's step 1: do its agent line at once, so it is ready when the learner presses Start, which shows step 1 (you aren't told when they press it).
 3. You never watch a tool's events to move the walk: the learner's click does it, and the end card's button opens the next walk's intro card (proj then tells you its step 1). A reply, choice or approval that reaches you on diazo's or galley's channel during the walk is only for the step's agent work; don't remark on it in the terminal.
 4. The learner can say back, skip or stop, here or on the bar: run `proj guide back`, `proj guide skip` or `proj guide stop`, then carry on from the step it prints.
-5. After the last walk, say one line: the walk is done, and the Guide button on any tool's page says when to reach for each tool.
+5. After the last walk, say one line: the walk is done, and the next step is the subaud guide at https://subaud.tools/guide/, starting with Working this way (how a project goes from a set-up machine to a release); each tool's Guide button is there for later.
 
 ## The steps
 {{range .Walks}}

@@ -53,5 +53,5 @@ learned: Revise sends your instructions as one round, and your agent rewrites.
 learned: Approve ends the review with the document as it stands.
 learned: Share hands the approved document to a reader, as a page or as Markdown.
 learned: To work on any document with your agent, tell it: "Edit ‹file› in galley."
-next: That's the walk. Press Guide any time to see what each tool is for and what to ask.
+next: That's the walk, and you're set up. Next, read the subaud guide at subaud.tools/guide/, starting with Working this way: how a project goes from here to a release. Each tool's Guide button is there for later.
 next_tool:
