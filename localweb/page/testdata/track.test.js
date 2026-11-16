@@ -19,6 +19,11 @@ test('stagePill: live is a class of its own', () => {
   assert(stagePill({ key: 'a', label: 'Fix', state: 'now', live: true }).classList.contains('live'), 'live');
 });
 
+test('stagePill: another\'s move is a class of its own', () => {
+  assert(stagePill({ key: 'a', label: 'Fix', state: 'now', other: true }).classList.contains('other'), 'other');
+  assert(!stagePill({ key: 'a', label: 'Fix', state: 'now' }).classList.contains('other'), 'only when set');
+});
+
 test('stagePill: with open it is a button that opens', () => {
   let opened = 0;
   const p = stagePill({ key: 'a', label: 'Fix', state: '' }, () => opened++);

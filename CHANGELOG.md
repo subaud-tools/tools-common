@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.87.0
+
+### Changed
+- localweb/page: a stage still to come draws outlined with no fill, its border `color-mix(in srgb, var(--kit-muted) 70%, var(--kit-card))`, 3.20:1 against `--kit-card` in light and 3.71:1 in dark (the `--kit-line` border it had was 1.26:1). Done and current stages are unchanged.
+- localweb/page: `StageValue` gains `other`, a current stage whose move is someone else's; `stagePill` adds the class `other`, and `.kit-stage.now.other` draws outlined in `--kit-signal` on a 12% signal tint with signal text, and its `live` dot in signal, so it no longer reads as the filled stage that is the reader's move. A tool that doesn't set it draws as before.
+
 ## 0.86.0
 
 ### Changed

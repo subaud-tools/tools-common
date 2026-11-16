@@ -534,7 +534,8 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-stage {
   box-sizing: border-box; display: inline-block; height: 20px; white-space: nowrap;
   font: 12px/18px var(--kit-mono); padding: 0 8px; border-radius: 999px; cursor: pointer;
-  border: 1px solid var(--kit-line); background: var(--kit-bg); color: var(--kit-muted);
+  border: 1px solid color-mix(in srgb, var(--kit-muted) 70%, var(--kit-card));
+  background: transparent; color: var(--kit-muted);
 }
 .kit-stage.done { color: var(--kit-ok); border-color: var(--kit-ok); background: transparent; }
 .kit-stage.now { color: var(--kit-signal-ink); background: var(--kit-signal); border-color: var(--kit-signal); }
@@ -547,6 +548,12 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   border-radius: 50%; background: var(--kit-ok); animation: kit-pulse 1.2s infinite;
 }
 .kit-stage.now.live::before { background: var(--kit-signal-ink); }
+/* the current stage when the move is someone else's: outlined on a tint */
+.kit-stage.now.other {
+  color: var(--kit-signal); border-color: var(--kit-signal);
+  background: color-mix(in srgb, var(--kit-signal) 12%, var(--kit-card));
+}
+.kit-stage.now.other.live::before { background: var(--kit-signal); }
 .kit-stage.plain { cursor: default; }
 .kit-arrow { color: var(--kit-muted); }
 .kit-stages.parked :is(.kit-stage, .kit-arrow) { opacity: .55; filter: grayscale(1); }
