@@ -87,8 +87,8 @@ func (a *App) fetchLatest() (string, error) {
 	if !a.gated && errors.As(err, &se) && (se.code == http.StatusForbidden || se.code == http.StatusNotFound) {
 		// A gated site's /dl refuses an unsigned request with 403 or 404; a 404
 		// is also a release missing from an open site, so say only what we saw.
-		return "", fmt.Errorf("%s refused the download (HTTP %d); if it now needs a signed-in machine, get %s at %s, then install it again with `curl -fsSL https://%s/install.sh | sh`",
-			a.domain, se.code, a.name, auth.DefaultAccount, a.domain)
+		return "", fmt.Errorf("%s refused the download (HTTP %d): install %s again with `curl -fsSL https://%s/install.sh | sh`; it signs this machine in if it needs to",
+			a.domain, se.code, a.name, a.domain)
 	}
 	if err != nil {
 		return "", err

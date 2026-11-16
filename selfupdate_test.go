@@ -402,8 +402,8 @@ func TestAnUnreachableNoticePrintsNothing(t *testing.T) {
 }
 
 // A site whose /dl is gated refuses an unsigned request with 403 or 404:
-// an ungated binary names the account page and the site's install command.
-func TestAnUngatedToolRefusedByAGatedSiteNamesTheAccountAndInstall(t *testing.T) {
+// an ungated binary says what to do, the site's install command.
+func TestAnUngatedToolRefusedByAGatedSiteNamesTheInstall(t *testing.T) {
 	for _, status := range []int{http.StatusForbidden, http.StatusNotFound} {
 		t.Run(http.StatusText(status), func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -416,14 +416,12 @@ func TestAnUngatedToolRefusedByAGatedSiteNamesTheAccountAndInstall(t *testing.T)
 				t.Fatalf("exit 0: %s", errw.String())
 			}
 			msg := errw.String()
-			// A 404 is also a missing release on an open site, so the message
-			// says what the status was and only then what to do if the site closed.
-			for _, want := range []string{fmt.Sprintf("HTTP %d", status), "if it now needs a signed-in machine", "https://subaud.tools/account/", "curl -fsSL https://kempt.tools/install.sh | sh"} {
+			for _, want := range []string{fmt.Sprintf("HTTP %d", status), "install kempt again with `curl -fsSL https://kempt.tools/install.sh | sh`", "it signs this machine in if it needs to"} {
 				if !strings.Contains(msg, want) {
 					t.Errorf("errw %q lacks %q", msg, want)
 				}
 			}
-			if strings.Contains(msg, "—") || strings.Contains(msg, "now downloads only") {
+			if strings.Contains(msg, "—") || strings.Contains(msg, "account/") {
 				t.Errorf("errw %q", msg)
 			}
 		})
