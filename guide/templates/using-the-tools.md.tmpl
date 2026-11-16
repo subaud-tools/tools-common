@@ -6,7 +6,7 @@ owner: family
 
 # Using the subaud tools
 
-This skill is written from tools-common's guide, the same text as the Guide tab on every tool's page. Each tool's own skill says how to run it; this one says which tool a request calls for.
+This skill is written from tools-common's guide, the same text the Guide button opens on every tool's page. Each tool's own skill says how to run it; this one says which tool a request calls for.
 
 ## Which tool a request calls for
 
@@ -22,7 +22,8 @@ Reach for a tool only when the request calls for it, and never describe the fami
 The shared record says what this user has done: `$XDG_STATE_HOME/subaud/record.json` (`~/.local/state/subaud/record.json` by default, `$SUBAUD_HOME/state/record.json` when that is set), with the `tools` used, each with a date. Read it before you bring in a tool.
 
 - A tool the user has used: use it, with no introduction.
-- A tool they haven't: name it in one sentence (its summary below), then point to its section on the Guide tab of any tool's page before you run it. One tool per request; don't list the others.
+- A tool they haven't: name it in one sentence (its summary below), then point to its section in the Guide (the Guide button on any tool's page) before you run it. One tool per request; don't list the others.
+- A tool with a walk ({{range $i, $w := .Walks}}{{if $i}}, {{end}}{{$w.Tool}}{{end}}): you may also offer it. The user says "Show me around ‹tool›.", and the getting-started-with-subaud skill runs it.
 - Every ask is something the user says to you. Never tell them to type a tool's command.
 
 ## How they hand off

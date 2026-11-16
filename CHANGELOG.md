@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## Unreleased
+
+### Changed
+- guide: the using-the-tools skill names the Guide button (the control a person sees) instead of the Guide tab, and offers a tool's walk ("Show me around ‹tool›.") for the tools in `WalkTools` when introducing one the user hasn't met.
+- README: documents the guide package (tool sections, the Guide tab, the walks, the two family skills, the lessons) and links to subaud.tools/start for a person's first walk.
+
 ## 0.88.0
 
 ### Added
