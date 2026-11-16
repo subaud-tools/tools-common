@@ -4,7 +4,7 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
-## Unreleased
+## 0.89.0
 
 ### Changed
 - login: when its output is a terminal, `login` signs in in one run, as `--wait` does: it prints `Go to <url> and type <CODE>`, then `Waiting for you to allow this machine…`, and saves the token once the machine is allowed. When the output is not a terminal (an agent's shell) it keeps the two short runs and their exact lines. `--wait` still forces waiting. The waiting run's denied and expired errors say what to do, and it reuses a pending sign-in that carries its code (as install.sh now saves it).
