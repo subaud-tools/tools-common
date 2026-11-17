@@ -88,7 +88,7 @@ func main() {
 - `version` — prints `"<Name> <Version>"` (e.g. `kempt 0.1.0 (abc, 2026-08-30)`).
 - `help` — prints usage, or `help <command>` for one command.
 - `update` — self-updates via the `/dl` contract below.
-- `login` — signs this machine in to the subaud.tools account in two short runs, so nothing waits on a person: the first prints a URL and a code to type there, saves the sign-in at `ConfigDir("subaud")/pending` (mode 600) and exits 0; run again once the machine is allowed, it stores the machine's token (shared by every tool). A run while it is still pending says so and exits 0; a denied or expired code is dropped, and the next run starts over. `login --wait` does both in one run, for a person at a terminal.
+- `login` — signs nothing in: it prints `This machine isn't signed in to subaud.tools. Get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine.` and exits 1. The setup line saves the machine's token at `ConfigDir("subaud")/token` (mode 600), shared by every tool; `$SUBAUD_TOKEN` wins over it.
 - `logout` — removes this machine from the account and deletes its token.
 - `man` — prints a roff man page.
 - `commands` — lists commands; `commands --json` is the machine-readable index.
@@ -99,9 +99,10 @@ A tool can override any built-in by registering a command with the same `Name`
 `Config.Gated` marks a tool whose `/dl` is closed to anyone: `update` then
 fetches `latest`, the tarball and its `.sha256` through five-minute signed
 links (`auth.Link`, `POST /links` with the machine's token) instead of from
-`https://<domain>/dl`. With no token, or one the service refuses, it says to
-run `<tool> login`; for a tool the account doesn't own it names the account
-page. An ungated tool never asks for links. The links are asked for
+`https://<domain>/dl`. With no token, or one the service refuses, it points to
+the setup line on the account page (`auth.ErrNotSignedIn`,
+`auth.ErrSignInRefused`); for a tool the account doesn't own it names the
+account page. An ungated tool never asks for links. The links are asked for
 `Config.Product`, or `Name` when it is empty: set it when one product covers
 several tools (`Product: "tackle"` for each of tackle's six).
 

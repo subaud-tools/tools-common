@@ -9,10 +9,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/subaud-tools/tools-common/auth"
 )
@@ -238,120 +236,55 @@ func TestSelfRoutedRefused(t *testing.T) {
 	}
 }
 
-// Every tool inherits login and logout, one sign-in for the machine.
+// Every tool inherits login and logout, one sign-in for the machine. login
+// signs nothing in: it points to the setup line on the account page.
 func TestLoginAndLogoutAreBuiltIn(t *testing.T) {
-	var started map[string]string
 	removed := 0
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /machine/start", func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewDecoder(r.Body).Decode(&started)
-		_, _ = io.WriteString(w, `{"device_code":"D","user_code":"ZJQG-NLSQ","url":"https://subaud.tools/account/machine","interval":5,"expires_in":600}`)
-	})
-	mux.HandleFunc("POST /machine/poll", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, `{"status":"allowed","token":"sbt_T","account":"court@example.test"}`)
-	})
 	mux.HandleFunc("DELETE /machine/self", func(w http.ResponseWriter, r *http.Request) {
 		removed++
 		_, _ = io.WriteString(w, `{"removed":"m1"}`)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("asked %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
 	a := newTestApp()
 	path := filepath.Join(t.TempDir(), "token")
-	a.auth = &auth.Client{API: srv.URL, Path: path, Sleep: func(time.Duration) {}}
+	a.auth = &auth.Client{API: srv.URL, Path: path}
 	var out, errw bytes.Buffer
-	if code := a.Dispatch([]string{"login", "--name", "ci-box"}, &out, &errw); code != 0 {
+	if code := a.Dispatch([]string{"login"}, &out, &errw); code != 1 {
 		t.Fatalf("login: exit %d: %s", code, errw.String())
 	}
-	// Not a terminal (an agent's shell): the first run prints the code and
-	// exits with exactly the lines agents are told to relay.
-	want := "Go to https://subaud.tools/account/machine and type ZJQG-NLSQ\n" +
-		"Waiting for approval: run login again once you've allowed this machine.\n"
-	if started["name"] != "ci-box" || started["os"] != runtime.GOOS || out.String() != want {
-		t.Fatalf("started %v, out %q", started, out.String())
+	want := "kempt login: This machine isn't signed in to subaud.tools. Get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine.\n"
+	if out.String() != "" || errw.String() != want {
+		t.Fatalf("out %q, errw %q, want %q", out.String(), errw.String(), want)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Fatalf("token file after the first run: %v", err)
+		t.Fatalf("token file after login: %v", err)
 	}
-	if code := a.Dispatch([]string{"login"}, &out, &errw); code != 0 {
-		t.Fatalf("login again: exit %d: %s", code, errw.String())
+	if code := a.Dispatch([]string{"login", "--wait"}, &out, &errw); code != 2 {
+		t.Fatalf("login --wait: exit %d, want 2 (no such flag)", code)
 	}
-	if _, err := os.Stat(path); err != nil {
+	if err := os.WriteFile(path, []byte("sbt_T\n"), 0o600); err != nil {
 		t.Fatal(err)
+	}
+	out.Reset()
+	errw.Reset()
+	if code := a.Dispatch([]string{"login"}, &out, &errw); code != 0 {
+		t.Fatalf("login when signed in: exit %d: %s", code, errw.String())
+	}
+	wantIn := "This machine is signed in to subaud.tools. To sign it in again, get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine.\n"
+	if out.String() != wantIn || errw.String() != "" {
+		t.Fatalf("login when signed in: out %q, errw %q, want %q", out.String(), errw.String(), wantIn)
 	}
 	if code := a.Dispatch([]string{"logout"}, &out, &errw); code != 0 || removed != 1 {
 		t.Fatalf("logout: exit %d, removed %d: %s", code, removed, errw.String())
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("token file after logout: %v", err)
-	}
-}
-
-// At a terminal, plain login waits in one run like --wait, and says only
-// what the person does.
-func TestLoginAtATerminalSignsInInOneRun(t *testing.T) {
-	polls := 0
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /machine/start", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, `{"device_code":"D","user_code":"ZJQG-NLSQ","url":"https://subaud.tools/account/machine","interval":5,"expires_in":600}`)
-	})
-	mux.HandleFunc("POST /machine/poll", func(w http.ResponseWriter, r *http.Request) {
-		polls++
-		if polls < 2 {
-			_, _ = io.WriteString(w, `{"status":"pending"}`)
-			return
-		}
-		_, _ = io.WriteString(w, `{"status":"allowed","token":"sbt_T","account":"court@example.test"}`)
-	})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	a := newTestApp()
-	a.terminal = func(io.Writer) bool { return true }
-	path := filepath.Join(t.TempDir(), "token")
-	a.auth = &auth.Client{API: srv.URL, Path: path, Sleep: func(time.Duration) {}}
-	var out, errw bytes.Buffer
-	if code := a.Dispatch([]string{"login"}, &out, &errw); code != 0 || polls != 2 {
-		t.Fatalf("login: exit %d, polls %d: %s", code, polls, errw.String())
-	}
-	if _, err := os.Stat(path); err != nil {
-		t.Fatal(err)
-	}
-	want := "Go to https://subaud.tools/account/machine and type ZJQG-NLSQ\n" +
-		"Waiting for you to allow this machine…\n" +
-		"Signed in to court@example.test. Every subaud tool on this machine uses this sign-in.\n"
-	if out.String() != want {
-		t.Fatalf("out = %q, want %q", out.String(), want)
-	}
-}
-
-// login --wait signs in in one run, polling until the machine is allowed.
-func TestLoginWaitSignsInInOneRun(t *testing.T) {
-	polls := 0
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /machine/start", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.WriteString(w, `{"device_code":"D","user_code":"ZJQG-NLSQ","url":"https://subaud.tools/account/machine","interval":5,"expires_in":600}`)
-	})
-	mux.HandleFunc("POST /machine/poll", func(w http.ResponseWriter, r *http.Request) {
-		polls++
-		if polls < 2 {
-			_, _ = io.WriteString(w, `{"status":"pending"}`)
-			return
-		}
-		_, _ = io.WriteString(w, `{"status":"allowed","token":"sbt_T","account":"court@example.test"}`)
-	})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	a := newTestApp()
-	path := filepath.Join(t.TempDir(), "token")
-	a.auth = &auth.Client{API: srv.URL, Path: path, Sleep: func(time.Duration) {}}
-	var out, errw bytes.Buffer
-	if code := a.Dispatch([]string{"login", "--wait"}, &out, &errw); code != 0 || polls != 2 {
-		t.Fatalf("login --wait: exit %d, polls %d: %s", code, polls, errw.String())
-	}
-	if _, err := os.Stat(path); err != nil {
-		t.Fatal(err)
 	}
 }

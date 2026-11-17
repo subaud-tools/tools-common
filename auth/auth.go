@@ -1,10 +1,7 @@
-// Package auth signs a machine in to its subaud.tools account, once for
-// every family tool on it. Login asks the access service for a code and
-// prints where to type it; once the buyer allows the machine on the account
-// page, the next Login gets the machine's own token (LoginWait, for a person
-// at a terminal, waits for that in the same run), kept in
-// ConfigDir("subaud")/token with mode 600. Token is what the downloaders
-// send.
+// Package auth holds a machine's sign-in to its subaud.tools account, one
+// for every family tool on it. The setup line from the account page (Add or
+// sign in a machine) writes the machine's token to ConfigDir("subaud")/token
+// with mode 600; Token is what the downloaders send, and Logout removes it.
 //
 // stdlib-only, and it doesn't import tools-common's root package, which
 // registers login and logout from here.
@@ -31,12 +28,17 @@ const DefaultAPI = "https://api.subaud.tools"
 // for CI runners.
 const TokenEnv = "SUBAUD_TOKEN" //nolint:gosec // a variable's name, not a credential
 
-// ErrNotSignedIn is returned by Token when there is no token.
-var ErrNotSignedIn = errors.New("this machine is not signed in to subaud.tools: run `<tool> login`")
+// SetupLine says where a machine gets signed in: the setup line on the
+// account page, pasted in a terminal on the machine.
+const SetupLine = "Get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine."
+
+// ErrNotSignedIn is returned by Token when there is no token, and by every
+// tool's login.
+var ErrNotSignedIn = errors.New("This machine isn't signed in to subaud.tools. " + SetupLine) //nolint:staticcheck // ST1005: shown to the person as it is
 
 // ErrSignInRefused is returned by Link when the service refuses the token:
 // the machine was removed on the account page, or the token is wrong.
-var ErrSignInRefused = errors.New("subaud.tools refused this machine's sign-in: run `<tool> login` to sign in again")
+var ErrSignInRefused = errors.New("subaud.tools refused this machine's sign-in. " + SetupLine) //nolint:staticcheck // ST1005: shown to the person as it is
 
 // DefaultAccount is the account page, for a refusal that names none.
 const DefaultAccount = "https://subaud.tools/account/"
@@ -73,6 +75,10 @@ func TokenPath() string {
 // ErrNotSignedIn when there is neither.
 func Token() (string, error) { return (&Client{}).token() }
 
+// SignedIn reports whether this machine keeps a token ($SUBAUD_TOKEN or the
+// token file). It doesn't ask the service whether the token still works.
+func (c *Client) SignedIn() bool { _, err := c.token(); return err == nil }
+
 func (c *Client) token() (string, error) {
 	if t := os.Getenv(TokenEnv); t != "" {
 		return t, nil
@@ -97,10 +103,9 @@ func readToken(path string) (string, error) {
 
 // Client talks to the access service. The zero value is ready to use.
 type Client struct {
-	API   string              // "" → DefaultAPI
-	HTTP  *http.Client        // nil → a client with a 30s timeout
-	Path  string              // the token file; "" → TokenPath()
-	Sleep func(time.Duration) // nil → time.Sleep
+	API  string       // "" → DefaultAPI
+	HTTP *http.Client // nil → a client with a 30s timeout
+	Path string       // the token file; "" → TokenPath()
 }
 
 func (c *Client) api() string {
@@ -123,203 +128,6 @@ func (c *Client) path() string {
 	}
 	return TokenPath()
 }
-
-func (c *Client) sleep(d time.Duration) {
-	if c.Sleep != nil {
-		c.Sleep(d)
-		return
-	}
-	time.Sleep(d)
-}
-
-// slowDownBy is how much longer the tool waits after a slow_down.
-const slowDownBy = 5 * time.Second
-
-// pending is a sign-in in progress, kept between login's two runs. The
-// device code is the secret the service hands the token to: it stays in
-// the file and is never printed.
-type pending struct {
-	DeviceCode string `json:"device_code"`
-	UserCode   string `json:"user_code"`
-	URL        string `json:"url"`
-	Interval   int    `json:"interval"`
-	// Expires is unix seconds, the form install.sh writes too, so a sign-in
-	// either one starts the other can finish.
-	Expires int64 `json:"expires"`
-}
-
-func (p *pending) expired() bool { return time.Now().Unix() >= p.Expires }
-
-func (c *Client) pendingPath() string { return filepath.Join(filepath.Dir(c.path()), "pending") }
-
-var errDenied = errors.New("the sign-in was denied on the account page: run login again to start a new one")
-
-var errExpired = errors.New("the code expired before it was allowed: run login again")
-
-// LoginWait's errors say what to do next to the person who was waiting.
-var (
-	errWaitDenied  = errors.New("the sign-in was denied on the account page: run login for a new code if that was a mistake")
-	errWaitExpired = errors.New("the code expired before this machine was allowed: run login for a new code and allow it while login waits")
-)
-
-// Login signs this machine in over two short runs, so nothing waits on a
-// person: for an agent, whose shell can't wait on a human inside a command. The first run starts a sign-in, saves it at PendingPath and prints
-// where to type the code. The next run asks once: allowed writes the token
-// file, still pending says so, and denied or expired drops the sign-in so
-// the run after starts a new one.
-func (c *Client) Login(ctx context.Context, name, osName string, out io.Writer) error {
-	begin := func() error {
-		started, err := c.start(ctx, name, osName)
-		if err != nil {
-			return err
-		}
-		_, _ = fmt.Fprintf(out, "Go to %s and type %s\n", started.URL, started.UserCode)
-		_, _ = fmt.Fprintln(out, "Waiting for approval: run login again once you've allowed this machine.")
-		return nil
-	}
-	p := c.readPending()
-	if p == nil {
-		return begin()
-	}
-	// An expired code can't be allowed any more: replace it in this run, so
-	// the person always has a code to type.
-	if p.expired() {
-		c.dropPending()
-		return begin()
-	}
-	status, err := c.poll(ctx, p, out)
-	if errors.Is(err, errExpired) {
-		return begin()
-	}
-	if err != nil {
-		return err
-	}
-	if status != "allowed" {
-		if p.UserCode != "" {
-			_, _ = fmt.Fprintf(out, "Still waiting for approval: go to %s and type %s, then run login again.\n", p.URL, p.UserCode)
-		} else {
-			_, _ = fmt.Fprintln(out, "Still waiting for approval: allow this machine on the account page, then run login again.")
-		}
-	}
-	return nil
-}
-
-// LoginWait signs this machine in in one run, for a person at a terminal:
-// it prints where to type the code (a sign-in already started, by login or
-// install.sh, keeps its code when it saved one), then asks every interval
-// until the buyer decides or the code expires. What it prints says only what
-// the person does.
-func (c *Client) LoginWait(ctx context.Context, name, osName string, out io.Writer) error {
-	p := c.readPending()
-	// A pending sign-in with no code to show (an older install.sh's) can't
-	// be finished by a person, so start afresh.
-	if p == nil || p.expired() || p.UserCode == "" {
-		var err error
-		if p, err = c.start(ctx, name, osName); err != nil {
-			return err
-		}
-	}
-	_, _ = fmt.Fprintf(out, "Go to %s and type %s\n", p.URL, p.UserCode)
-	_, _ = fmt.Fprintln(out, "Waiting for you to allow this machine…")
-	interval := time.Duration(p.Interval) * time.Second
-	if interval <= 0 {
-		interval = 5 * time.Second
-	}
-	deadline := time.Unix(p.Expires, 0).Add(time.Minute)
-	for time.Now().Before(deadline) {
-		c.sleep(interval)
-		status, err := c.poll(ctx, p, out)
-		switch {
-		case errors.Is(err, errDenied):
-			return errWaitDenied
-		case errors.Is(err, errExpired):
-			return errWaitExpired
-		case err != nil:
-			return err
-		}
-		switch status {
-		case "allowed":
-			return nil
-		case "slow_down":
-			interval += slowDownBy
-		}
-	}
-	c.dropPending()
-	return errWaitExpired
-}
-
-// start asks the service for a code and saves it as the pending sign-in.
-func (c *Client) start(ctx context.Context, name, osName string) (*pending, error) {
-	var st struct {
-		pending
-		ExpiresIn int `json:"expires_in"`
-	}
-	if err := c.call(ctx, http.MethodPost, "/machine/start", "", map[string]string{"name": name, "os": osName}, &st); err != nil {
-		return nil, err
-	}
-	p := st.pending
-	p.Expires = time.Now().Add(time.Duration(st.ExpiresIn) * time.Second).Unix()
-	b, err := json.Marshal(p)
-	if err != nil {
-		return nil, err
-	}
-	if err := writePrivate(c.pendingPath(), b); err != nil {
-		return nil, err
-	}
-	return &p, nil
-}
-
-// poll asks once how the pending sign-in stands. allowed writes the token
-// file; denied and expired drop the sign-in and return an error; pending
-// and slow_down are returned as they are.
-func (c *Client) poll(ctx context.Context, p *pending, out io.Writer) (string, error) {
-	var r struct {
-		Status  string `json:"status"`
-		Token   string `json:"token"`
-		Account string `json:"account"`
-	}
-	if err := c.call(ctx, http.MethodPost, "/machine/poll", "", map[string]string{"device_code": p.DeviceCode}, &r); err != nil {
-		return "", err
-	}
-	switch r.Status {
-	case "pending", "slow_down":
-		return r.Status, nil
-	case "denied":
-		c.dropPending()
-		return "", errDenied
-	case "expired":
-		c.dropPending()
-		return "", errExpired
-	case "allowed":
-		if r.Token == "" {
-			return "", errors.New("the access service sent no token")
-		}
-		if err := writePrivate(c.path(), []byte(r.Token+"\n")); err != nil {
-			return "", err
-		}
-		c.dropPending()
-		_, _ = fmt.Fprintf(out, "Signed in to %s. Every subaud tool on this machine uses this sign-in.\n", r.Account)
-		return r.Status, nil
-	default:
-		return "", fmt.Errorf("the access service answered %q", r.Status)
-	}
-}
-
-// readPending returns the pending sign-in, or nil when there is none or
-// the file can't be read as one.
-func (c *Client) readPending() *pending {
-	b, err := os.ReadFile(c.pendingPath())
-	if err != nil {
-		return nil
-	}
-	var p pending
-	if json.Unmarshal(b, &p) != nil || p.DeviceCode == "" {
-		return nil
-	}
-	return &p
-}
-
-func (c *Client) dropPending() { _ = os.Remove(c.pendingPath()) }
 
 // Link asks the access service for a five-minute signed URL of path (e.g.
 // "hail/latest" or "hail/0.4.0/hail_darwin_arm64.tar.gz") in product's
@@ -365,9 +173,6 @@ func (c *Client) Link(ctx context.Context, product, path string) (string, error)
 
 // Logout removes this machine from its account and deletes the token file.
 func (c *Client) Logout(ctx context.Context, out io.Writer) error {
-	// A sign-in still waiting would otherwise sign the machine back in on the
-	// next login with an approval given before this logout.
-	c.dropPending()
 	token, err := readToken(c.path())
 	if errors.Is(err, ErrNotSignedIn) {
 		_, _ = fmt.Fprintln(out, "This machine is not signed in.")
@@ -446,29 +251,4 @@ func (c *Client) call(ctx context.Context, method, path, token string, in, out a
 		return fmt.Errorf("reading the access service's answer: %w", err)
 	}
 	return nil
-}
-
-// writePrivate replaces path with data, mode 600, in a 700 directory.
-func writePrivate(path string, data []byte) error {
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-	f, err := os.CreateTemp(dir, "."+filepath.Base(path)+"-*")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = os.Remove(f.Name()) }()
-	if _, err := f.Write(data); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Chmod(0o600); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	return os.Rename(f.Name(), path)
 }
