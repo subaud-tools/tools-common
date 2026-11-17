@@ -272,6 +272,15 @@ func TestLoginAndLogoutAreBuiltIn(t *testing.T) {
 	if err := os.WriteFile(path, []byte("sbt_T\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	out.Reset()
+	errw.Reset()
+	if code := a.Dispatch([]string{"login"}, &out, &errw); code != 0 {
+		t.Fatalf("login when signed in: exit %d: %s", code, errw.String())
+	}
+	wantIn := "This machine is signed in to subaud.tools. To sign it in again, get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine.\n"
+	if out.String() != wantIn || errw.String() != "" {
+		t.Fatalf("login when signed in: out %q, errw %q, want %q", out.String(), errw.String(), wantIn)
+	}
 	if code := a.Dispatch([]string{"logout"}, &out, &errw); code != 0 || removed != 1 {
 		t.Fatalf("logout: exit %d, removed %d: %s", code, removed, errw.String())
 	}

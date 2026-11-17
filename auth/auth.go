@@ -75,6 +75,10 @@ func TokenPath() string {
 // ErrNotSignedIn when there is neither.
 func Token() (string, error) { return (&Client{}).token() }
 
+// SignedIn reports whether this machine keeps a token ($SUBAUD_TOKEN or the
+// token file). It doesn't ask the service whether the token still works.
+func (c *Client) SignedIn() bool { _, err := c.token(); return err == nil }
+
 func (c *Client) token() (string, error) {
 	if t := os.Getenv(TokenEnv); t != "" {
 		return t, nil
