@@ -159,14 +159,16 @@ export function bar(o) {
     },
     setLive(s, text) {
       pill.hidden = false;
-      // setLive('stale') with no text is what every tool's onStale calls on a
-      // 401: the page is signed out, whatever the tool's staleText says.
-      if (s === 'signedout' || (s === 'stale' && text == null)) {
-        pill.dataset.state = 'signedout';
+      pill.dataset.state = s;
+      // setLive('stale') with no text is what every tool's onStale (and
+      // onStatus, on live()'s stale) calls on a 401: the page is signed out,
+      // whatever the tool's staleText says.
+      const signedOut = s === 'stale' && text == null;
+      pill.classList.toggle('kit-signedout', signedOut);
+      if (signedOut) {
         pill.replaceChildren(h('i'), h('span', { class: 'kit-live-text' }, 'signed out'), signInButton());
         return;
       }
-      pill.dataset.state = s;
       pill.replaceChildren(h('i'), text ?? (LIVE_TEXT[s] || s));
     },
     setPrimary(p) {

@@ -7,8 +7,8 @@
 // A 401 means this page's cookie no longer matches the server's token (the
 // token is kept across restarts, so it changed or the cookie went): the
 // error's isStale is true, and onStale (if given) is called once, so the page
-// can show it signed out (bar's setLive('stale') with no text, or
-// setLive('signedout'), which offers Sign in again).
+// can show it signed out (bar's setLive('stale') with no text, which offers
+// Sign in again).
 //
 // Every API response carries the serve's build (pageserve's X-Tool-Build).
 // onNewBuild (if given) is called once, when one differs from the first this

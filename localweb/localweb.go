@@ -25,6 +25,9 @@ import (
 	tools "github.com/subaud-tools/tools-common"
 )
 
+// openBrowser is /signin's opener when Config.Open is nil; tests replace it.
+var openBrowser = OpenBrowser
+
 // TokenHeader is how non-browser clients (CLI, channel process) authenticate.
 const TokenHeader = "X-Local-Token" //nolint:gosec // G101: an HTTP header name, not a credential
 
@@ -41,7 +44,7 @@ type Config struct {
 	// across restarts keeps its open tabs working. 64 hex characters.
 	Token string
 	// Open opens a URL in the user's browser: POST /signin calls it with the
-	// signed-out page's own URL and t=<token>. nil: /signin answers 501.
+	// signed-out page's own URL and t=<token>. nil: OpenBrowser.
 	Open func(url string) error
 }
 
@@ -206,10 +209,6 @@ func (s *Server) serveSignIn(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "cross-origin sign-in refused", http.StatusForbidden)
 		return
 	}
-	if s.cfg.Open == nil {
-		http.Error(w, "this server cannot open a browser", http.StatusNotImplemented)
-		return
-	}
 	var body struct {
 		Page string `json:"page"`
 	}
@@ -230,7 +229,11 @@ func (s *Server) serveSignIn(w http.ResponseWriter, r *http.Request) {
 	if u.Fragment != "" {
 		open += "#" + u.EscapedFragment()
 	}
-	if err := s.cfg.Open(open); err != nil {
+	opener := s.cfg.Open
+	if opener == nil {
+		opener = openBrowser
+	}
+	if err := opener(open); err != nil {
 		http.Error(w, "the browser did not open", http.StatusInternalServerError)
 		return
 	}

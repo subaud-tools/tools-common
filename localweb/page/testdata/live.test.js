@@ -179,32 +179,32 @@ test('live: a poll that lands while the reopened stream is still connecting repl
   handle.stop();
 });
 
-test('live: a 401 poll is signed out and stops everything', async () => {
+test('live: a 401 poll is stale and stops everything', async () => {
   const { f, timers, es, statuses, handle } = setup();
   es.last().emitError();
   f.queue.push(f.text('token required', 401));
   timers.tick();
   await flush();
-  eq(statuses.at(-1), 'signedout');
+  eq(statuses.at(-1), 'stale');
   eq(timers.pending.size, 0, 'no more polling');
   assert(es.made.every(e => e.closed), 'no stream');
   eq(es.made.length, 1, 'no reopen');
   handle.stop();
 });
 
-test('live: a 401 after the stream had opened is still signed out', async () => {
+test('live: a 401 after the stream had opened is still stale', async () => {
   const { f, timers, es, statuses, handle } = setup();
   es.last().emitOpen(); // epoch moves
   es.last().emitError();
   f.queue.push(f.text('token required', 401));
   timers.tick();
   await flush();
-  eq(statuses.at(-1), 'signedout');
+  eq(statuses.at(-1), 'stale');
   eq(timers.pending.size, 0);
   handle.stop();
 });
 
-test('live: a 401 that lands after a reopened stream connected is still signed out', async () => {
+test('live: a 401 that lands after a reopened stream connected is still stale', async () => {
   const { f, timers, es, statuses, handle } = setup();
   es.last().emitError();
   f.queue.push(f.json({ cursor: '1', events: [] }));
@@ -216,7 +216,7 @@ test('live: a 401 that lands after a reopened stream connected is still signed o
   es.last().emitOpen(); // epoch moves while the 401 is in flight
   release(new Response('token required', { status: 401 }));
   await flush();
-  eq(statuses.at(-1), 'signedout');
+  eq(statuses.at(-1), 'stale');
   assert(es.made.every(e => e.closed), 'stream closed');
   handle.stop();
 });
@@ -301,7 +301,7 @@ test('live: a check-in still in flight when the tab is shown is dropped', async 
   handle.stop();
 });
 
-test('live: a 401 check-in while hidden is signed out', async () => {
+test('live: a 401 check-in while hidden is stale', async () => {
   const doc = fakeDocument();
   const { f, timers, es, statuses, handle } = setup({ document: doc });
   es.last().emitOpen();
@@ -309,10 +309,10 @@ test('live: a 401 check-in while hidden is signed out', async () => {
   f.queue.push(f.text('token required', 401));
   timers.tick();
   await flush();
-  eq(statuses.at(-1), 'signedout');
+  eq(statuses.at(-1), 'stale');
   eq(timers.pending.size, 0);
   doc.set('visible');
-  eq(es.made.length, 1, 'signed out: nothing reopens');
+  eq(es.made.length, 1, 'stale: nothing reopens');
   handle.stop();
 });
 

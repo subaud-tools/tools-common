@@ -39,8 +39,8 @@
 //
 // A 401 from the poll means this page's cookie no longer matches the token
 // (it is kept across restarts, so it changed or the cookie went): status
-// becomes "signedout" and the client stops for good (no stream, no polls).
-// The bar's setLive('signedout') offers Sign in again.
+// becomes "stale" and the client stops for good (no stream, no polls). The
+// bar's setLive('stale') with no text shows it signed out, with Sign in again.
 //
 // The client closes a broken stream itself and reopens it with the newest
 // cursor, rather than letting the browser retry with a stale Last-Event-ID.
@@ -169,9 +169,9 @@ export function live(opts) {
     try {
       const res = await doFetch(withQuery(opts.poll), { credentials: 'same-origin' });
       if (res.status === 401) {
-        // signed out whatever the epoch: a stream that opened meanwhile is dead too
+        // stale whatever the epoch: a stream that opened meanwhile is dead too
         if (stopped) return;
-        setStatus('signedout');
+        setStatus('stale');
         halt();
         return;
       }

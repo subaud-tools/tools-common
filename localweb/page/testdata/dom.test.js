@@ -305,16 +305,19 @@ test('dom: bar signed-out pill and status tone', () => {
   const b = bar({ brand: { name: 'x' }, staleText: 'restarted · continued in a new tab' });
   fixture().append(b.el);
   const pill = b.el.querySelector('.kit-live');
-  for (const [s, text] of [['signedout'], ['stale'], ['stale', null]]) {
+  for (const text of [undefined, null]) {
+    const s = 'stale';
     b.setLive('live');
     b.setLive(s, text);
-    eq([pill.dataset.state, pill.querySelector('.kit-live-text')?.textContent], ['signedout', 'signed out'], `setLive(${s}, ${text})`);
+    eq([pill.dataset.state, pill.querySelector('.kit-live-text')?.textContent], ['stale', 'signed out'], `setLive(${s}, ${text})`);
+    assert(pill.classList.contains('kit-signedout'), 'signed-out look');
     const btn = pill.querySelector('button.kit-signin');
     assert(btn && btn.textContent === 'Sign in again', `Sign in again after setLive(${s}, ${text})`);
     assert(b.el.contains(btn), 'the button is in the bar');
   }
   b.setLive('down', 'offline · 3 queued');
   eq(pill.textContent, 'offline · 3 queued', 'text override');
+  assert(!pill.classList.contains('kit-signedout'), 'signed-out look cleared');
   eq(bar({ brand: { name: 'y' } }).el.querySelector('.kit-live').hidden, true);
 
   initTheme('dom').set('light');
@@ -404,6 +407,7 @@ test('dom: setLive stale with text is the newer-build notice', () => {
   const pill = b.el.querySelector('.kit-live');
   eq([pill.dataset.state, pill.textContent], ['stale', 'a newer x is installed']);
   eq(pill.querySelector('button'), null, 'no Sign in again');
+  assert(!pill.classList.contains('kit-signedout'), 'not the signed-out look');
 });
 
 // Sign in again asks the server for a signed-in tab of this page; the token
@@ -415,7 +419,7 @@ test('dom: Sign in again posts /signin with the page and says a tab opened', asy
   try {
     const b = bar({ brand: { name: 'x' } });
     fixture().append(b.el);
-    b.setLive('signedout');
+    b.setLive('stale');
     b.el.querySelector('button.kit-signin').click();
     for (let i = 0; i < 5; i++) await Promise.resolve();
     await new Promise(r => setTimeout(r, 0));

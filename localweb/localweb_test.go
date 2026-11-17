@@ -393,9 +393,18 @@ func TestSignInGetOpensNothing(t *testing.T) {
 	}
 }
 
-func TestSignInWithNoOpenerIsNotImplemented(t *testing.T) {
+// With no opener of the tool's, Sign in again uses the system opener, so a
+// tool that calls Start itself (diazo, casebook) gets it with no change.
+func TestSignInWithNoOpenerUsesTheSystemOpener(t *testing.T) {
+	var o opener
+	old := openBrowser
+	openBrowser = o.open
+	t.Cleanup(func() { openBrowser = old })
 	s := startWithOpener(t, nil)
-	if r := signin(t, s, "POST", "http://"+s.Addr(), `{"page":"/"}`); r.Status != http.StatusNotImplemented {
+	if r := signin(t, s, "POST", "http://"+s.Addr(), `{"page":"/"}`); r.Status != http.StatusNoContent {
 		t.Fatalf("status %d", r.Status)
+	}
+	if got, want := o.opened(), "http://"+s.Addr()+"/?t="+s.Token; len(got) != 1 || got[0] != want {
+		t.Fatalf("opened %q, want [%q]", got, want)
 	}
 }
