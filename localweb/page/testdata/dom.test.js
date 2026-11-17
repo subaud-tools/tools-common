@@ -461,6 +461,16 @@ test('dom: Sign in again closes the tab once a check answers 200', async () => {
   eq([p.seen.closes, p.seen.reloads], [1, 0], 'closed');
 });
 
+// localweb checks the token before routing, so any /api/ answer but 401
+// means signed in: casebook has no /api/poll and answers 404.
+test('dom: Sign in again counts a 404 check as signed in and closes', async () => {
+  const p = pressed(f => [f.text(null, 204), f.text('not found', 404)]);
+  await flush();
+  p.timers.tick();
+  await flush();
+  eq([p.seen.closes, p.seen.reloads], [1, 0], 'closed');
+});
+
 test('dom: Sign in again reloads when close leaves the page open', async () => {
   const p = pressed(f => [f.text(null, 204), f.json({ cursor: '1', events: [] })]);
   await flush();

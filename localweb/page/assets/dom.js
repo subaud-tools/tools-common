@@ -135,17 +135,20 @@ export function bar(o) {
     });
     return btn;
   }
-  // The new tab's sign-in sets the cookie for the whole browser, so once a
-  // poll here answers 2xx this tab is signed in too: it closes when the
+  // The new tab's sign-in sets the cookie for the whole browser. localweb
+  // checks the token before routing any /api/ path, so a probe of /api/poll
+  // answers 401 while signed out and anything else once signed in (404 where
+  // a tool has no /api/poll, as casebook). Then this tab closes when the
   // browser allows (one page of history, not in a frame), else reloads. It
-  // checks once a second for a minute, then says to close it.
+  // checks once a second for a minute, then says to close it; a network
+  // error just means check again.
   function waitForSignIn(note) {
     let checks = 0;
     const check = async () => {
       checks++;
-      let ok = false;
+      let ok = false; // signed in
       try {
-        ok = (await doFetch('/api/poll', { credentials: 'same-origin' })).ok;
+        ok = (await doFetch('/api/poll', { credentials: 'same-origin' })).status !== 401;
       } catch {
         // the server is away for now: check again
       }
