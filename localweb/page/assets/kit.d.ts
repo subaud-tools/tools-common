@@ -80,7 +80,7 @@ export function createKeys(opts?: {
 
 export class ApiError extends Error {
   status: number;
-  /** status 401: the server restarted and this page's token is gone. */
+  /** status 401: this page's cookie no longer matches the server's token (signed out). The name is kept from when a 401 meant a restart. */
   readonly isStale: boolean;
   constructor(status: number, message: string);
 }
@@ -99,8 +99,8 @@ export function createApi(opts?: { base?: string; token?: string; fetch?: typeof
 
 // ---- live.js
 
-/** stale: a poll got 401 (the server restarted); the client has stopped for good. */
-export type LiveStatus = 'live' | 'polling' | 'down' | 'stale';
+/** signedout: a poll got 401 (this page's cookie no longer matches the token); the client has stopped for good. live() never reports stale; it is the bar's state for the newer-build notice (setLive('stale', text)). */
+export type LiveStatus = 'live' | 'polling' | 'down' | 'stale' | 'signedout';
 
 export interface LiveEvent<T = unknown> {
   type: string;
@@ -207,7 +207,7 @@ export interface BarHandle {
   setCount(id: string, count?: string | number | null): void;
   /** tone: muted (default), signal, or danger (e.g. "offline · 3 queued"). */
   setStatus(text: string, opts?: { tone?: StatusTone }): void;
-  /** The pill; text overrides its label (stale defaults to the bar's staleText). */
+  /** The pill; text overrides its label. signedout, and stale with no text (what onStale calls on a 401), show "signed out" with a Sign in again button, which posts /signin {page} so the server opens a signed-in tab of this page. stale with text is the newer-build notice. */
   setLive(s: LiveStatus, text?: string): void;
   /** The one filled button; null hides it. */
   setPrimary(p: Primary | null): void;
@@ -236,7 +236,7 @@ export function bar(o: {
   status?: string;
   primary?: Primary | null;
   theme?: HTMLElement;
-  /** The tool's words for the stale pill, e.g. "restarted · continued in a new tab". */
+  /** No longer shown: a 401 shows the kit's "signed out" pill, and the newer-build notice passes its own text. Kept so tools that set it still type-check. */
   staleText?: string;
 }): BarHandle;
 
