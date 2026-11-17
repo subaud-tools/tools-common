@@ -17,8 +17,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/subaud-tools/tools-common/auth"
 )
 
 // SelfUpdate implements the /dl family download contract:
@@ -103,12 +101,7 @@ func (a *App) fetch(path string) ([]byte, error) {
 		return a.download(a.dlHost + "/dl/" + path)
 	}
 	link, err := a.auth.Link(context.Background(), a.product, path)
-	switch {
-	case errors.Is(err, auth.ErrNotSignedIn):
-		return nil, fmt.Errorf("this machine is not signed in to subaud.tools: run `%s login`", a.name)
-	case errors.Is(err, auth.ErrSignInRefused):
-		return nil, fmt.Errorf("subaud.tools refused this machine's sign-in: run `%s login` to sign in again", a.name)
-	case err != nil:
+	if err != nil {
 		return nil, err
 	}
 	return a.download(link)

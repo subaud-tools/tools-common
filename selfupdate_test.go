@@ -256,7 +256,7 @@ func TestAToolAsksForItsProductsLinks(t *testing.T) {
 	}
 }
 
-func TestAGatedToolWithNoTokenNamesLogin(t *testing.T) {
+func TestAGatedToolWithNoTokenPointsToTheSetupLine(t *testing.T) {
 	files := dlServer(t, "kempt", "0.2.0", nil, "")
 	defer files.Close()
 	links, asked := linksServer(t, files, "kempt", http.StatusOK)
@@ -265,18 +265,18 @@ func TestAGatedToolWithNoTokenNamesLogin(t *testing.T) {
 	if code := a.Dispatch([]string{"update"}, &out, &errw); code != 1 {
 		t.Fatalf("exit %d", code)
 	}
-	if !strings.Contains(errw.String(), "run `kempt login`") || len(*asked) != 0 {
+	if !strings.Contains(errw.String(), "kempt update: This machine isn't signed in to subaud.tools. Get your setup line at https://subaud.tools/account/ (Add or sign in a machine)") || len(*asked) != 0 {
 		t.Fatalf("errw %q, asked %v", errw.String(), *asked)
 	}
 }
 
-func TestAGatedToolWithARefusedTokenNamesLogin(t *testing.T) {
+func TestAGatedToolWithARefusedTokenPointsToTheSetupLine(t *testing.T) {
 	files := dlServer(t, "kempt", "0.2.0", nil, "")
 	defer files.Close()
 	links, _ := linksServer(t, files, "kempt", http.StatusUnauthorized)
 	a := gatedApp(t, true, links, true, filepath.Join(t.TempDir(), "kempt"))
 	_, _, err := a.SelfUpdate(io.Discard, io.Discard)
-	if err == nil || !strings.Contains(err.Error(), "run `kempt login`") {
+	if err == nil || err.Error() != "subaud.tools refused this machine's sign-in. Get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine." {
 		t.Fatalf("err = %v", err)
 	}
 }

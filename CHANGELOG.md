@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## Unreleased
+
+### Changed
+- **Breaking:** login: `login` no longer signs a machine in. The device-code sign-in is gone (`auth.Client.Login`, `auth.Client.LoginWait`, the `pending` file, the `/machine/start` and `/machine/poll` calls, `Client.Sleep`, and `login`'s `--name` and `--wait` flags). `login` now prints `This machine isn't signed in to subaud.tools. Get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine.` and exits 1; any argument is a usage error (exit 2). The setup line from the account page is the one way to sign a machine in.
+- auth: `ErrNotSignedIn` and `ErrSignInRefused` say the same (refused: `subaud.tools refused this machine's sign-in.` then the same pointer), exported as `auth.SetupLine`; `update` on a gated tool returns them as they are instead of naming `<tool> login`. `logout` and `Link` don't change.
+
 ## 0.92.0
 
 ### Changed

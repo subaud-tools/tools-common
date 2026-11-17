@@ -25,7 +25,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/subaud-tools/tools-common/auth"
@@ -86,10 +85,7 @@ type App struct {
 	gated    bool
 	client   *http.Client
 	exePath  func() (string, error)
-	auth     *auth.Client // login and logout; tests point it at a fake service
-	// terminal reports whether login's output is a terminal, so a person
-	// there waits in one run; tests replace it.
-	terminal func(io.Writer) bool
+	auth     *auth.Client // logout and update's links; tests point it at a fake service
 }
 
 // New builds an App, sets dlHost = "https://"+cfg.Domain, and auto-registers
@@ -110,7 +106,6 @@ func New(cfg Config) *App {
 		client:   http.DefaultClient,
 		exePath:  os.Executable,
 		auth:     &auth.Client{},
-		terminal: isTerminal,
 	}
 	a.Register(Command{
 		Name:    "version",
@@ -156,26 +151,16 @@ func New(cfg Config) *App {
 		},
 	})
 	a.Register(Command{
-		Name:     "login",
-		Summary:  "sign this machine in to its subaud.tools account, for every subaud tool on it",
-		Synopsis: "[--name NAME] [--wait]",
-		Help: "At a terminal, signs in in one run: it prints a code to type on https://subaud.tools/account/machine,\n" +
-			"waits while you allow the machine there, then saves its token. When its output is not a terminal (an agent's shell)\n" +
-			"it signs in over two short runs: the first prints the code and exits, the second saves the token once the machine is allowed.\n" +
-			"--wait always waits in one run.\n" +
-			"The token is kept in " + auth.TokenPath() + " (mode 600); $" + auth.TokenEnv + " wins over it.",
-		NewFlags: loginFlags,
+		Name:    "login",
+		Summary: "say how to sign this machine in to its subaud.tools account, for every subaud tool on it",
+		Help: "Signs nothing in: it says where the setup line is (https://subaud.tools/account/, Add or sign in a machine)\n" +
+			"and exits 1. Pasted in a terminal on this machine, the line saves the machine's token in " + auth.TokenPath() + "\n" +
+			"(mode 600); $" + auth.TokenEnv + " wins over it.",
 		Run: func(args []string, out, errw io.Writer) error {
-			fs := loginFlags()
-			fs.SetOutput(errw)
-			if err := fs.Parse(args); err != nil {
-				return err
+			if len(args) > 0 {
+				return UsageError{Msg: "login takes no arguments"}
 			}
-			name := fs.Lookup("name").Value.String()
-			if fs.Lookup("wait").Value.String() == "true" || a.terminal(out) {
-				return a.auth.LoginWait(context.Background(), name, runtime.GOOS, out)
-			}
-			return a.auth.Login(context.Background(), name, runtime.GOOS, out)
+			return auth.ErrNotSignedIn
 		},
 	})
 	a.Register(Command{
@@ -324,25 +309,6 @@ func (a *App) Dispatch(args []string, out, errw io.Writer) int {
 		return 1
 	}
 	return 0
-}
-
-// loginFlags are login's flags; the machine's name defaults to the hostname.
-func loginFlags() *flag.FlagSet {
-	fs := flag.NewFlagSet("login", flag.ContinueOnError)
-	host, _ := os.Hostname()
-	fs.String("name", host, "the name the account page shows for this machine")
-	fs.Bool("wait", false, "wait in this run while the machine is allowed, even when the output is not a terminal")
-	return fs
-}
-
-// isTerminal reports whether w is a terminal (a character device).
-func isTerminal(w io.Writer) bool {
-	f, ok := w.(*os.File)
-	if !ok {
-		return false
-	}
-	info, err := f.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }
 
 // setDLHost overrides the download host; used by tests.
