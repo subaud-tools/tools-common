@@ -1,6 +1,7 @@
 import { test, eq, assert, fixture, blurEl } from './harness.js';
 import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill } from '/_kit/dom.js';
 import { createKeys } from '/_kit/keys.js';
+import { fakeFetch, fakeTimers, flush } from './fakes.js';
 import { initTheme } from '/_kit/theme.js';
 
 const cs = el => getComputedStyle(el);
@@ -413,27 +414,94 @@ test('dom: setLive stale with text is the newer-build notice', () => {
 // Sign in again asks the server for a signed-in tab of this page; the token
 // never comes back to the page.
 test('dom: Sign in again posts /signin with the page and says a tab opened', async () => {
-  const calls = [];
-  const real = globalThis.fetch;
-  globalThis.fetch = (url, init) => { calls.push([url, init]); return Promise.resolve(new Response(null, { status: 204 })); };
-  try {
-    const b = bar({ brand: { name: 'x' } });
-    fixture().append(b.el);
-    b.setLive('stale');
-    b.el.querySelector('button.kit-signin').click();
-    for (let i = 0; i < 5; i++) await Promise.resolve();
-    await new Promise(r => setTimeout(r, 0));
-    eq(calls.length, 1, 'one request');
-    const [url, init] = calls[0];
-    eq([url, init.method, init.headers['Content-Type']], ['/signin', 'POST', 'application/json']);
-    eq(JSON.parse(init.body), { page: location.pathname + location.search + location.hash });
-    const pill = b.el.querySelector('.kit-live');
-    eq(pill.querySelector('button'), null, 'the button is gone');
-    eq(pill.querySelector('.kit-signin-note')?.textContent, 'Opened a signed-in tab. You can close this one.');
-    eq(pill.querySelector('.kit-live-text').textContent, 'signed out', 'still signed out');
-  } finally {
-    globalThis.fetch = real;
+  const f = fakeFetch();
+  f.queue.push(f.text(null, 204));
+  const b = bar({ brand: { name: 'x' }, signIn: { fetch: f.fetch, ...fakeTimers() } });
+  fixture().append(b.el);
+  b.setLive('stale');
+  b.el.querySelector('button.kit-signin').click();
+  await flush();
+  eq(f.calls.length, 1, 'one request');
+  const { url, init } = f.calls[0];
+  eq([url, init.method, init.headers['Content-Type']], ['/signin', 'POST', 'application/json']);
+  eq(JSON.parse(init.body), { page: location.pathname + location.search + location.hash });
+  const pill = b.el.querySelector('.kit-live');
+  eq(pill.querySelector('button'), null, 'the button is gone');
+  eq(pill.querySelector('.kit-signin-note')?.textContent, 'Opened a signed-in tab.');
+  eq(pill.querySelector('.kit-live-text').textContent, 'signed out', 'still signed out');
+});
+
+// After the press the old tab checks /api/poll once a second; the new tab's
+// sign-in sets the cookie for the whole browser.
+function pressed(answers) {
+  const f = fakeFetch();
+  answers = answers(f);
+  const timers = fakeTimers();
+  const seen = { closes: 0, reloads: 0 };
+  f.queue.push(...answers);
+  const b = bar({ brand: { name: 'x' }, signIn: {
+    fetch: f.fetch, setTimeout: timers.setTimeout,
+    close: () => seen.closes++, reload: () => seen.reloads++,
+  } });
+  fixture().append(b.el);
+  b.setLive('stale');
+  b.el.querySelector('button.kit-signin').click();
+  const note = () => b.el.querySelector('.kit-signin-note')?.textContent;
+  return { f, timers, seen, note };
+}
+
+test('dom: Sign in again closes the tab once a check answers 200', async () => {
+  const p = pressed(f => [f.text(null, 204), f.json({ cursor: '1', events: [] })]);
+  await flush();
+  eq([...p.timers.pending.values()].map(t => t.ms), [1000], 'a check in a second');
+  p.timers.tick();
+  await flush();
+  eq(p.f.calls[1].url, '/api/poll');
+  eq(p.f.calls[1].init.credentials, 'same-origin');
+  eq([p.seen.closes, p.seen.reloads], [1, 0], 'closed');
+});
+
+// localweb checks the token before routing, so any /api/ answer but 401
+// means signed in: casebook has no /api/poll and answers 404.
+test('dom: Sign in again counts a 404 check as signed in and closes', async () => {
+  const p = pressed(f => [f.text(null, 204), f.text('not found', 404)]);
+  await flush();
+  p.timers.tick();
+  await flush();
+  eq([p.seen.closes, p.seen.reloads], [1, 0], 'closed');
+});
+
+test('dom: Sign in again reloads when close leaves the page open', async () => {
+  const p = pressed(f => [f.text(null, 204), f.json({ cursor: '1', events: [] })]);
+  await flush();
+  p.timers.tick();
+  await flush();
+  const after = [...p.timers.pending.values()].map(t => t.ms);
+  assert(after.length === 1 && after[0] <= 500, `one short wait after close (${after})`);
+  p.timers.tick();
+  eq([p.seen.closes, p.seen.reloads], [1, 1], 'reloaded');
+});
+
+test('dom: Sign in again stops after a minute of 401s and says to close this tab', async () => {
+  const p = pressed(f => [f.text(null, 204), ...Array.from({ length: 60 }, () => f.text('token required', 401))]);
+  await flush();
+  for (let i = 0; i < 60; i++) {
+    eq(p.note(), 'Opened a signed-in tab.', `still checking at ${i}s`);
+    p.timers.tick();
+    await flush();
   }
+  eq(p.f.calls.length, 61, 'sixty checks');
+  eq(p.note(), 'Opened a signed-in tab. You can close this one.');
+  eq(p.timers.pending.size, 0, 'no more checks');
+  eq([p.seen.closes, p.seen.reloads], [0, 0]);
+});
+
+test('dom: a failed Sign in again shows the failure and starts no checks', async () => {
+  const p = pressed(f => [f.text('', 500)]);
+  await flush();
+  eq(p.note(), 'Could not open a tab (HTTP 500). Ask your session for a link.');
+  eq(p.timers.pending.size, 0, 'no checks');
+  eq(p.f.calls.length, 1);
 });
 
 test('dom: the app grid scrolls below its minimum width', () => {

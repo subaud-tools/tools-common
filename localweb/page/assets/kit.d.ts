@@ -238,6 +238,8 @@ export function bar(o: {
   theme?: HTMLElement;
   /** No longer shown: a 401 shows the kit's "signed out" pill, and the newer-build notice passes its own text. Kept so tools that set it still type-check. */
   staleText?: string;
+  /** Swaps what Sign in again uses after its press (tests): the requests, the one-second checks, and closing or reloading the tab. */
+  signIn?: { fetch?: typeof fetch; setTimeout?: (fn: () => void, ms: number) => unknown; close?(): void; reload?(): void };
 }): BarHandle;
 
 export interface Chip {
