@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -244,7 +245,7 @@ func (s *Server) serveSignIn(w http.ResponseWriter, r *http.Request) {
 
 // pageURL parses a page's own path, query and fragment, refusing anything
 // that is not a path on this server ("//host", "/\\host", a scheme, or the
-// same encoded as %2F or %5C).
+// same encoded as %2F or %5C), and the API and /signin itself.
 func pageURL(page string) (*url.URL, bool) {
 	if !strings.HasPrefix(page, "/") || strings.HasPrefix(page, "//") || strings.HasPrefix(page, "/\\") {
 		return nil, false
@@ -255,6 +256,11 @@ func pageURL(page string) (*url.URL, bool) {
 	}
 	// Decoded, %2F and %5C could make "//host" or "/\\host" of the path.
 	if strings.HasPrefix(u.Path, "//") || strings.Contains(u.Path, "\\") {
+		return nil, false
+	}
+	// Not the API nor /signin: a forged Origin must not drive a signed-in
+	// browser GET at either.
+	if p := strings.ToLower(path.Clean(u.Path)); p == "/api" || strings.HasPrefix(p, "/api/") || p == "/signin" {
 		return nil, false
 	}
 	return u, true

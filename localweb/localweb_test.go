@@ -398,6 +398,24 @@ func TestSignInRefusesAPageOffThisServer(t *testing.T) {
 	}
 }
 
+// A forged Origin must not make a signed-in browser GET the API, nor loop
+// back into /signin.
+func TestSignInRefusesTheAPIAndItself(t *testing.T) {
+	var o opener
+	s := startWithOpener(t, o.open)
+	for _, page := range []string{"/api/", "/api/stop", "/api/x?y=1", "/API/x", "/%61pi/x", "/signin", "/signin?x=1", "/signin/", "/./api/x", "/a/../api/x"} {
+		if r := signin(t, s, "POST", "http://"+s.Addr(), `{"page":"`+page+`"}`); r.Status != http.StatusBadRequest {
+			t.Errorf("page %q: status %d", page, r.Status)
+		}
+	}
+	if got := o.opened(); len(got) != 0 {
+		t.Fatalf("opened %q", got)
+	}
+	if r := signin(t, s, "POST", "http://"+s.Addr(), `{"page":"/apis/x"}`); r.Status != http.StatusNoContent {
+		t.Fatalf("a page merely starting /api: status %d", r.Status)
+	}
+}
+
 func TestSignInGetOpensNothing(t *testing.T) {
 	var o opener
 	s := startWithOpener(t, o.open)
