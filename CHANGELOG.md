@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.92.0
+
+### Changed
+- kit: after a successful Sign in again, the pill reads `Opened a signed-in tab.` and the page checks `GET /api/poll` once a second for up to a minute; the new tab's sign-in sets the cookie for the whole browser. On the first 2xx the page calls `window.close()`, and reloads when it is still open a moment later (the browser refused, or it is inside a frame). After a minute with no 2xx the line reads `Opened a signed-in tab. You can close this one.` A failed press shows its failure line and checks nothing. `bar`'s `signIn` option swaps the fetch, timer, close and reload it uses (tests).
+
 ## 0.91.0
 
 ### Added

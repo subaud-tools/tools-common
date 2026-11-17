@@ -105,25 +105,60 @@ export function bar(o) {
   const guideControl = h('button', { class: 'kit-ctl kit-guide-btn', type: 'button', onclick: () => void openGuide() }, 'Guide');
   // Sign in again asks the server (localweb's POST /signin) to open a
   // signed-in tab of this page; the token never comes back to the page.
+  // o.signIn swaps fetch, setTimeout, close and reload (tests).
+  const env = o.signIn || {};
+  const doFetch = env.fetch || ((...a) => fetch(...a));
+  const setT = env.setTimeout || ((f, ms) => setTimeout(f, ms));
+  const closeTab = env.close || (() => window.close());
+  const reload = env.reload || (() => location.reload());
   function signInButton() {
     const btn = h('button', { class: 'kit-signin', type: 'button' }, 'Sign in again');
     btn.addEventListener('click', async () => {
       btn.disabled = true;
-      let line = 'Opened a signed-in tab. You can close this one.';
+      let line = 'Opened a signed-in tab.';
+      let opened = false;
       try {
-        const res = await fetch('/signin', {
+        const res = await doFetch('/signin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
           body: JSON.stringify({ page: location.pathname + location.search + location.hash }),
         });
         if (!res.ok) line = `Could not open a tab (HTTP ${res.status}). Ask your session for a link.`;
+        else opened = true;
       } catch {
         line = 'Could not reach the server. Ask your session for a link.';
       }
-      btn.replaceWith(h('span', { class: 'kit-signin-note' }, line));
+      const note = h('span', { class: 'kit-signin-note' }, line);
+      btn.replaceWith(note);
+      if (opened) waitForSignIn(note);
     });
     return btn;
+  }
+  // The new tab's sign-in sets the cookie for the whole browser, so once a
+  // poll here answers 2xx this tab is signed in too: it closes when the
+  // browser allows (one page of history, not in a frame), else reloads. It
+  // checks once a second for a minute, then says to close it.
+  function waitForSignIn(note) {
+    let checks = 0;
+    const check = async () => {
+      checks++;
+      let ok = false;
+      try {
+        ok = (await doFetch('/api/poll', { credentials: 'same-origin' })).ok;
+      } catch {
+        // the server is away for now: check again
+      }
+      if (ok) {
+        closeTab();
+        setT(reload, 300);
+      } else if (checks >= 60) {
+        note.textContent = 'Opened a signed-in tab. You can close this one.';
+      } else {
+        setT(check, 1000);
+      }
+    };
+    setT(check, 1000);
   }
   const primary = h('button', { class: 'kit-primary', type: 'button', hidden: true });
   let run = null;
