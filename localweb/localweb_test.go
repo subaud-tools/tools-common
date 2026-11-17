@@ -108,6 +108,22 @@ func TestTokenQueryRedirectsAndSetsCookie(t *testing.T) {
 	}
 }
 
+// An encoded slash or backslash must not turn the sign-in redirect into
+// //evil.example, which a browser follows off this host.
+func TestTokenRedirectStaysOnThisHost(t *testing.T) {
+	s, _ := start(t, 0)
+	for _, path := range []string{"/%2Fevil.example/", "/%5Cevil.example/", "/%2F%5Cevil.example/"} {
+		r := do(t, s, "GET", path+"?t="+s.Token+"&x=1", nil)
+		loc := r.Header.Get("Location")
+		if r.Status != http.StatusSeeOther || !strings.HasPrefix(loc, "/") || strings.HasPrefix(loc, "//") || strings.Contains(loc, "\\") {
+			t.Errorf("%s: status %d location %q", path, r.Status, loc)
+		}
+		if want := "/evil.example/?x=1"; loc != want {
+			t.Errorf("%s: location %q, want %q", path, loc, want)
+		}
+	}
+}
+
 func port(t *testing.T, s *Server) string {
 	t.Helper()
 	_, p, err := net.SplitHostPort(s.Addr())
@@ -372,7 +388,7 @@ func TestSignInRefusesAnotherOrigin(t *testing.T) {
 func TestSignInRefusesAPageOffThisServer(t *testing.T) {
 	var o opener
 	s := startWithOpener(t, o.open)
-	for _, body := range []string{`{"page":"p/3"}`, `{"page":"//evil.example/"}`, `{"page":"/\\evil.example"}`, `{"page":""}`, `{"page":"http://evil.example/"}`, `not json`, ``} {
+	for _, body := range []string{`{"page":"p/3"}`, `{"page":"//evil.example/"}`, `{"page":"/\\evil.example"}`, `{"page":""}`, `{"page":"http://evil.example/"}`, `{"page":"/%2Fevil.example/"}`, `{"page":"/%5Cevil.example"}`, `{"page":"/a/%5Cb"}`, `not json`, ``} {
 		if r := signin(t, s, "POST", "http://"+s.Addr(), body); r.Status != http.StatusBadRequest {
 			t.Errorf("body %q: status %d", body, r.Status)
 		}

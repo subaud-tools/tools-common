@@ -154,7 +154,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: s.cookieName(), Value: s.Token, Path: "/", MaxAge: signInAge, HttpOnly: true, SameSite: http.SameSiteStrictMode})
 		q := r.URL.Query()
 		q.Del("t")
-		loc := r.URL.Path
+		// The decoded path may start "//" or "/\\" (from %2F or %5C), which a
+		// browser reads as another host: keep the redirect on this one.
+		loc := "/" + strings.TrimLeft(r.URL.Path, "/\\")
 		if enc := q.Encode(); enc != "" {
 			loc += "?" + enc
 		}
@@ -241,13 +243,18 @@ func (s *Server) serveSignIn(w http.ResponseWriter, r *http.Request) {
 }
 
 // pageURL parses a page's own path, query and fragment, refusing anything
-// that is not a path on this server ("//host", "/\\host", a scheme).
+// that is not a path on this server ("//host", "/\\host", a scheme, or the
+// same encoded as %2F or %5C).
 func pageURL(page string) (*url.URL, bool) {
 	if !strings.HasPrefix(page, "/") || strings.HasPrefix(page, "//") || strings.HasPrefix(page, "/\\") {
 		return nil, false
 	}
 	u, err := url.Parse(page)
 	if err != nil || u.Scheme != "" || u.Host != "" || u.User != nil || !strings.HasPrefix(u.Path, "/") {
+		return nil, false
+	}
+	// Decoded, %2F and %5C could make "//host" or "/\\host" of the path.
+	if strings.HasPrefix(u.Path, "//") || strings.Contains(u.Path, "\\") {
 		return nil, false
 	}
 	return u, true
