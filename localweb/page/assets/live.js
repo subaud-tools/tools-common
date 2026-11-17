@@ -37,8 +37,10 @@
 // event names as forward asks to come forward: it focuses its window and, in
 // a frame (proj's split page), posts {type: "kit.forward", tool} to its parent.
 //
-// A 401 from the poll means the server restarted and the token is gone:
-// status becomes "stale" and the client stops for good (no stream, no polls).
+// A 401 from the poll means this page's cookie no longer matches the token
+// (it is kept across restarts, so it changed or the cookie went): status
+// becomes "stale" and the client stops for good (no stream, no polls). The
+// bar's setLive('stale') with no text shows it signed out, with Sign in again.
 //
 // The client closes a broken stream itself and reopens it with the newest
 // cursor, rather than letting the browser retry with a stale Last-Event-ID.

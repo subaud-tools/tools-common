@@ -167,6 +167,15 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-live[data-state="down"] i { background: var(--kit-danger); }
 .kit-live[data-state="stale"] { color: var(--kit-muted); }
 .kit-live[data-state="stale"] i { background: var(--kit-muted); }
+/* signed out: the pill holds its Sign in again button, then the line after the press. */
+.kit-live.kit-signedout { color: var(--kit-danger); border-color: var(--kit-danger); }
+.kit-live.kit-signedout i { background: var(--kit-danger); }
+.kit-signin {
+  font: 700 12px var(--kit-mono); background: var(--kit-danger); color: var(--kit-bg);
+  border: 0; border-radius: 4px; padding: 2px 10px; cursor: pointer;
+}
+.kit-signin:disabled { opacity: .6; cursor: default; }
+.kit-signin-note { color: var(--kit-muted); font-size: 12px; }
 .kit-primary {
   font: 700 13px var(--kit-mono); background: var(--kit-signal); color: var(--kit-signal-ink);
   border: 0; border-radius: 6px; padding: 7px 26px; cursor: pointer;

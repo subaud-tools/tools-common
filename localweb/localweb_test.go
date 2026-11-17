@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 )
@@ -104,6 +105,22 @@ func TestTokenQueryRedirectsAndSetsCookie(t *testing.T) {
 	}
 	if r := do(t, s, "GET", "/board?t=wrong", nil); r.Status == http.StatusSeeOther {
 		t.Fatal("wrong token must not set a cookie")
+	}
+}
+
+// An encoded slash or backslash must not turn the sign-in redirect into
+// //evil.example, which a browser follows off this host.
+func TestTokenRedirectStaysOnThisHost(t *testing.T) {
+	s, _ := start(t, 0)
+	for _, path := range []string{"/%2Fevil.example/", "/%5Cevil.example/", "/%2F%5Cevil.example/"} {
+		r := do(t, s, "GET", path+"?t="+s.Token+"&x=1", nil)
+		loc := r.Header.Get("Location")
+		if r.Status != http.StatusSeeOther || !strings.HasPrefix(loc, "/") || strings.HasPrefix(loc, "//") || strings.Contains(loc, "\\") {
+			t.Errorf("%s: status %d location %q", path, r.Status, loc)
+		}
+		if want := "/evil.example/?x=1"; loc != want {
+			t.Errorf("%s: location %q, want %q", path, loc, want)
+		}
 	}
 }
 
@@ -286,5 +303,142 @@ func TestAGivenTokenIsUsedInsteadOfANewOne(t *testing.T) {
 	}
 	if _, err := Start(ctx, Config{Tool: "lwtest", Assets: fstest.MapFS{}, Token: "short"}); err == nil {
 		t.Fatal("a weak token was accepted")
+	}
+}
+
+// opener records the URLs /signin asked it to open.
+type opener struct {
+	mu   sync.Mutex
+	urls []string
+}
+
+func (o *opener) open(u string) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.urls = append(o.urls, u)
+	return nil
+}
+
+func (o *opener) opened() []string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return append([]string(nil), o.urls...)
+}
+
+func startWithOpener(t *testing.T, open func(string) error) *Server {
+	t.Helper()
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	ctx, cancel := context.WithCancel(context.Background())
+	s, err := Start(ctx, Config{Tool: "lwtest", Assets: fstest.MapFS{"index.html": {Data: []byte("page")}}, Open: open})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { cancel(); _ = s.Wait() })
+	return s
+}
+
+func signin(t *testing.T, s *Server, method, origin, body string) result {
+	t.Helper()
+	return do(t, s, method, "/signin", func(q *http.Request) {
+		if origin != "" {
+			q.Header.Set("Origin", origin)
+		}
+		if body != "" {
+			q.Body = io.NopCloser(strings.NewReader(body))
+			q.ContentLength = int64(len(body))
+			q.Header.Set("Content-Type", "application/json")
+		}
+	})
+}
+
+// A signed-out page asks for a signed-in tab of itself: the server opens the
+// page with t= in the browser, and the token never goes back to the caller.
+func TestSignInOpensThePageWithTheToken(t *testing.T) {
+	var o opener
+	s := startWithOpener(t, o.open)
+	r := signin(t, s, "POST", "http://"+s.Addr(), `{"page":"/p/3?x=1#/a"}`)
+	if r.Status != http.StatusNoContent {
+		t.Fatalf("status %d %q", r.Status, r.Body)
+	}
+	if strings.Contains(r.Body, s.Token) {
+		t.Fatal("the token is in the response body")
+	}
+	if r.Header.Get("Set-Cookie") != "" || len(r.Cookies) != 0 {
+		t.Fatalf("a cookie was set: %v", r.Header["Set-Cookie"])
+	}
+	want := "http://" + s.Addr() + "/p/3?x=1&t=" + s.Token + "#/a"
+	if got := o.opened(); len(got) != 1 || got[0] != want {
+		t.Fatalf("opened %q, want [%q]", got, want)
+	}
+}
+
+func TestSignInRefusesAnotherOrigin(t *testing.T) {
+	var o opener
+	s := startWithOpener(t, o.open)
+	for _, origin := range []string{"", "http://evil.example", "http://localhost:" + port(t, s), "https://" + s.Addr(), "null"} {
+		if r := signin(t, s, "POST", origin, `{"page":"/"}`); r.Status != http.StatusForbidden {
+			t.Errorf("origin %q: status %d", origin, r.Status)
+		}
+	}
+	if got := o.opened(); len(got) != 0 {
+		t.Fatalf("opened %q", got)
+	}
+}
+
+func TestSignInRefusesAPageOffThisServer(t *testing.T) {
+	var o opener
+	s := startWithOpener(t, o.open)
+	for _, body := range []string{`{"page":"p/3"}`, `{"page":"//evil.example/"}`, `{"page":"/\\evil.example"}`, `{"page":""}`, `{"page":"http://evil.example/"}`, `{"page":"/%2Fevil.example/"}`, `{"page":"/%5Cevil.example"}`, `{"page":"/a/%5Cb"}`, `not json`, ``} {
+		if r := signin(t, s, "POST", "http://"+s.Addr(), body); r.Status != http.StatusBadRequest {
+			t.Errorf("body %q: status %d", body, r.Status)
+		}
+	}
+	if got := o.opened(); len(got) != 0 {
+		t.Fatalf("opened %q", got)
+	}
+}
+
+// A forged Origin must not make a signed-in browser GET the API, nor loop
+// back into /signin.
+func TestSignInRefusesTheAPIAndItself(t *testing.T) {
+	var o opener
+	s := startWithOpener(t, o.open)
+	for _, page := range []string{"/api/", "/api/stop", "/api/x?y=1", "/API/x", "/%61pi/x", "/signin", "/signin?x=1", "/signin/", "/./api/x", "/a/../api/x"} {
+		if r := signin(t, s, "POST", "http://"+s.Addr(), `{"page":"`+page+`"}`); r.Status != http.StatusBadRequest {
+			t.Errorf("page %q: status %d", page, r.Status)
+		}
+	}
+	if got := o.opened(); len(got) != 0 {
+		t.Fatalf("opened %q", got)
+	}
+	if r := signin(t, s, "POST", "http://"+s.Addr(), `{"page":"/apis/x"}`); r.Status != http.StatusNoContent {
+		t.Fatalf("a page merely starting /api: status %d", r.Status)
+	}
+}
+
+func TestSignInGetOpensNothing(t *testing.T) {
+	var o opener
+	s := startWithOpener(t, o.open)
+	if r := signin(t, s, "GET", "http://"+s.Addr(), ""); r.Status == http.StatusNoContent {
+		t.Fatalf("GET status %d", r.Status)
+	}
+	if got := o.opened(); len(got) != 0 {
+		t.Fatalf("opened %q", got)
+	}
+}
+
+// With no opener of the tool's, Sign in again uses the system opener, so a
+// tool that calls Start itself (diazo, casebook) gets it with no change.
+func TestSignInWithNoOpenerUsesTheSystemOpener(t *testing.T) {
+	var o opener
+	old := openBrowser
+	openBrowser = o.open
+	t.Cleanup(func() { openBrowser = old })
+	s := startWithOpener(t, nil)
+	if r := signin(t, s, "POST", "http://"+s.Addr(), `{"page":"/"}`); r.Status != http.StatusNoContent {
+		t.Fatalf("status %d", r.Status)
+	}
+	if got, want := o.opened(), "http://"+s.Addr()+"/?t="+s.Token; len(got) != 1 || got[0] != want {
+		t.Fatalf("opened %q, want [%q]", got, want)
 	}
 }

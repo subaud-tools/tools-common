@@ -4,6 +4,15 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.91.0
+
+### Added
+- localweb: `POST /signin` opens a signed-in tab of a signed-out page. It needs the page's own Origin, takes the page's path, and calls `Config.Open` (the system opener when nil) with that page and `t=<token>`; the token never appears in a response or a cookie. It refuses a page off this host (including encoded `//` and backslashes), under `/api/`, or `/signin` itself. pageserve passes `Options.Open`, else the tool's `Commands.Open`, else the system opener.
+- kit: a 401 (`setLive('stale')` with no text) now shows `signed out` with a Sign in again button, whatever the tool's staleText; after the press it says a signed-in tab opened. Since the token is kept across restarts, a 401 means the page's sign-in no longer matches, not that the server restarted. live() still reports `stale` on a 401; the newer-build notice (`setLive('stale', text)`) is unchanged.
+
+### Fixed
+- localweb: the `?t=` sign-in redirect can no longer point at another host when the path starts with an encoded slash or backslash.
+
 ## 0.90.0
 
 ### Changed

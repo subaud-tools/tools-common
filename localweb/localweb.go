@@ -9,12 +9,15 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -22,6 +25,9 @@ import (
 
 	tools "github.com/subaud-tools/tools-common"
 )
+
+// openBrowser is /signin's opener when Config.Open is nil; tests replace it.
+var openBrowser = OpenBrowser
 
 // TokenHeader is how non-browser clients (CLI, channel process) authenticate.
 const TokenHeader = "X-Local-Token" //nolint:gosec // G101: an HTTP header name, not a credential
@@ -38,6 +44,9 @@ type Config struct {
 	// Token, when set, is used instead of a new one, so a tool that keeps it
 	// across restarts keeps its open tabs working. 64 hex characters.
 	Token string
+	// Open opens a URL in the user's browser: POST /signin calls it with the
+	// signed-out page's own URL and t=<token>. nil: OpenBrowser.
+	Open func(url string) error
 }
 
 // Server is a running local page server.
@@ -146,12 +155,18 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: s.cookieName(), Value: s.Token, Path: "/", MaxAge: signInAge, HttpOnly: true, SameSite: http.SameSiteStrictMode})
 		q := r.URL.Query()
 		q.Del("t")
-		loc := r.URL.Path
+		// The decoded path may start "//" or "/\\" (from %2F or %5C), which a
+		// browser reads as another host: keep the redirect on this one.
+		loc := "/" + strings.TrimLeft(r.URL.Path, "/\\")
 		if enc := q.Encode(); enc != "" {
 			loc += "?" + enc
 		}
 		//nolint:gosec // G710: loc is this request's own path, a same-origin relative redirect
 		http.Redirect(w, r, loc, http.StatusSeeOther)
+		return
+	}
+	if r.URL.Path == "/signin" && r.Method == http.MethodPost {
+		s.serveSignIn(w, r)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/") {
@@ -185,6 +200,82 @@ func (s *Server) serveAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.cfg.API.ServeHTTP(w, r)
+}
+
+// serveSignIn is POST /signin {"page": "/p/3?x=1"}: a page whose cookie no
+// longer matches the token asks for a signed-in tab of itself. It takes no
+// token; only the page's own Origin may ask, and the token goes only to the
+// browser Config.Open starts, never into this response or a cookie, since a
+// local program can forge Origin.
+func (s *Server) serveSignIn(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Origin") != "http://"+r.Host {
+		http.Error(w, "cross-origin sign-in refused", http.StatusForbidden)
+		return
+	}
+	var body struct {
+		Page string `json:"page"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&body); err != nil {
+		http.Error(w, "body must be {\"page\": \"/...\"}", http.StatusBadRequest)
+		return
+	}
+	u, ok := pageURL(body.Page)
+	if !ok {
+		http.Error(w, "page must be a path on this server", http.StatusBadRequest)
+		return
+	}
+	q := withoutToken(u.RawQuery)
+	if q != "" {
+		q += "&"
+	}
+	open := "http://" + r.Host + u.EscapedPath() + "?" + q + "t=" + s.Token
+	if u.Fragment != "" {
+		open += "#" + u.EscapedFragment()
+	}
+	opener := s.cfg.Open
+	if opener == nil {
+		opener = openBrowser
+	}
+	if err := opener(open); err != nil {
+		http.Error(w, "the browser did not open", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// pageURL parses a page's own path, query and fragment, refusing anything
+// that is not a path on this server ("//host", "/\\host", a scheme, or the
+// same encoded as %2F or %5C), and the API and /signin itself.
+func pageURL(page string) (*url.URL, bool) {
+	if !strings.HasPrefix(page, "/") || strings.HasPrefix(page, "//") || strings.HasPrefix(page, "/\\") {
+		return nil, false
+	}
+	u, err := url.Parse(page)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.User != nil || !strings.HasPrefix(u.Path, "/") {
+		return nil, false
+	}
+	// Decoded, %2F and %5C could make "//host" or "/\\host" of the path.
+	if strings.HasPrefix(u.Path, "//") || strings.Contains(u.Path, "\\") {
+		return nil, false
+	}
+	// Not the API nor /signin: a forged Origin must not drive a signed-in
+	// browser GET at either.
+	if p := strings.ToLower(path.Clean(u.Path)); p == "/api" || strings.HasPrefix(p, "/api/") || p == "/signin" {
+		return nil, false
+	}
+	return u, true
+}
+
+// withoutToken drops any t= from a raw query, keeping the rest as written.
+func withoutToken(raw string) string {
+	var kept []string
+	for _, p := range strings.Split(raw, "&") {
+		if p == "" || p == "t" || strings.HasPrefix(p, "t=") {
+			continue
+		}
+		kept = append(kept, p)
+	}
+	return strings.Join(kept, "&")
 }
 
 func (s *Server) tokenOK(t string) bool {

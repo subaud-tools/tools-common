@@ -298,18 +298,27 @@ test('dom: a lost cursor stays near where it was', () => {
   eq(l.current(), 2, 'cursor keeps its index when its row vanished');
 });
 
-test('dom: bar stale pill and status tone', () => {
+// A 401 means this page's cookie no longer matches the token (it is kept
+// across restarts): the pill says signed out in the kit's words, whatever the
+// tool's staleText, and offers Sign in again.
+test('dom: bar signed-out pill and status tone', () => {
   const b = bar({ brand: { name: 'x' }, staleText: 'restarted · continued in a new tab' });
   fixture().append(b.el);
-  b.setLive('stale');
   const pill = b.el.querySelector('.kit-live');
-  eq([pill.dataset.state, pill.textContent], ['stale', 'restarted · continued in a new tab']);
+  for (const text of [undefined, null]) {
+    const s = 'stale';
+    b.setLive('live');
+    b.setLive(s, text);
+    eq([pill.dataset.state, pill.querySelector('.kit-live-text')?.textContent], ['stale', 'signed out'], `setLive(${s}, ${text})`);
+    assert(pill.classList.contains('kit-signedout'), 'signed-out look');
+    const btn = pill.querySelector('button.kit-signin');
+    assert(btn && btn.textContent === 'Sign in again', `Sign in again after setLive(${s}, ${text})`);
+    assert(b.el.contains(btn), 'the button is in the bar');
+  }
   b.setLive('down', 'offline · 3 queued');
   eq(pill.textContent, 'offline · 3 queued', 'text override');
+  assert(!pill.classList.contains('kit-signedout'), 'signed-out look cleared');
   eq(bar({ brand: { name: 'y' } }).el.querySelector('.kit-live').hidden, true);
-  const plain = bar({ brand: { name: 'z' } });
-  plain.setLive('stale');
-  eq(plain.el.querySelector('.kit-live').textContent, 'stale', 'default stale text');
 
   initTheme('dom').set('light');
   b.setStatus('offline · 3 queued', { tone: 'danger' });
@@ -382,13 +391,49 @@ test('dom: app layout with a rail', () => {
 test('dom: setLive labels without a staleText', () => {
   const b = bar({ brand: { name: 'x' } });
   const pill = b.el.querySelector('.kit-live');
-  for (const [s, want] of [['live', 'live'], ['polling', 'polling'], ['down', 'offline'], ['stale', 'stale']]) {
+  for (const [s, want] of [['live', 'live'], ['polling', 'polling'], ['down', 'offline']]) {
     b.setLive(s);
     eq(pill.textContent, want, s);
   }
   const t = bar({ brand: { name: 'y' }, staleText: 'restarted' });
   t.setLive('live');
   eq(t.el.querySelector('.kit-live').textContent, 'live', 'staleText only for stale');
+});
+
+// The newer-build notice keeps the tool's text and offers no sign-in.
+test('dom: setLive stale with text is the newer-build notice', () => {
+  const b = bar({ brand: { name: 'x' }, staleText: 'restarted' });
+  b.setLive('stale', 'a newer x is installed');
+  const pill = b.el.querySelector('.kit-live');
+  eq([pill.dataset.state, pill.textContent], ['stale', 'a newer x is installed']);
+  eq(pill.querySelector('button'), null, 'no Sign in again');
+  assert(!pill.classList.contains('kit-signedout'), 'not the signed-out look');
+});
+
+// Sign in again asks the server for a signed-in tab of this page; the token
+// never comes back to the page.
+test('dom: Sign in again posts /signin with the page and says a tab opened', async () => {
+  const calls = [];
+  const real = globalThis.fetch;
+  globalThis.fetch = (url, init) => { calls.push([url, init]); return Promise.resolve(new Response(null, { status: 204 })); };
+  try {
+    const b = bar({ brand: { name: 'x' } });
+    fixture().append(b.el);
+    b.setLive('stale');
+    b.el.querySelector('button.kit-signin').click();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    await new Promise(r => setTimeout(r, 0));
+    eq(calls.length, 1, 'one request');
+    const [url, init] = calls[0];
+    eq([url, init.method, init.headers['Content-Type']], ['/signin', 'POST', 'application/json']);
+    eq(JSON.parse(init.body), { page: location.pathname + location.search + location.hash });
+    const pill = b.el.querySelector('.kit-live');
+    eq(pill.querySelector('button'), null, 'the button is gone');
+    eq(pill.querySelector('.kit-signin-note')?.textContent, 'Opened a signed-in tab. You can close this one.');
+    eq(pill.querySelector('.kit-live-text').textContent, 'signed out', 'still signed out');
+  } finally {
+    globalThis.fetch = real;
+  }
 });
 
 test('dom: the app grid scrolls below its minimum width', () => {

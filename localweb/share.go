@@ -20,7 +20,9 @@ func CanShare() bool { return runtime.GOOS == "darwin" }
 // pasting into a chat attaches it. The path is an argument to the script,
 // never part of its text (from galley).
 func PutFile(path string) error {
-	out, err := exec.Command(osascript,
+	// G702: gosec traces /signin's request into Config.Open, a func value it
+	// can't resolve; nothing passes a request here, and path is an argument.
+	out, err := exec.Command(osascript, //nolint:gosec // G702: see above
 		"-e", "on run argv",
 		"-e", "set the clipboard to (POSIX file (item 1 of argv))",
 		"-e", "end run",

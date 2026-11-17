@@ -31,7 +31,7 @@ export function h(tag, attrs, ...children) {
 
 const count = n => (n === undefined || n === null || n === '' ? null : h('span', { class: 'kit-n' }, String(n)));
 
-const LIVE_TEXT = { live: 'live', polling: 'polling', down: 'offline', stale: 'stale' };
+const LIVE_TEXT = { live: 'live', polling: 'polling', down: 'offline' };
 
 // alsoOpen is the bar's "also open" area: other work a click away (diazo's
 // other plans). It is one button of fixed width, so the bar never moves as
@@ -103,6 +103,28 @@ export function bar(o) {
   const themeControl = o.theme || h('button', { class: 'kit-ctl', type: 'button' }, 'theme');
   // Guide is on every page, left of the theme control (guide.js).
   const guideControl = h('button', { class: 'kit-ctl kit-guide-btn', type: 'button', onclick: () => void openGuide() }, 'Guide');
+  // Sign in again asks the server (localweb's POST /signin) to open a
+  // signed-in tab of this page; the token never comes back to the page.
+  function signInButton() {
+    const btn = h('button', { class: 'kit-signin', type: 'button' }, 'Sign in again');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      let line = 'Opened a signed-in tab. You can close this one.';
+      try {
+        const res = await fetch('/signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ page: location.pathname + location.search + location.hash }),
+        });
+        if (!res.ok) line = `Could not open a tab (HTTP ${res.status}). Ask your session for a link.`;
+      } catch {
+        line = 'Could not reach the server. Ask your session for a link.';
+      }
+      btn.replaceWith(h('span', { class: 'kit-signin-note' }, line));
+    });
+    return btn;
+  }
   const primary = h('button', { class: 'kit-primary', type: 'button', hidden: true });
   let run = null;
   primary.addEventListener('click', () => run && run());
@@ -138,8 +160,16 @@ export function bar(o) {
     setLive(s, text) {
       pill.hidden = false;
       pill.dataset.state = s;
-      const fallback = s === 'stale' && o.staleText ? o.staleText : LIVE_TEXT[s] || s;
-      pill.replaceChildren(h('i'), text ?? fallback);
+      // setLive('stale') with no text is what every tool's onStale (and
+      // onStatus, on live()'s stale) calls on a 401: the page is signed out,
+      // whatever the tool's staleText says.
+      const signedOut = s === 'stale' && text == null;
+      pill.classList.toggle('kit-signedout', signedOut);
+      if (signedOut) {
+        pill.replaceChildren(h('i'), h('span', { class: 'kit-live-text' }, 'signed out'), signInButton());
+        return;
+      }
+      pill.replaceChildren(h('i'), text ?? (LIVE_TEXT[s] || s));
     },
     setPrimary(p) {
       run = p ? p.run : null;
