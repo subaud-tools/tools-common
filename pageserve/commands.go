@@ -52,7 +52,7 @@ type Commands struct {
 	SkillName string
 	// Open opens the page for `<tool> serve` instead of the system browser
 	// opener, so a tool's own switch (casebook's CASEBOOK_NO_BROWSER) covers
-	// it. nil: the system opener.
+	// it, and Run's Sign in again tab too. nil: the system opener.
 	Open func(url string) error
 	// Around, when set, runs the channel: it calls run, which is ch.Run, and
 	// its answer is the command's, so a tool can announce presence around it.
@@ -143,7 +143,7 @@ func (c Commands) ServeCommand(h Help) tools.Command {
 		if c.Foreground || boolFlag(fs, "foreground") {
 			sctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 			defer stop()
-			return c.Serve(sctx, port, errw)
+			return c.Serve(withOpener(sctx, c.Open), port, errw)
 		}
 		var fragment, note string
 		if c.Page != nil {

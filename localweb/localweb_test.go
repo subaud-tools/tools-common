@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 )
@@ -286,5 +287,115 @@ func TestAGivenTokenIsUsedInsteadOfANewOne(t *testing.T) {
 	}
 	if _, err := Start(ctx, Config{Tool: "lwtest", Assets: fstest.MapFS{}, Token: "short"}); err == nil {
 		t.Fatal("a weak token was accepted")
+	}
+}
+
+// opener records the URLs /signin asked it to open.
+type opener struct {
+	mu   sync.Mutex
+	urls []string
+}
+
+func (o *opener) open(u string) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.urls = append(o.urls, u)
+	return nil
+}
+
+func (o *opener) opened() []string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return append([]string(nil), o.urls...)
+}
+
+func startWithOpener(t *testing.T, open func(string) error) *Server {
+	t.Helper()
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	ctx, cancel := context.WithCancel(context.Background())
+	s, err := Start(ctx, Config{Tool: "lwtest", Assets: fstest.MapFS{"index.html": {Data: []byte("page")}}, Open: open})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { cancel(); _ = s.Wait() })
+	return s
+}
+
+func signin(t *testing.T, s *Server, method, origin, body string) result {
+	t.Helper()
+	return do(t, s, method, "/signin", func(q *http.Request) {
+		if origin != "" {
+			q.Header.Set("Origin", origin)
+		}
+		if body != "" {
+			q.Body = io.NopCloser(strings.NewReader(body))
+			q.ContentLength = int64(len(body))
+			q.Header.Set("Content-Type", "application/json")
+		}
+	})
+}
+
+// A signed-out page asks for a signed-in tab of itself: the server opens the
+// page with t= in the browser, and the token never goes back to the caller.
+func TestSignInOpensThePageWithTheToken(t *testing.T) {
+	var o opener
+	s := startWithOpener(t, o.open)
+	r := signin(t, s, "POST", "http://"+s.Addr(), `{"page":"/p/3?x=1#/a"}`)
+	if r.Status != http.StatusNoContent {
+		t.Fatalf("status %d %q", r.Status, r.Body)
+	}
+	if strings.Contains(r.Body, s.Token) {
+		t.Fatal("the token is in the response body")
+	}
+	if r.Header.Get("Set-Cookie") != "" || len(r.Cookies) != 0 {
+		t.Fatalf("a cookie was set: %v", r.Header["Set-Cookie"])
+	}
+	want := "http://" + s.Addr() + "/p/3?x=1&t=" + s.Token + "#/a"
+	if got := o.opened(); len(got) != 1 || got[0] != want {
+		t.Fatalf("opened %q, want [%q]", got, want)
+	}
+}
+
+func TestSignInRefusesAnotherOrigin(t *testing.T) {
+	var o opener
+	s := startWithOpener(t, o.open)
+	for _, origin := range []string{"", "http://evil.example", "http://localhost:" + port(t, s), "https://" + s.Addr(), "null"} {
+		if r := signin(t, s, "POST", origin, `{"page":"/"}`); r.Status != http.StatusForbidden {
+			t.Errorf("origin %q: status %d", origin, r.Status)
+		}
+	}
+	if got := o.opened(); len(got) != 0 {
+		t.Fatalf("opened %q", got)
+	}
+}
+
+func TestSignInRefusesAPageOffThisServer(t *testing.T) {
+	var o opener
+	s := startWithOpener(t, o.open)
+	for _, body := range []string{`{"page":"p/3"}`, `{"page":"//evil.example/"}`, `{"page":"/\\evil.example"}`, `{"page":""}`, `{"page":"http://evil.example/"}`, `not json`, ``} {
+		if r := signin(t, s, "POST", "http://"+s.Addr(), body); r.Status != http.StatusBadRequest {
+			t.Errorf("body %q: status %d", body, r.Status)
+		}
+	}
+	if got := o.opened(); len(got) != 0 {
+		t.Fatalf("opened %q", got)
+	}
+}
+
+func TestSignInGetOpensNothing(t *testing.T) {
+	var o opener
+	s := startWithOpener(t, o.open)
+	if r := signin(t, s, "GET", "http://"+s.Addr(), ""); r.Status == http.StatusNoContent {
+		t.Fatalf("GET status %d", r.Status)
+	}
+	if got := o.opened(); len(got) != 0 {
+		t.Fatalf("opened %q", got)
+	}
+}
+
+func TestSignInWithNoOpenerIsNotImplemented(t *testing.T) {
+	s := startWithOpener(t, nil)
+	if r := signin(t, s, "POST", "http://"+s.Addr(), `{"page":"/"}`); r.Status != http.StatusNotImplemented {
+		t.Fatalf("status %d", r.Status)
 	}
 }

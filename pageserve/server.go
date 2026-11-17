@@ -96,6 +96,27 @@ type Options struct {
 	// server's own start time as StartedAt, Reopened. The edited entry must
 	// still validate, or Run fails.
 	Entry func(*Entry)
+	// Open opens the page's Sign in again tab (localweb's POST /signin).
+	// nil: the opener `<tool> serve` was given (Commands.Open, carried in
+	// ctx), else the system opener.
+	Open func(url string) error
+}
+
+type openerKey struct{}
+
+// withOpener carries Commands.Open from `<tool> serve --foreground` to the
+// Run its Serve calls, so a tool needs no change to keep its own opener.
+func withOpener(ctx context.Context, open func(string) error) context.Context {
+	if open == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, openerKey{}, open)
+}
+
+// openerFrom is the opener withOpener put in ctx, or nil.
+func openerFrom(ctx context.Context) func(string) error {
+	open, _ := ctx.Value(openerKey{}).(func(string) error)
+	return open
 }
 
 // Run serves until ctx ends or POST /api/stop; it never exits for being idle.
@@ -188,7 +209,14 @@ func Run(ctx context.Context, o Options) error {
 		w.Header().Set(BuildHeader, build)
 		mux.ServeHTTP(w, r)
 	})
-	srv, err := localweb.Start(ctx, localweb.Config{Tool: tool, Assets: o.Assets, API: api, Port: o.Port, Token: token})
+	open := o.Open
+	if open == nil {
+		open = openerFrom(ctx)
+	}
+	if open == nil {
+		open = func(u string) error { return openBrowser(u) }
+	}
+	srv, err := localweb.Start(ctx, localweb.Config{Tool: tool, Assets: o.Assets, API: api, Port: o.Port, Token: token, Open: open})
 	if err != nil {
 		return err
 	}

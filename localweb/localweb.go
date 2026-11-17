@@ -9,11 +9,13 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -38,6 +40,9 @@ type Config struct {
 	// Token, when set, is used instead of a new one, so a tool that keeps it
 	// across restarts keeps its open tabs working. 64 hex characters.
 	Token string
+	// Open opens a URL in the user's browser: POST /signin calls it with the
+	// signed-out page's own URL and t=<token>. nil: /signin answers 501.
+	Open func(url string) error
 }
 
 // Server is a running local page server.
@@ -154,6 +159,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, loc, http.StatusSeeOther)
 		return
 	}
+	if r.URL.Path == "/signin" && r.Method == http.MethodPost {
+		s.serveSignIn(w, r)
+		return
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/") {
 		s.serveAPI(w, r)
 		return
@@ -185,6 +194,72 @@ func (s *Server) serveAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.cfg.API.ServeHTTP(w, r)
+}
+
+// serveSignIn is POST /signin {"page": "/p/3?x=1"}: a page whose cookie no
+// longer matches the token asks for a signed-in tab of itself. It takes no
+// token; only the page's own Origin may ask, and the token goes only to the
+// browser Config.Open starts, never into this response or a cookie, since a
+// local program can forge Origin.
+func (s *Server) serveSignIn(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Origin") != "http://"+r.Host {
+		http.Error(w, "cross-origin sign-in refused", http.StatusForbidden)
+		return
+	}
+	if s.cfg.Open == nil {
+		http.Error(w, "this server cannot open a browser", http.StatusNotImplemented)
+		return
+	}
+	var body struct {
+		Page string `json:"page"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&body); err != nil {
+		http.Error(w, "body must be {\"page\": \"/...\"}", http.StatusBadRequest)
+		return
+	}
+	u, ok := pageURL(body.Page)
+	if !ok {
+		http.Error(w, "page must be a path on this server", http.StatusBadRequest)
+		return
+	}
+	q := withoutToken(u.RawQuery)
+	if q != "" {
+		q += "&"
+	}
+	open := "http://" + r.Host + u.EscapedPath() + "?" + q + "t=" + s.Token
+	if u.Fragment != "" {
+		open += "#" + u.EscapedFragment()
+	}
+	if err := s.cfg.Open(open); err != nil {
+		http.Error(w, "the browser did not open", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// pageURL parses a page's own path, query and fragment, refusing anything
+// that is not a path on this server ("//host", "/\\host", a scheme).
+func pageURL(page string) (*url.URL, bool) {
+	if !strings.HasPrefix(page, "/") || strings.HasPrefix(page, "//") || strings.HasPrefix(page, "/\\") {
+		return nil, false
+	}
+	u, err := url.Parse(page)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.User != nil || !strings.HasPrefix(u.Path, "/") {
+		return nil, false
+	}
+	return u, true
+}
+
+// withoutToken drops any t= from a raw query, keeping the rest as written.
+func withoutToken(raw string) string {
+	var kept []string
+	for _, p := range strings.Split(raw, "&") {
+		if p == "" || p == "t" || strings.HasPrefix(p, "t=") {
+			continue
+		}
+		kept = append(kept, p)
+	}
+	return strings.Join(kept, "&")
 }
 
 func (s *Server) tokenOK(t string) bool {
