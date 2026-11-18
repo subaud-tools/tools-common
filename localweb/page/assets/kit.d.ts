@@ -803,6 +803,19 @@ export interface ListGroup {
 /** Named groups of rows, each a card that folds in place. folded holds the keys that start folded; onFold hears each press with the key and whether it is now folded. The tool decides which groups to pass, and keeps what it hears for its next draw. */
 export function groupList(o: { groups: ListGroup[]; folded: string[]; onFold(key: string, folded: boolean): void }): HTMLElement;
 
+/** An item of a row's menu: a menuitem button. action and walk become data-action and data-walk, so a caller keeps its hooks; danger reads it in the danger colour. */
+export interface RowMenuItem {
+  label: string;
+  /** Runs once the menu has closed. */
+  run(): void;
+  danger?: boolean;
+  action?: string;
+  walk?: string;
+}
+
+/** A row's ⋯ button and its menu (.kit-row-menu): a press opens it, and a press on an item, outside it or Esc closes it. One is open on the page at a time: opening another closes it. label is the button's aria-label; onMenu hears it open and close. */
+export function rowMenu(o: { label: string; items: RowMenuItem[]; onMenu?(open: boolean): void }): HTMLElement;
+
 // ---- needs.js
 
 /** One thing that needs the reader. */
