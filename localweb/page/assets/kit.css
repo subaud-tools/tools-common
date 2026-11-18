@@ -103,10 +103,12 @@ code { font: .88em var(--kit-mono); }
 .kit-sheet-head { margin: 0 0 10px; }
 .kit-sheet-body { font-size: 15px; margin: 0 0 14px; }
 .kit-sheet-body:last-child { margin-bottom: 0; }
-/* the sheet's error spot ends its button row, taking the rest of it; empty it
-   adds no height, and one line fits the row's height */
+/* the sheet's error spot ends its button row, taking the rest of it, or a line
+   of its own when less than 10em is left; empty it takes no space, and one
+   line fits the row's height */
 .kit-sheet > .kit-btns { align-items: center; }
-.kit-sheet-error { flex: 1 1 0; min-width: 0; margin: 0; color: var(--kit-danger); font: 12px var(--kit-mono); overflow-wrap: anywhere; }
+.kit-sheet-error { flex: 1 1 10em; min-width: 0; margin: 0; color: var(--kit-danger); font: 12px var(--kit-mono); overflow-wrap: anywhere; }
+.kit-sheet-error:empty { display: none; }
 
 /* the ? overlay */
 .kit-keys { width: min(440px, 92vw); font: 13px var(--kit-mono); }
