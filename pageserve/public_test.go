@@ -78,3 +78,20 @@ func TestTheHomeToolsEntryIsTheBareDomain(t *testing.T) {
 		t.Fatalf("base %q, url %q: want the bare domain", e.Base, e.URL)
 	}
 }
+
+// PageURL is the address a tool hands out for a page OnStart was given: the
+// tool's public origin with the setting, path and token kept; unchanged without.
+func TestPageURLIsThePublicPageWithTheSetting(t *testing.T) {
+	const local = "http://127.0.0.1:38971/api/docs/abc/?t=tok"
+	t.Setenv(localweb.PublicDomainEnv, "")
+	if got := PageURL("galley", local); got != local {
+		t.Fatalf("unset: %q, want %q", got, local)
+	}
+	t.Setenv(localweb.PublicDomainEnv, "scratch.diazo.subaud.io")
+	if got, want := PageURL("galley", local), "https://galley.scratch.diazo.subaud.io/api/docs/abc/?t=tok"; got != want {
+		t.Fatalf("set: %q, want %q", got, want)
+	}
+	if got := PageURL("galley", "not a url"); got != "not a url" {
+		t.Fatalf("not a url: %q", got)
+	}
+}

@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.96.0
+
+### Added
+- pageserve: `PageURL(tool, url)`, the address a tool hands out for a page of its loopback server (the URL `OnStart` and `Ready` get, or one under it): with `PAGE_PUBLIC_DOMAIN` set, the tool's public origin with the URL's path and query, token and all; unset, the URL unchanged. Run's entry URL is built with it. A tool keeps the loopback URL for its own calls on the machine.
+
 ## 0.95.0
 
 ### Added
