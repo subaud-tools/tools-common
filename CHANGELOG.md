@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.94.0
+
+### Added
+- kit: `sheet()` takes `canDismiss`, asked before Esc or a backdrop click closes the sheet; when it returns false the sheet stays open (a draft to keep). `close()`, and so every button that calls it, still always closes. A sheet without it closes as before.
+- kit: a sheet with actions ends its button row with an error spot, an empty `<p class="kit-sheet-error" role="alert">`, and the handle gains `error(msg)`: a message shows it in 12px mono danger text beside the buttons, an empty or missing one clears it. Empty it adds no height, and a one-line message doesn't change the sheet's height. `buttons()` is unchanged for other callers.
+
 ## 0.93.0
 
 ### Changed

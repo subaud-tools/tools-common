@@ -164,13 +164,17 @@ export function createSelection(): Selection;
 
 export interface SheetHandle {
   el: HTMLElement;
-  /** Idempotent; returns focus to where it was and calls onClose. */
+  /** Idempotent; always closes (canDismiss is not asked); returns focus to where it was and calls onClose. */
   close(): void;
+  /** Shows msg in the error spot at the end of the button row (a sheet with actions); empty or missing clears it. */
+  error(msg?: string): void;
 }
 
 /** A small modal sheet over a backdrop: Esc or a backdrop click closes it, focus stays inside, page keys wait. */
 /** returnFocus: where focus goes on close if the opener has left the page (default: the main region, else body). */
-export function sheet(o?: { title?: string; body?: Node | string; actions?: Button[]; onClose?(): void; returnFocus?: HTMLElement }): SheetHandle;
+/** canDismiss: asked before Esc or a backdrop click closes it; false keeps it open (a draft to keep). */
+/** With actions, the button row ends with an empty `.kit-sheet-error` (role alert) that error() fills. */
+export function sheet(o?: { title?: string; body?: Node | string; actions?: Button[]; onClose?(): void; returnFocus?: HTMLElement; canDismiss?(): boolean }): SheetHandle;
 
 /** Whether any sheet is open (the keyboard layer suspends page keys while one is). */
 export function sheetOpen(): boolean;

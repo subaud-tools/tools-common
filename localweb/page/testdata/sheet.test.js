@@ -129,3 +129,40 @@ test('sheet: the ? overlay closes on a click anywhere in it', () => {
     assert(!document.querySelector('.kit-keys'), 'a click on the title closes it');
   } finally { keys.destroy(); }
 });
+
+test('sheet: canDismiss false keeps it open on Esc and a backdrop click; close() still closes', () => {
+  const s = sheet({ title: 't', body: h('input'), canDismiss: () => false });
+  press('Escape');
+  assert(s.el.isConnected, 'Esc leaves it open');
+  document.querySelector('.kit-backdrop').click();
+  assert(s.el.isConnected, 'a backdrop click leaves it open');
+  s.close();
+  assert(!document.querySelector('.kit-sheet') && !document.querySelector('.kit-backdrop'), 'close removes both');
+  const s2 = sheet({ title: 't', canDismiss: () => true });
+  press('Escape');
+  assert(!s2.el.isConnected, 'canDismiss true lets Esc close it');
+});
+
+test('sheet: the button row ends with an error spot that error() fills and clears', () => {
+  const s = sheet({ title: 't', actions: [{ label: 'park', fill: true }, { label: 'cancel' }] });
+  try {
+    const spot = s.el.querySelector('.kit-btns > .kit-sheet-error');
+    assert(spot, 'error spot in the button row');
+    assert(spot === s.el.querySelector('.kit-btns').lastElementChild, 'it ends the row');
+    eq([spot.tagName, spot.getAttribute('role'), spot.textContent], ['P', 'alert', '']);
+    s.error('x');
+    eq(spot.textContent, 'x');
+    s.error();
+    eq(spot.textContent, '');
+  } finally { s.close(); }
+});
+
+test('sheet: showing an error does not change its height', () => {
+  const s = sheet({ title: 'new plan', body: h('p', null, 'a title'), actions: [{ label: 'park', fill: true }, { label: 'cancel' }] });
+  try {
+    eq(Math.round(s.el.getBoundingClientRect().width), 480, 'the default sheet width');
+    const before = s.el.getBoundingClientRect().height;
+    s.error('could not park: the plan changed');
+    eq(s.el.getBoundingClientRect().height, before);
+  } finally { s.close(); }
+});
