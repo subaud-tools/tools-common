@@ -14,6 +14,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,8 +76,9 @@ type Options struct {
 	Log     io.Writer // one line per start/stop
 	// OnStart runs the tool's own start-up steps once the server listens and
 	// before its entry is written, so whoever finds the entry finds them
-	// done; it gets the server's context and the page's URL, and anything it
-	// starts in the background must end with ctx.
+	// done; it gets the server's context and the page's loopback URL, and
+	// anything it starts in the background must end with ctx. A link the tool
+	// hands out is PageURL(tool, url): the public page on a hosted workspace.
 	OnStart func(ctx context.Context, url string)
 	Ready   func(url string)
 	// OnStop runs the tool's own shutdown once the server has stopped taking
@@ -232,7 +234,7 @@ func Run(ctx context.Context, o Options) error {
 	// proxy forwards to local; callers on the machine keep using local.
 	if public := localweb.PublicOrigin(tool); public != "" {
 		e.Base = public
-		e.URL = public + strings.TrimPrefix(srv.URL, local)
+		e.URL = PageURL(tool, srv.URL)
 	}
 	if o.Entry != nil {
 		o.Entry(&e)
@@ -274,6 +276,22 @@ func Run(ctx context.Context, o Options) error {
 		runOnStop(o, <-ended)
 	}
 	return err
+}
+
+// PageURL is the address of a page of tool's served at url (the loopback URL
+// OnStart and Ready get, or one under it) for a browser: on a hosted workspace
+// (PAGE_PUBLIC_DOMAIN set) the tool's public origin with url's path and query,
+// token and all; else url as it is. Callers on the machine keep url.
+func PageURL(tool, url string) string {
+	public := localweb.PublicOrigin(tool)
+	if public == "" {
+		return url
+	}
+	u, err := neturl.Parse(url)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return url
+	}
+	return public + strings.TrimPrefix(url, u.Scheme+"://"+u.Host)
 }
 
 // runOnStop calls OnStop and waits for it, up to its bound from ended, when the
