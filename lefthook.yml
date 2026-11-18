@@ -1,5 +1,5 @@
-# .tools family standard: identical in every family repo. Run `just hooks`
-# once per clone to install them.
+# .tools family standard: identical in every family repo. casebook's global
+# hooks run this file; nothing needs installing.
 pre-commit:
   commands:
     gofmt:
