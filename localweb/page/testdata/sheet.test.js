@@ -129,3 +129,61 @@ test('sheet: the ? overlay closes on a click anywhere in it', () => {
     assert(!document.querySelector('.kit-keys'), 'a click on the title closes it');
   } finally { keys.destroy(); }
 });
+
+test('sheet: canDismiss false keeps it open on Esc and a backdrop click; close() still closes', () => {
+  const s = sheet({ title: 't', body: h('input'), canDismiss: () => false });
+  try {
+    press('Escape');
+    assert(s.el.isConnected, 'Esc leaves it open');
+    document.querySelector('.kit-backdrop').click();
+    assert(s.el.isConnected, 'a backdrop click leaves it open');
+  } finally { s.close(); }
+  assert(!document.querySelector('.kit-sheet') && !document.querySelector('.kit-backdrop'), 'close removes both');
+  const s2 = sheet({ title: 't', canDismiss: () => true });
+  try {
+    press('Escape');
+    assert(!s2.el.isConnected, 'canDismiss true lets Esc close it');
+  } finally { s2.close(); }
+});
+
+test('sheet: the button row ends with an error spot that error() fills and clears', () => {
+  const s = sheet({ title: 't', actions: [{ label: 'park', fill: true }, { label: 'cancel' }] });
+  try {
+    const spot = s.el.querySelector('.kit-btns > .kit-sheet-error');
+    assert(spot, 'error spot in the button row');
+    assert(spot === s.el.querySelector('.kit-btns').lastElementChild, 'it ends the row');
+    eq([spot.tagName, spot.getAttribute('role'), spot.textContent], ['P', 'alert', '']);
+    s.error('x');
+    eq(spot.textContent, 'x');
+    s.error();
+    eq(spot.textContent, '');
+  } finally { s.close(); }
+});
+
+test('sheet: showing an error does not change its height', () => {
+  const s = sheet({ title: 'new plan', body: h('p', null, 'a title'), actions: [{ label: 'park', fill: true }, { label: 'cancel' }] });
+  try {
+    eq(Math.round(s.el.getBoundingClientRect().width), 480, 'the default sheet width');
+    const before = s.el.getBoundingClientRect().height;
+    s.error('could not park: the plan changed');
+    eq(Math.round(s.el.getBoundingClientRect().height), Math.round(before));
+  } finally { s.close(); }
+});
+
+test('sheet: on a narrow sheet the error takes a line of its own rather than a sliver', () => {
+  const s = sheet({ title: 'new plan', actions: [{ label: 'Start now', fill: true }, { label: 'Save as planned' }, { label: 'Cancel' }] });
+  try {
+    s.el.style.width = '240px';
+    const empty = s.el.getBoundingClientRect().height;
+    s.error('x');
+    s.error();
+    eq(s.el.getBoundingClientRect().height, empty, 'an empty spot takes no space');
+    s.error('could not start the session: pi is not running');
+    const spot = s.el.querySelector('.kit-sheet-error');
+    for (let px = 240; px <= 480; px += 4) {
+      s.el.style.width = `${px}px`;
+      const w = spot.getBoundingClientRect().width;
+      assert(w >= 120, `at ${px}px the error spot is ${Math.round(w)}px wide`);
+    }
+  } finally { s.close(); }
+});

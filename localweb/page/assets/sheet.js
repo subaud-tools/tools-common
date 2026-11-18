@@ -3,6 +3,9 @@
 // inside while it is open and returns where it was on close, and the keyboard
 // layer's page keys are suspended (keys.js asks sheetOpen()). o.returnFocus
 // names where focus goes on close if the opener has left the page.
+// o.canDismiss, when given, is asked before Esc or a backdrop click closes the
+// sheet (a draft to keep); close() always closes. A sheet with actions ends
+// its button row with an error spot that handle.error(msg) fills and clears.
 
 import { h, buttons } from './dom.js';
 
@@ -21,6 +24,8 @@ export function sheet(o = {}) {
     o.title ? h('div', { class: 'kit-label kit-sheet-head' }, o.title) : null,
     o.body !== undefined ? h('div', { class: 'kit-sheet-body' }, o.body) : null,
     o.actions && o.actions.length ? buttons(o.actions) : null);
+  const errorSpot = o.actions && o.actions.length ? h('p', { class: 'kit-sheet-error', role: 'alert' }) : null;
+  if (errorSpot) el.querySelector('.kit-btns').append(errorSpot);
   if (o.title) el.setAttribute('aria-label', o.title);
   let open = true;
 
@@ -32,7 +37,7 @@ export function sheet(o = {}) {
     if (e.key === 'Escape' && !e.isComposing) {
       e.preventDefault();
       e.stopPropagation();
-      handle.close();
+      dismiss();
     } else if (e.key === 'Tab') {
       const f = focusables();
       if (!f.length) {
@@ -54,8 +59,15 @@ export function sheet(o = {}) {
     if (top() && !el.contains(e.target)) (focusables()[0] || el).focus();
   }
 
+  function dismiss() {
+    if (!o.canDismiss || o.canDismiss()) handle.close();
+  }
+
   const handle = {
     el,
+    error(msg) {
+      if (errorSpot) errorSpot.textContent = msg || '';
+    },
     close() {
       if (!open) return;
       open = false;
@@ -84,7 +96,7 @@ export function sheet(o = {}) {
     document.body.focus();
   }
 
-  backdrop.addEventListener('click', () => handle.close());
+  backdrop.addEventListener('click', dismiss);
   document.addEventListener('keydown', onKey, true);
   document.addEventListener('focusin', onFocus, true);
   stack.push(handle);
