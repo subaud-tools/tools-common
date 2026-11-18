@@ -66,3 +66,66 @@ function group({ key, title, rows, empty, edge }, startFolded, onFold) {
 export function groupList({ groups, folded, onFold }) {
   return h('div', { class: 'kit-groups' }, groups.map(g => group(g, folded.includes(g.key), onFold)));
 }
+
+// The one row menu open on the page: opening another closes it.
+let menuOpen = null;
+
+// rowMenu is a row's ⋯ button and its menu, as diazo's front page rows have:
+// a press opens it, and a press on an item, outside it or Esc closes it. Each
+// item is a menuitem button: action and walk become data-action and data-walk,
+// so a caller keeps its hooks, and danger marks a destructive one. A press on
+// an item closes the menu, then runs it. onMenu hears it open and close.
+export function rowMenu({ label, items, onMenu }) {
+  const btn = h('button', {
+    class: 'kit-row-more',
+    type: 'button',
+    'aria-label': label,
+    'aria-haspopup': 'menu',
+    'aria-expanded': 'false',
+  }, '⋯');
+  const pop = h('div', { class: 'kit-row-pop', role: 'menu' }, items.map(it =>
+    h('button', {
+      type: 'button',
+      role: 'menuitem',
+      class: it.danger ? 'danger' : undefined,
+      'data-action': it.action,
+      'data-walk': it.walk,
+      onclick: () => it.run(),
+    }, it.label)));
+  pop.hidden = true;
+  const wrap = h('div', { class: 'kit-row-menu' }, btn, pop);
+  const outside = e => {
+    if (!wrap.contains(e.target)) close();
+  };
+  const esc = e => {
+    if (e.key === 'Escape') close();
+  };
+  function close() {
+    if (pop.hidden) return;
+    pop.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', outside, true);
+    document.removeEventListener('keydown', esc);
+    if (menuOpen === close) menuOpen = null;
+    onMenu?.(false);
+  }
+  btn.addEventListener('click', () => {
+    if (!pop.hidden) {
+      close();
+      return;
+    }
+    menuOpen?.();
+    pop.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    document.addEventListener('click', outside, true);
+    document.addEventListener('keydown', esc);
+    menuOpen = close;
+    onMenu?.(true);
+    // ⋯ sits at a row's foot on a phone: a menu opening past the window's
+    // edge scrolls into it.
+    pop.scrollIntoView({ block: 'nearest' });
+  });
+  // A press on an item closes the menu, then does what the item does.
+  pop.addEventListener('click', () => close(), true);
+  return wrap;
+}

@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture } from './harness.js';
-import { filterRow, statusPills, groupList } from '/_kit/frontpage.js';
+import { filterRow, statusPills, groupList, rowMenu } from '/_kit/frontpage.js';
 
 const projects = [{ value: 'diazo', label: 'diazo', count: 3 }, { value: 'sift', label: 'sift', count: 2 }];
 const rowsOf = el => [...el.querySelectorAll('.kit-filter')].map(b => [b.dataset.value, b.querySelector('.kit-index-title').textContent, b.querySelector('.kit-meta').textContent]);
@@ -93,4 +93,105 @@ test('groupList: folded hides a group but its head, and a press folds and opens 
   eq(getComputedStyle(needs.querySelector('.kit-group-rows')).display, 'block');
   head.click();
   eq(got, [['needs', false], ['needs', true]]);
+});
+
+const menu = (got = [], heard = []) => rowMenu({
+  label: 'More for PLAN1',
+  items: [
+    { label: 'Rename', run: () => got.push('rename'), action: 'rename' },
+    { label: 'Walk it', run: () => got.push('walk'), walk: 'w1' },
+    { label: 'Delete', run: () => got.push('delete'), danger: true },
+  ],
+  onMenu: open => heard.push(open),
+});
+const parts = el => ({ btn: el.querySelector('.kit-row-more'), pop: el.querySelector('.kit-row-pop') });
+
+test('rowMenu: a ⋯ button that names its menu, and the menu hidden until pressed', () => {
+  const el = menu();
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  eq(el.className, 'kit-row-menu');
+  eq([btn.textContent, btn.getAttribute('aria-label'), btn.getAttribute('aria-haspopup'), btn.getAttribute('aria-expanded')], ['⋯', 'More for PLAN1', 'menu', 'false']);
+  eq(pop.getAttribute('role'), 'menu');
+  assert(pop.hidden, 'hidden');
+  eq(getComputedStyle(pop).display, 'none');
+});
+
+test('rowMenu: the items are menuitems that keep their hooks, a danger one marked', () => {
+  const { pop } = parts(menu());
+  const items = [...pop.querySelectorAll('button')];
+  eq(items.map(b => [b.textContent, b.getAttribute('role'), b.dataset.action || '', b.dataset.walk || '']), [['Rename', 'menuitem', 'rename', ''], ['Walk it', 'menuitem', '', 'w1'], ['Delete', 'menuitem', '', '']]);
+  eq(items.map(b => b.classList.contains('danger')), [false, false, true]);
+});
+
+test('rowMenu: a danger item reads in the danger colour', () => {
+  const el = menu();
+  fixture().append(el);
+  const fx = document.createElement('span');
+  fx.style.color = 'var(--kit-danger)';
+  el.append(fx);
+  eq(getComputedStyle(el.querySelector('.danger')).color, getComputedStyle(fx).color);
+  assert(getComputedStyle(el.querySelector('[data-action="rename"]')).color !== getComputedStyle(fx).color, 'a plain item is not danger');
+});
+
+test('rowMenu: a press opens it, and a second press on ⋯ closes it', () => {
+  const heard = [];
+  const el = menu([], heard);
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  btn.click();
+  assert(!pop.hidden, 'open');
+  eq(btn.getAttribute('aria-expanded'), 'true');
+  btn.click();
+  assert(pop.hidden, 'closed');
+  eq(btn.getAttribute('aria-expanded'), 'false');
+  eq(heard, [true, false]);
+});
+
+test('rowMenu: a press outside closes it', () => {
+  const el = menu();
+  const fx = fixture();
+  const out = document.createElement('button');
+  fx.append(el, out);
+  const { btn, pop } = parts(el);
+  btn.click();
+  out.click();
+  assert(pop.hidden, 'closed');
+  eq(btn.getAttribute('aria-expanded'), 'false');
+});
+
+test('rowMenu: Esc closes it', () => {
+  const el = menu();
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  btn.click();
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert(pop.hidden, 'closed');
+});
+
+test('rowMenu: a press on an item closes the menu, then runs it', () => {
+  const got = [];
+  const el = menu(got);
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  const items = pop.querySelectorAll('button');
+  items[0].addEventListener('click', () => got.push(pop.hidden ? 'closed' : 'open'));
+  btn.click();
+  items[2].click();
+  assert(pop.hidden, 'closed');
+  eq(got, ['delete']);
+  btn.click();
+  items[0].click();
+  eq(got, ['delete', 'rename', 'closed']);
+});
+
+test('rowMenu: opening a second menu closes the first', () => {
+  const a = menu(), b = menu();
+  fixture().append(a, b);
+  parts(a).btn.click();
+  parts(b).btn.click();
+  assert(parts(a).pop.hidden, 'the first closed');
+  eq(parts(a).btn.getAttribute('aria-expanded'), 'false');
+  assert(!parts(b).pop.hidden, 'the second open');
+  parts(b).btn.click();
 });

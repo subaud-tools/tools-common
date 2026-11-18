@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.95.0
+
+### Added
+- kit: `rowMenu({ label, items, onMenu })` in frontpage.js, moved from diazo's front page: a row's ⋯ button (`aria-label` the label, `aria-haspopup="menu"`, `aria-expanded`) and its `role="menu"` pop-out, hidden until pressed. Items are `{ label, run, danger?, action?, walk? }`, each a `role="menuitem"` button; `action` and `walk` become `data-action` and `data-walk`, and a `danger` one reads in `--kit-danger`. A press on an item closes the menu, then runs it; a press outside or Esc closes it, and one menu is open on the page at a time. Styled by `kit-row-menu`, `kit-row-more` and `kit-row-pop`.
+
 ## 0.94.0
 
 ### Added
