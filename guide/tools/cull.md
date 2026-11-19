@@ -2,6 +2,7 @@
 name: cull
 summary: Judges your automated tests and removes the ones that don't earn their place, asking you about the unsure ones.
 weight: light
+beta: true
 asks:
   - Use cull to check the tests I changed on this branch.
 ---

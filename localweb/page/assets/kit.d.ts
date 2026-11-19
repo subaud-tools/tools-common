@@ -1320,6 +1320,8 @@ export interface GuideTool {
   name: string;
   summary: string;
   core: boolean;
+  /** It works, but it is still changing: the kit badges it. */
+  beta?: boolean;
   asks: string[];
   when: string;
   skip?: string;
@@ -1355,5 +1357,9 @@ export function openGuide(o?: { url?: string; tour?: Tour | null; copy?: (text: 
  * and More in the Guide, which opens the Guide. Leaves el as it was, and resolves false, when the guide has no section for the tool or doesn't load.
  */
 export function guideAsks(el: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<boolean>;
+/** The beta tag (.kit-beta) after a beta tool's name; small (.kit-beta.sm) beside a name in a list. */
+export function betaBadge(small?: boolean): HTMLSpanElement;
+/** Loads /api/kit/guide and, when the page's tool is beta, appends the badge to el. The bar calls it on its brand. */
+export function badgeIfBeta(el: HTMLElement, url?: string): Promise<void>;
 /** Draws the Guide as the whole page in root, as /_kit/guide/ does. */
 export function guidePage(root: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<void>;

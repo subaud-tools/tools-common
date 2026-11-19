@@ -2,6 +2,7 @@
 name: casebook
 summary: Sorts your old branches, pull requests and repos: your agent recommends keep, archive or delete for each, and you decide on its page.
 weight: light
+beta: true
 asks:
   - Use casebook to go through my stale branches and recommend what to do with each.
 ---

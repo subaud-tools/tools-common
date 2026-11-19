@@ -186,3 +186,55 @@ test('guideAsks: draws nothing for a tool the guide has no section for, or when 
   eq(await withFetch(500, () => guideAsks(el)), false);
   eq(el.textContent, 'kept');
 });
+
+const betaData = () => {
+  const d = data();
+  d.tool = 'casebook';
+  d.tools = [
+    { name: 'casebook', summary: 'Tidies branches.', core: true, beta: true, asks: ['Run casebook.'], when: '- Piles.' },
+    ...d.tools,
+    { name: 'cull', summary: 'Judges tests.', core: false, beta: true, asks: ['Cull my tests.'], when: '- Slow suites.' },
+  ];
+  return d;
+};
+
+test('guide: a beta tool wears the badge and its section opens with the beta line', () => {
+  const v = guideView(betaData());
+  fixture().append(v);
+  const main = v.querySelector('.kit-guide-main');
+  const h2 = main.querySelector('h2');
+  eq([h2.firstChild.textContent, h2.querySelector('.kit-beta')?.textContent], ['casebook', 'beta']);
+  eq(main.querySelector('.kit-guide-beta').textContent, 'casebook is beta: it works, but it is still changing.');
+  assert(main.querySelector('.kit-guide-beta').previousElementSibling === h2, 'the line follows the heading');
+  v.show('diazo');
+  assert(!main.querySelector('.kit-beta') && !main.querySelector('.kit-guide-beta'), 'diazo is not beta');
+});
+
+test('guide: beta tools under Also installed wear the small badge', () => {
+  const v = guideView(betaData());
+  fixture().append(v);
+  const also = [...v.querySelectorAll('.kit-guide-also .kit-guide-pick')];
+  eq(also.map(b => [b.dataset.pick, !!b.querySelector('.kit-beta.sm')]), [['sift', false], ['cull', true]]);
+});
+
+const brandAfter = async (body, name = 'casebook') => withFetch(body, async () => {
+  const b = bar({ brand: { name } });
+  fixture().append(b.el);
+  await new Promise(r => setTimeout(r, 30));
+  return b.el.querySelector('.kit-brand');
+});
+
+test('bar: badges the brand when the guide says the page\'s tool is beta', async () => {
+  const brand = await brandAfter(betaData());
+  eq(serve.asked, ['/api/kit/guide']);
+  const badge = brand.querySelector('.kit-beta');
+  eq([brand.firstChild.textContent, badge && badge.textContent], ['casebook', 'beta']);
+  const cs = getComputedStyle(badge);
+  eq([cs.borderTopStyle, cs.textTransform], ['solid', 'none']);
+});
+
+test('bar: no badge for a tool that is not beta, has no guide entry, or when the guide fails', async () => {
+  assert(!(await brandAfter(data(), 'diazo')).querySelector('.kit-beta'), 'diazo');
+  assert(!(await brandAfter({ ...betaData(), tool: '' }, 'x')).querySelector('.kit-beta'), 'no entry');
+  assert(!(await brandAfter(500)).querySelector('.kit-beta'), 'fetch failed');
+});

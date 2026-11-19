@@ -1,6 +1,9 @@
 package guide
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // The Guide tab's data lists only installed tools, always with the tool
 // you're in, core first, each with its public guide page where one exists.
@@ -28,5 +31,33 @@ func TestDataListsInstalledTools(t *testing.T) {
 	}
 	if d, _ := Data("not-a-tool", func(string) bool { return false }); len(d.Tools) != 0 || d.Tool != "" {
 		t.Errorf("an unknown tool: %+v", d)
+	}
+}
+
+// The beta tools are exactly casebook, sift, cull and muda: a change to the
+// list is a reviewed one-line diff here, and the flag reaches the Guide data.
+func TestBetaTools(t *testing.T) {
+	tl, err := Tools()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, x := range tl {
+		if x.Beta {
+			got = append(got, x.Name)
+		}
+	}
+	slices.Sort(got)
+	if want := []string{"casebook", "cull", "muda", "sift"}; !slices.Equal(got, want) {
+		t.Fatalf("beta tools %v, want %v", got, want)
+	}
+	d, err := Data("sift", func(name string) bool { return name == "diazo" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, x := range d.Tools {
+		if x.Beta != (x.Name == "sift") {
+			t.Errorf("%s: beta %v in the Guide data", x.Name, x.Beta)
+		}
 	}
 }

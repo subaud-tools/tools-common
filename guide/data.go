@@ -26,6 +26,7 @@ type ToolData struct {
 	Name     string   `json:"name"`
 	Summary  string   `json:"summary"`
 	Core     bool     `json:"core"`
+	Beta     bool     `json:"beta,omitempty"` // it works but is still changing
 	Asks     []string `json:"asks"`
 	When     string   `json:"when"`
 	Skip     string   `json:"skip,omitempty"`
@@ -50,7 +51,7 @@ func Data(tool string, installed func(name string) bool) (GuideData, error) {
 		if t.Name != d.Tool && !installed(t.Name) {
 			continue
 		}
-		d.Tools = append(d.Tools, ToolData{Name: t.Name, Summary: t.Summary, Core: t.Core, Asks: t.Asks,
+		d.Tools = append(d.Tools, ToolData{Name: t.Name, Summary: t.Summary, Core: t.Core, Beta: t.Beta, Asks: t.Asks,
 			When: t.When, Skip: t.Skip, Where: t.Where, Pointers: t.Pointers, Guide: publicGuides[t.Name]})
 	}
 	return d, nil

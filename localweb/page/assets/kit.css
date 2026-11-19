@@ -157,6 +157,15 @@ code { font: .88em var(--kit-mono); }
 .kit-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; margin-right: 6px; }
 .kit-brand svg { width: 18px; height: 18px; }
 a.kit-brand { color: inherit; text-decoration: none; }
+/* beta: a tool that works but is still changing (its guide entry says beta).
+   One amber outlined tag, lower case, the same for every tool; small beside a
+   name in a list. */
+.kit-beta {
+  display: inline-block; margin-left: 6px; padding: 3px 5px; border: 1px solid light-dark(#a8661e, #e0a96f); border-radius: 4px;
+  color: light-dark(#a8661e, #e0a96f); font: 500 10.5px/1 var(--kit-sans); letter-spacing: .04em; text-transform: none; vertical-align: middle;
+}
+.kit-beta.sm { margin-left: 4px; padding: 2px 4px; font-size: 9px; }
+.kit-brand > .kit-beta { margin-left: 0; }
 a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-ctl {
   font: 13px var(--kit-mono); color: var(--kit-fg); background: transparent;
@@ -1014,6 +1023,7 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-guide-main h2 { margin: 0 0 4px; font-size: 20px; }
 .kit-guide-main h3 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--kit-muted); }
 .kit-guide-summary { margin: 0 0 6px; font-size: 15px; }
+.kit-guide-beta { margin: 4px 0 10px; padding-left: 10px; border-left: 2px solid light-dark(#a8661e, #e0a96f); color: var(--kit-muted); font-size: 13px; }
 .kit-guide-asks { list-style: none; margin: 0; padding: 0; }
 .kit-guide-ask {
   display: flex; align-items: flex-start; gap: 10px; margin: 0 0 6px; padding: 8px 10px;
