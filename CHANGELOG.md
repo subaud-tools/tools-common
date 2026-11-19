@@ -4,6 +4,17 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.103.0
+
+### Added
+- kit: `sortSwitch({ orders, chosen, onPick, label? })`, the line over a list that orders it: the muted label (`sort`), then one `.kit-chip` per order, the chosen one on. The caller keeps the choice and redraws. Its look is proj's Saved view's sort line, under `kit-sort` names.
+- kit: `sortedList({ name, orders, items, row, empty, label? })`, the sort switch over one card of rows in the chosen order (each order with its `compare`), or the empty line with none. The choice is remembered under `<name>.sort`, the first order by default; it returns `{ el, set(items) }`.
+- kit: `indexRow`'s `place`, a muted line of its own between the title and the meta (`.kit-meta.kit-place`), saying where the row lives.
+- kit: `filterRow` items take `subs`, rows of their own drawn indented (`li.kit-sub`) right after their item while it or one of them is chosen. All counts the top items only; with no `subs` the rows are as before.
+
+### Changed
+- PAGE-STANDARD: a front page whose left column filters shows one list in the sort switch's order, each row naming its place; folding groups only group by something the left column doesn't filter.
+
 ## 0.102.0
 
 ### Changed
