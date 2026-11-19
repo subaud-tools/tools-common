@@ -4,6 +4,14 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.102.0
+
+### Changed
+- kit: a beta tool's mark is the kit's muted meta text, " · beta" (`.kit-meta`), after its name in the bar, its Guide heading and its pick in the Guide's side list, and nothing more. `betaMark()` replaces `betaBadge(small)`; the `.kit-beta` tag and its amber are gone, and so is the Guide's "‹tool› is beta: it works, but it is still changing." line (`.kit-guide-beta`).
+
+### Added
+- kit: `BarHandle.beta`, a promise that settles once the bar has asked the guide whether the page's tool is beta.
+
 ## 0.101.1
 
 ### Fixed

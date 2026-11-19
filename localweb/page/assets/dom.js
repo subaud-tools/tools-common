@@ -167,10 +167,11 @@ export function bar(o) {
   let run = null;
   primary.addEventListener('click', () => run && run());
 
-  // A beta tool (its guide entry says so) wears the badge after its name.
+  // A beta tool (its guide entry says so) carries " · beta" after its name.
   const brand = h(o.brand.href ? 'a' : 'span', { class: 'kit-brand', href: o.brand.href || null }, o.brand.mark || null, o.brand.name);
-  void badgeIfBeta(brand);
+  const beta = badgeIfBeta(brand);
   const handle = {
+    beta,
     el: h('header', { class: 'kit-bar' },
       brand,
       ...ctls.values(), status, h('span', { class: 'kit-sp' }), also.el, pill, guideControl, themeControl, primary),

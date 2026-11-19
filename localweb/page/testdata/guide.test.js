@@ -1,7 +1,7 @@
 import { test, eq, assert, fixture } from './harness.js';
 import { guideView, openGuide, guideAsks, badgeIfBeta } from '/_kit/guide.js';
 import { tour } from '/_kit/tour.js';
-import { bar } from '/_kit/dom.js';
+import { bar, h } from '/_kit/dom.js';
 
 const data = () => ({
   tool: 'diazo',
@@ -198,53 +198,58 @@ const betaData = () => {
   return d;
 };
 
-test('guide: a beta tool wears the badge and its section opens with the beta line', () => {
+// q is the muted qualifier after a beta tool's name: the kit's .kit-meta,
+// the name and " · beta" kept apart for a screen reader by the space and dot.
+const q = el => el.querySelector(':scope > .kit-meta');
+
+test('guide: a beta tool\'s heading carries the muted " · beta", and nothing more', () => {
   const v = guideView(betaData());
   fixture().append(v);
   const main = v.querySelector('.kit-guide-main');
   const h2 = main.querySelector('h2');
-  eq([h2.firstChild.textContent, h2.querySelector('.kit-beta')?.textContent], ['casebook', 'beta']);
-  eq(main.querySelector('.kit-guide-beta').textContent, 'casebook is beta: it works, but it is still changing.');
-  assert(main.querySelector('.kit-guide-beta').previousElementSibling === h2, 'the line follows the heading');
+  eq([h2.firstChild.textContent, q(h2)?.textContent, h2.textContent], ['casebook', ' · beta', 'casebook · beta']);
+  eq(h2.nextElementSibling.className, 'kit-guide-summary');
+  assert(!text(main).includes('is beta'), 'no sentence explaining beta');
   v.show('diazo');
-  assert(!main.querySelector('.kit-beta') && !main.querySelector('.kit-guide-beta'), 'diazo is not beta');
+  eq(main.querySelector('h2').textContent, 'diazo');
+  assert(!main.querySelector('h2 .kit-meta'), 'diazo is not beta');
 });
 
-test('guide: beta tools under Also installed wear the small badge', () => {
+test('guide: beta tools\' picks in the side list carry " · beta"', () => {
   const v = guideView(betaData());
   fixture().append(v);
-  const also = [...v.querySelectorAll('.kit-guide-also .kit-guide-pick')];
-  eq(also.map(b => [b.dataset.pick, !!b.querySelector('.kit-beta.sm')]), [['sift', false], ['cull', true]]);
+  const picks = [...v.querySelectorAll('.kit-guide-side .kit-guide-pick')];
+  eq(picks.map(b => [b.dataset.pick, q(b)?.textContent ?? null]),
+    [['casebook', ' · beta'], ['diazo', null], ['galley', null], ['sift', null], ['cull', ' · beta'], ['fit', null]]);
 });
 
 const brandAfter = async (body, name = 'casebook') => withFetch(body, async () => {
   const b = bar({ brand: { name } });
   fixture().append(b.el);
-  await new Promise(r => setTimeout(r, 30));
+  await b.beta;
   return b.el.querySelector('.kit-brand');
 });
 
-test('bar: badges the brand when the guide says the page\'s tool is beta', async () => {
+test('bar: the brand carries the muted " · beta" when the guide says the page\'s tool is beta', async () => {
   const brand = await brandAfter(betaData());
   eq(serve.asked, ['/api/kit/guide']);
-  const badge = brand.querySelector('.kit-beta');
-  eq([brand.firstChild.textContent, badge && badge.textContent], ['casebook', 'beta']);
-  const cs = getComputedStyle(badge);
-  eq([cs.borderTopStyle, cs.textTransform], ['solid', 'none']);
+  eq([brand.firstChild.textContent, q(brand)?.textContent, brand.textContent], ['casebook', ' · beta', 'casebook · beta']);
+  const muted = brand.appendChild(h('span', { style: 'color: var(--kit-muted)' }));
+  eq(getComputedStyle(q(brand)).color, getComputedStyle(muted).color);
 });
 
-test('bar: no badge for a tool that is not beta, has no guide entry, or when the guide fails', async () => {
-  assert(!(await brandAfter(data(), 'diazo')).querySelector('.kit-beta'), 'diazo');
-  assert(!(await brandAfter({ ...betaData(), tool: '' }, 'x')).querySelector('.kit-beta'), 'no entry');
-  assert(!(await brandAfter(500)).querySelector('.kit-beta'), 'fetch failed');
+test('bar: no " · beta" for a tool that is not beta, has no guide entry, or when the guide fails', async () => {
+  eq((await brandAfter(data(), 'diazo')).textContent, 'diazo');
+  eq((await brandAfter({ ...betaData(), tool: '' }, 'x')).textContent, 'x');
+  eq((await brandAfter(500)).textContent, 'casebook');
 });
 
-test('badgeIfBeta: a page opened from disk (a downloaded Record) asks for nothing and draws no badge', async () => {
+test('badgeIfBeta: a page opened from disk (a downloaded Record) asks for nothing and draws no mark', async () => {
   const el = fixture();
   await withFetch(betaData(), () => badgeIfBeta(el, { protocol: 'file:' }));
   eq(serve.asked, []);
-  assert(!el.querySelector('.kit-beta'), 'no badge from disk');
+  eq(el.textContent, '');
   await withFetch(betaData(), () => badgeIfBeta(el, { protocol: 'http:' }));
   eq(serve.asked, ['/api/kit/guide']);
-  assert(el.querySelector('.kit-beta'), 'badge over http');
+  eq(el.textContent, ' · beta');
 });
