@@ -4,6 +4,15 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.100.0
+
+### Added
+- kit: `band({ title, beside, under })` in dom.js, the strip under the bar with the page's title, copied from diazo's: an 18px bold `h1.kit-band-title` (line height 1.3, letter-spacing -0.01em, ellipsis on one line), `beside` nodes on its 28px line 12px apart (a state pill, a size, an email), and `under` a 28px row 12px below (a stage track, filter pills, a back link), on the panel ground with 16px 24px padding (12px sideways at 640px or less) over a hairline. With a row under it the band is 104px high, as diazo's is. A pill, stage or working line in it is 24px. On the app grid it spans every column and the columns start under it. `setTitle`, `setBeside` and `setUnder` change one part in place; an empty `beside` or `under` draws no container.
+- kit: `indexRow` takes `mark` (✓, ●, ○, ✕) and `markState` (`done`, `now`, `later`, `fail`): a `kit-index-mark` before the title in the ok, signal, muted or danger colour, the meta lined up under the title. A row without a mark draws as before.
+- kit: `cardLine({ main, meta, actions })`, one line in a card: its words left, small mono meta and link-buttons right (`danger`, `disabled`, `title` as its aria-label), a rule between lines. `textField({ label, value, placeholder, mono, hint, id, onInput })` returns `{ el, input }`: a mono label over a text input in the kit's tokens, with an optional hint. `confirmBox({ tone, body, buttons })`, a signal (default) or danger tinted box with its words and a button row. `emptyCard({ text, action })`, a centred line of muted words and one button. Sized from billet's own `bl-line`, `bl-field`, `bl-input`, `bl-confirm`, `bl-zone` and `bl-empty`.
+- kit: `keyedRows(container, { key, draw, update })` keeps a list's rows by key: `set(items)` draws new keys, removes gone ones, calls `update(row, item)` only for an item whose data (as JSON) changed, and moves rows into order (with `moveBefore` where the browser has it), so an open menu, details or input in an unchanged row is never replaced. Without `update` a changed row is drawn anew in its place. `get(key)` returns a row.
+- kit demo: `?view=page`, a page in the family shape with the band, a marked step list and the new card parts.
+
 ## 0.99.0
 
 ### Changed
