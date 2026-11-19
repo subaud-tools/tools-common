@@ -348,6 +348,50 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-btn.danger { color: var(--kit-danger); }
 .kit-btn:disabled { opacity: .45; cursor: default; }
 
+/* a card's lines (dom.js cardLine): words left, small mono meta and
+   link-buttons right, a rule between lines */
+.kit-card-line {
+  display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 10px;
+  padding: 9px 0; border-top: 1px solid var(--kit-line); font-size: 14.5px;
+}
+.kit-card-line:first-child { border-top: 0; padding-top: 0; }
+.kit-card-line:last-child { padding-bottom: 0; }
+.kit-card-line-main { min-width: 0; overflow-wrap: anywhere; }
+.kit-card-line-side { font: 12px var(--kit-mono); color: var(--kit-muted); }
+.kit-card-line-meta { font: inherit; white-space: nowrap; }
+.kit-card-line-act { font: 12px var(--kit-mono); }
+.kit-card-line-act.danger { color: var(--kit-danger); }
+.kit-card-line-act:disabled { opacity: .45; cursor: default; }
+
+/* a labelled text field (dom.js textField) */
+.kit-field { margin-top: 10px; }
+.kit-field:first-child { margin-top: 0; }
+.kit-field-label { display: block; margin: 0 0 4px; font: 12px var(--kit-mono); color: var(--kit-muted); }
+.kit-input {
+  display: block; box-sizing: border-box; width: 100%; font: 14.5px var(--kit-sans); color: var(--kit-fg);
+  background: var(--kit-bg); border: 1px solid var(--kit-line); border-radius: 6px; padding: 6px 10px;
+}
+.kit-input.mono { font-family: var(--kit-mono); }
+.kit-input::placeholder { color: var(--kit-muted); }
+.kit-input:focus-visible { outline: 1px solid var(--kit-signal); outline-offset: 0; }
+.kit-field-hint { font-size: 13px; color: var(--kit-muted); margin: 6px 0 0; }
+
+/* a confirm box inside a card (dom.js confirmBox): a signal or danger tint */
+.kit-confirm { margin-top: 10px; padding: 12px 14px; border-radius: 6px; font-size: 14.5px; }
+.kit-confirm.signal { background: var(--kit-signal-soft); }
+.kit-confirm.danger { background: color-mix(in srgb, var(--kit-danger) 6%, transparent); }
+.kit-confirm-body p { margin: 0 0 8px; }
+.kit-confirm-body ul { margin: 6px 0 10px; padding-left: 20px; }
+.kit-confirm-body li { overflow-wrap: anywhere; }
+.kit-confirm-body code { font: 12.5px var(--kit-mono); }
+.kit-confirm-body > :last-child { margin-bottom: 0; }
+.kit-confirm > .kit-btns { margin-top: 10px; }
+
+/* a list with nothing in it (dom.js emptyCard) */
+.kit-card.kit-empty-card { text-align: center; padding: 26px 10px; }
+.kit-empty-card-text { color: var(--kit-muted); margin: 0 0 14px; }
+.kit-empty-card-text:last-child { margin-bottom: 0; }
+
 /* pills */
 .kit-pill { font: 11px var(--kit-mono); border-radius: 6px; padding: 1px 7px; }
 .kit-pill.wait { color: var(--kit-wait); background: color-mix(in srgb, var(--kit-wait) 10%, transparent); }

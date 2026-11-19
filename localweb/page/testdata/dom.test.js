@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture, blurEl } from './harness.js';
-import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill } from '/_kit/dom.js';
+import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, textField, confirmBox, emptyCard } from '/_kit/dom.js';
 import { createKeys } from '/_kit/keys.js';
 import { fakeFetch, fakeTimers, flush } from './fakes.js';
 import { initTheme } from '/_kit/theme.js';
@@ -743,4 +743,103 @@ test('dom: band spans every column of the app grid', () => {
   const bandBottom = el.getBoundingClientRect().bottom;
   assert(Math.abs(app.querySelector('.kit-read').getBoundingClientRect().top - bandBottom) < 1, 'the columns start under the band');
   fx.replaceChildren();
+});
+
+test('dom: cardLine draws its words, its meta and its actions', () => {
+  const ran = [];
+  const l = cardLine({
+    main: 'iCloud Keychain',
+    meta: 'added 4 Nov',
+    actions: [{ label: 'Rename', run: () => ran.push('rename') }, { label: 'Remove', danger: true, title: 'Remove iCloud Keychain', run: () => ran.push('remove') }],
+  });
+  eq([l.tagName, l.className], ['DIV', 'kit-card-line']);
+  eq([...l.children].map(c => c.className), ['kit-card-line-main', 'kit-card-line-side']);
+  eq(l.firstChild.textContent, 'iCloud Keychain');
+  const side = l.lastChild;
+  eq(side.textContent, 'added 4 Nov · Rename · Remove');
+  eq(side.querySelector('.kit-card-line-meta').textContent, 'added 4 Nov');
+  const acts = [...side.querySelectorAll('button')];
+  eq(acts.map(b => [b.className, b.type, b.textContent]), [['kit-label-link kit-card-line-act', 'button', 'Rename'], ['kit-label-link kit-card-line-act danger', 'button', 'Remove']]);
+  eq(acts[1].getAttribute('aria-label'), 'Remove iCloud Keychain');
+  acts[1].click();
+  eq(ran, ['remove']);
+});
+
+test('dom: cardLine omits what it is not given', () => {
+  eq(cardLine({ main: 'Code by email' }).outerHTML, '<div class="kit-card-line"><span class="kit-card-line-main">Code by email</span></div>');
+  const metaOnly = cardLine({ main: 'Code by email', meta: 'always on' });
+  eq(metaOnly.lastChild.innerHTML, '<small class="kit-card-line-meta">always on</small>');
+  const actsOnly = cardLine({ main: 'x', actions: [{ label: 'Remove', disabled: true }] });
+  eq(actsOnly.lastChild.textContent, 'Remove');
+  assert(actsOnly.querySelector('button').disabled, 'a disabled action');
+});
+
+test('dom: cardLines in a card: a rule between them, its words and meta in the kit\'s type', () => {
+  const c = card({ head: 'How you sign in', body: [cardLine({ main: 'iCloud Keychain', meta: 'added 4 Nov' }), cardLine({ main: 'Code by email', meta: 'always on', actions: [{ label: 'Remove', danger: true }] })] });
+  fixture().append(c);
+  const [a, b] = c.querySelectorAll('.kit-card-line');
+  eq([cs(a).borderTopStyle, cs(a).paddingTop, cs(b).borderTopStyle, cs(b).borderTopWidth, cs(b).paddingTop, cs(b).paddingBottom], ['none', '0px', 'solid', '1px', '9px', '0px']);
+  eq([cs(a).fontSize, cs(a.querySelector('.kit-card-line-meta')).fontSize], ['14.5px', '12px']);
+  const ar = a.firstChild.getBoundingClientRect(), mr = a.lastChild.getBoundingClientRect();
+  assert(ar.left < mr.left && Math.abs(mr.right - a.getBoundingClientRect().right) < 1, 'words left, meta right');
+  const token = name => { const p = h('span', { style: `color: var(${name})` }); c.append(p); const col = cs(p).color; p.remove(); return col; };
+  eq(cs(b.querySelector('.danger')).color, token('--kit-danger'));
+});
+
+test('dom: textField is a label over an input, with a hint', () => {
+  const got = [];
+  const f = textField({ label: 'Name', value: 'alpha', placeholder: 'a name', hint: 'Lower case.', onInput: v => got.push(v) });
+  fixture().append(f.el);
+  eq(f.el.className, 'kit-field');
+  const [label, input, hint] = f.el.children;
+  eq([label.tagName, label.className, label.textContent], ['LABEL', 'kit-field-label', 'Name']);
+  assert(input === f.input && label.htmlFor === input.id && input.id, 'the label names the input');
+  eq([input.tagName, input.type, input.className, input.value, input.placeholder], ['INPUT', 'text', 'kit-input', 'alpha', 'a name']);
+  eq([hint.tagName, hint.className, hint.textContent], ['P', 'kit-field-hint', 'Lower case.']);
+  input.value = 'beta';
+  input.dispatchEvent(new Event('input'));
+  eq(got, ['beta']);
+  eq([cs(label).fontSize, cs(input).fontSize, cs(input).paddingTop, cs(input).paddingLeft, cs(input).borderRadius], ['12px', '14.5px', '6px', '10px', '6px']);
+  assert(Math.abs(input.getBoundingClientRect().width - f.el.getBoundingClientRect().width) < 1, 'the input takes the width');
+});
+
+test('dom: textField omits its hint and takes mono', () => {
+  const f = textField({ label: 'Repo', mono: true });
+  fixture().append(f.el);
+  eq(f.el.children.length, 2);
+  eq([f.input.className, f.input.value, f.input.placeholder], ['kit-input mono', '', '']);
+  assert(cs(f.input).fontFamily.includes('Mono'), 'mono');
+  assert(textField({ label: 'a' }).input.id !== textField({ label: 'b' }).input.id, 'each its own id');
+});
+
+test('dom: confirmBox holds its words and its buttons in its tone', () => {
+  let ran = 0;
+  const box = confirmBox({ tone: 'danger', body: [h('p', null, 'Remove alice?')], buttons: [{ label: 'Remove', danger: true, run: () => ran++ }, { label: 'Cancel' }] });
+  fixture().append(box);
+  eq([box.className, box.getAttribute('role')], ['kit-confirm danger', 'group']);
+  eq([...box.children].map(c => c.className), ['kit-confirm-body', 'kit-btns']);
+  eq(box.firstChild.textContent, 'Remove alice?');
+  const [rm] = box.querySelectorAll('.kit-btn');
+  eq(rm.className, 'kit-btn danger');
+  rm.click();
+  eq(ran, 1);
+  eq([cs(box).paddingTop, cs(box).paddingLeft, cs(box).borderRadius, cs(box).fontSize, cs(box.lastChild).marginTop], ['12px', '14px', '6px', '14.5px', '10px']);
+  const plain = confirmBox({ body: 'Replace the machine?' });
+  fixture().append(plain);
+  eq(plain.className, 'kit-confirm signal', 'signal by default');
+  eq(plain.children.length, 1, 'no buttons, no row');
+  eq(plain.firstChild.textContent, 'Replace the machine?');
+  assert(cs(plain).backgroundColor !== cs(box).backgroundColor, 'the tones differ');
+});
+
+test('dom: emptyCard is a centred line and one button', () => {
+  let ran = 0;
+  const c = emptyCard({ text: 'No workspaces yet.', action: { label: 'New workspace', run: () => ran++ } });
+  fixture().append(c);
+  eq(c.className, 'kit-card kit-empty-card');
+  eq([...c.children].map(x => [x.tagName, x.className, x.textContent]), [['P', 'kit-empty-card-text', 'No workspaces yet.'], ['BUTTON', 'kit-btn', 'New workspace']]);
+  c.lastChild.click();
+  eq(ran, 1);
+  eq([cs(c).textAlign, cs(c).paddingTop, cs(c.firstChild).marginBottom], ['center', '26px', '14px']);
+  eq(emptyCard({ text: 'Nothing here.' }).children.length, 1, 'no action, no button');
 });

@@ -348,6 +348,36 @@ export function buttons(bs: Button[]): HTMLElement;
 
 export function card(o: { edge?: 'signal' | 'agent' | 'wait'; head?: string; body?: Node | string; actions?: Button[] }): HTMLElement;
 
+export interface CardLineAction {
+  label: string;
+  run?(): void;
+  /** A destructive verb: in the danger colour. */
+  danger?: boolean;
+  disabled?: boolean;
+  /** Its aria-label, when the label alone doesn't say what it acts on ("Remove alice@example.com"). */
+  title?: string;
+}
+
+/** One line in a card: its words on the left, its small mono meta and link-buttons on the right with a dot between each, a rule between lines. No meta and no actions, no right side. */
+export function cardLine(o: { main: Node | string | Array<Node | string>; meta?: Node | string; actions?: CardLineAction[] }): HTMLElement;
+
+/** A label over a text input (its id, given or made, ties them), with an optional hint line; onInput gets the value on every input. mono sets the input in the mono face. */
+export function textField(o: {
+  label: string;
+  value?: string;
+  placeholder?: string;
+  mono?: boolean;
+  hint?: string;
+  id?: string;
+  onInput?(value: string): void;
+}): { el: HTMLElement; input: HTMLInputElement };
+
+/** A tinted box inside a card that asks before something happens: its words, then a row of buttons (none, no row). tone: signal (the default) or danger. */
+export function confirmBox(o: { tone?: 'signal' | 'danger'; body: Node | string | Array<Node | string>; buttons?: Button[] }): HTMLElement;
+
+/** The card a list shows with nothing in it: a centred line of muted words and one button (none, no button). */
+export function emptyCard(o: { text: string; action?: { label: string; run?(): void; fill?: boolean } }): HTMLElement;
+
 /** Line-numbered source: two <pre>s, scrolls sideways; highlight returns the source's content. */
 export function codeBlock(src: string, o?: { start?: number; highlight?(src: string): Node }): HTMLElement;
 

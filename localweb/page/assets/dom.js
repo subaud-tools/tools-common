@@ -455,6 +455,62 @@ export function card(o) {
     o.actions && o.actions.length ? buttons(o.actions) : null);
 }
 
+// cardLine is one line in a card: its words on the left, and on the right its
+// small mono meta and link-buttons, a dot between each. Lines in a card have a
+// rule between them. An action is { label, run, danger, disabled, title }.
+export function cardLine(o) {
+  const side = [];
+  if (o.meta !== undefined && o.meta !== null && o.meta !== '') side.push(h('small', { class: 'kit-card-line-meta' }, o.meta));
+  for (const a of o.actions || []) {
+    side.push(h('button', {
+      class: 'kit-label-link kit-card-line-act' + (a.danger ? ' danger' : ''),
+      type: 'button',
+      disabled: !!a.disabled,
+      'aria-label': a.title || null,
+      onclick: () => a.run && a.run(),
+    }, a.label));
+  }
+  return h('div', { class: 'kit-card-line' },
+    h('span', { class: 'kit-card-line-main' }, o.main),
+    side.length ? h('span', { class: 'kit-card-line-side' }, side.flatMap((x, i) => (i ? [' · ', x] : [x]))) : null);
+}
+
+let fieldIds = 0;
+
+// textField is a label over a text input, with an optional hint line under it;
+// onInput gets the value on every input. mono sets the input in the mono face
+// (a repo, a code). It returns { el, input }.
+export function textField(o) {
+  const input = h('input', {
+    class: 'kit-input' + (o.mono ? ' mono' : ''), type: 'text', id: o.id || `kit-field-${++fieldIds}`,
+    value: o.value || '', placeholder: o.placeholder || '',
+  });
+  if (o.onInput) input.addEventListener('input', () => o.onInput(input.value));
+  const el = h('div', { class: 'kit-field' },
+    h('label', { class: 'kit-field-label', for: input.id }, o.label),
+    input,
+    o.hint ? h('p', { class: 'kit-field-hint' }, o.hint) : null);
+  return { el, input };
+}
+
+// confirmBox is a tinted box inside a card that asks before something happens:
+// its words, then a row of buttons. tone signal (the default) or danger.
+export function confirmBox(o) {
+  const tone = o.tone === 'danger' ? 'danger' : 'signal';
+  return h('div', { class: 'kit-confirm ' + tone, role: 'group' },
+    h('div', { class: 'kit-confirm-body' }, o.body),
+    o.buttons && o.buttons.length ? buttons(o.buttons) : null);
+}
+
+// emptyCard is the card a list shows with nothing in it: a centred line of
+// muted words and one button, { label, run, fill }.
+export function emptyCard(o) {
+  const a = o.action;
+  return h('div', { class: 'kit-card kit-empty-card' },
+    h('p', { class: 'kit-empty-card-text' }, o.text),
+    a ? h('button', { class: 'kit-btn' + (a.fill ? ' fill' : ''), type: 'button', onclick: () => a.run && a.run() }, a.label) : null);
+}
+
 // codeBlock shows source with line numbers: a gutter <pre> and a source <pre>,
 // two text nodes however long the file. It scrolls sideways, never wraps.
 export function codeBlock(src, o = {}) {
