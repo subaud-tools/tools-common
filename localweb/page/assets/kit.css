@@ -677,7 +677,8 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-group.kit-folded > .kit-group-head { margin-bottom: 0; }
 .kit-group-rows { list-style: none; margin: 0; padding: 0; }
 /* a row's ⋯ menu (frontpage.js rowMenu): the pop-out hangs below the button,
-   right-aligned; a danger item reads in the danger colour. */
+   right-aligned; a link reads like a button, a danger item in the danger
+   colour, a disabled one muted; a separator is a line. */
 .kit-row-menu { position: relative; }
 .kit-row-more {
   box-sizing: border-box; min-height: 25px; padding: 3px 8px;
@@ -691,12 +692,16 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
   box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
 }
 .kit-row-pop[hidden] { display: none; }
-.kit-row-pop button {
+.kit-row-pop a, .kit-row-pop button {
   display: block; width: 100%; text-align: left; font: 13px var(--kit-sans); color: var(--kit-fg);
   background: none; border: 0; border-radius: 6px; padding: 7px 9px; cursor: pointer;
 }
+.kit-row-pop a { box-sizing: border-box; text-decoration: none; }
+.kit-row-pop a:hover, .kit-row-pop a:focus-visible,
 .kit-row-pop button:hover, .kit-row-pop button:focus-visible { background: var(--kit-bg); }
-.kit-row-pop button.danger { color: var(--kit-danger); }
+.kit-row-pop .danger { color: var(--kit-danger); }
+.kit-row-pop button:disabled { color: var(--kit-muted); background: none; cursor: default; }
+.kit-row-pop hr { border: 0; border-top: 1px solid var(--kit-line); margin: 4px 0; }
 @media (width <= 640px) {
   .kit-filter-row { padding: 0 12px; }
   .kit-filter-row > .kit-label { margin: 0 0 4px; }

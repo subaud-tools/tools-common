@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.97.0
+
+### Added
+- kit: `rowMenu` items may be links, separators or disabled: an item with `href` is an `<a role="menuitem">` styled like the buttons (keeping `data-action` and `data-walk`; `run` is optional and runs once the menu closes), `{ separator: true }` is an `<hr role="separator">`, and a `disabled` button reads muted and never runs. `kit.d.ts` types `RowMenuItem` as the union `RowMenuButton | RowMenuLink | RowMenuSeparator`.
+- kit: `rowMenu({ open: true })` draws the menu already open, as the one open menu on the page (closing any other, with outside press and Esc wired), without scrolling it into view or taking focus, so a caller that redraws its rows keeps an open menu open; `onMenu` hears only its closing. `buttonClass` replaces `kit-row-more` on the ⋯ button (for example `kit-ctl` for a header's bordered look).
+
 ## 0.96.0
 
 ### Added
