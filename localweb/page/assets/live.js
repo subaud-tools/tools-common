@@ -52,6 +52,14 @@
 // anyway): one short request that checks the tab in and brings the events
 // since its cursor, such as a show. A tab that loads hidden checks in at once.
 // When shown, it stops polling and reopens the stream from its cursor.
+//
+// A frame in proj's split page is visible to the browser even when its tab
+// isn't selected, so the split page tells it: it posts {type: "kit.shown",
+// shown: true|false} to each frame's window when the frame loads and when the
+// selection changes (the other way from kit.forward). live() takes it only
+// from its parent window, and an unshown page takes the hidden-tab path above:
+// the stream is held only while the page is visible and shown. A page never
+// told counts as shown.
 import { spotlight, clearSpotlight, resumeSpotlight } from './spotlight.js';
 
 function forward(tool) {
@@ -74,6 +82,7 @@ export function live(opts) {
   const page = opts.page ?? '';
   const onStatus = opts.onStatus || (() => {});
   const doc = opts.document || globalThis.document;
+  const win = opts.window || globalThis.window;
 
   let cursor = opts.cursor || '';
   let es = null;
@@ -83,6 +92,7 @@ export function live(opts) {
   let stopped = false;
   let epoch = 0; // bumped whenever the stream opens; stale polls are dropped
   let resumed = opts.spotlight === false;
+  let shown = true; // until the split page says otherwise
 
   const withQuery = url =>
     `${url}${url.includes('?') ? '&' : '?'}tab=${encodeURIComponent(tab)}&page=${encodeURIComponent(page)}` +
@@ -154,7 +164,7 @@ export function live(opts) {
       deliver(msg.type, msg.data, m.lastEventId || cursor);
     };
     s.onerror = () => {
-      if (stopped || es !== s || hidden()) return;
+      if (stopped || es !== s || away()) return;
       s.close();
       es = null;
       if (status !== 'down') setStatus('polling');
@@ -179,7 +189,7 @@ export function live(opts) {
       body = await res.json();
     } catch {
       if (stopped || mine !== epoch) return;
-      if (hidden()) return schedule(hiddenInterval);
+      if (away()) return schedule(hiddenInterval);
       setStatus('down');
       schedule();
       return;
@@ -187,7 +197,7 @@ export function live(opts) {
     if (stopped || mine !== epoch || (es && esOpen)) return;
     for (const e of body.events || []) deliver(e.type, e.data, body.cursor);
     if (body.cursor) cursor = body.cursor;
-    if (hidden()) return schedule(hiddenInterval); // a check-in: no stream, no status
+    if (away()) return schedule(hiddenInterval); // a check-in: no stream, no status
     setStatus('polling');
     // A stream still connecting was opened from an older cursor; replace it,
     // or it would replay what this poll just delivered.
@@ -200,12 +210,18 @@ export function live(opts) {
   }
 
   const hidden = () => !!doc && doc.visibilityState === 'hidden';
+  // away: hidden, or a split page's tab that isn't shown; no stream is held.
+  const away = () => hidden() || !shown;
 
-  function onVisibility() {
-    if (stopped) return;
+  // refresh holds the stream while the page is on screen and checks in while
+  // it is away; a change that leaves it where it was does nothing.
+  let wasAway = false; // set where live() starts
+  function refresh() {
+    if (stopped || away() === wasAway) return;
+    wasAway = away();
     cancelPoll();
     epoch++; // a poll in flight is dropped: the stream or the check-ins cover it
-    if (hidden()) {
+    if (wasAway) {
       if (es) es.close();
       es = null;
       schedule(hiddenInterval);
@@ -214,16 +230,27 @@ export function live(opts) {
     if (!es) openStream();
   }
 
+  function onMessage(ev) {
+    if (!win || win.parent === win || ev.source !== win.parent) return;
+    const d = ev.data;
+    if (!d || d.type !== 'kit.shown' || typeof d.shown !== 'boolean') return;
+    shown = d.shown;
+    refresh();
+  }
+
   function halt() {
     stopped = true;
     cancelPoll();
     if (es) es.close();
     es = null;
-    if (doc) doc.removeEventListener('visibilitychange', onVisibility);
+    if (doc) doc.removeEventListener('visibilitychange', refresh);
+    if (win) win.removeEventListener('message', onMessage);
   }
 
-  if (doc) doc.addEventListener('visibilitychange', onVisibility);
-  if (!hidden()) openStream();
+  if (doc) doc.addEventListener('visibilitychange', refresh);
+  if (win) win.addEventListener('message', onMessage);
+  wasAway = away();
+  if (!wasAway) openStream();
   else schedule(0);
 
   return {
