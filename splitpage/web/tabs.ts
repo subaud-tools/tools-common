@@ -1,5 +1,8 @@
 // The right half: a bar of tabs, one frame per tab, following the server's
-// list. Hidden frames stay loaded; the server knows which tab shows.
+// list. Hidden frames stay loaded; the server knows which tab shows. Each
+// frame is told whether it shows ({type: "kit.shown", shown}, which the kit's
+// live() takes from its parent), so an unselected tool page lets go of its
+// live stream: a browser allows about six connections to one host.
 
 import type { Tab, TabList } from '../wire.d.ts';
 
@@ -71,6 +74,15 @@ export function startTabs(
     return el;
   };
 
+  // tell posts the frame's shown state to its page, at the tab's origin only.
+  const tell = (f: HTMLIFrameElement, address: string): void => {
+    try {
+      f.contentWindow?.postMessage({ type: 'kit.shown', shown: f.classList.contains('shown') }, new URL(address).origin);
+    } catch {
+      // a frame gone or an address with no origin: nothing to tell
+    }
+  };
+
   const frame = (tab: Tab): HTMLIFrameElement => {
     const el = document.createElement('iframe');
     el.title = tab.title || tab.address;
@@ -79,6 +91,8 @@ export function startTabs(
     // only do when allowed.
     el.allow = 'clipboard-write';
     el.src = tab.address;
+    // On every load, so a page that reloads or navigates hears it again.
+    el.addEventListener('load', () => tell(el, tab.address));
     frames.append(el);
     return el;
   };
@@ -123,7 +137,10 @@ export function startTabs(
         f = moved;
         shown.set(tab.id, f);
       }
-      f.classList.toggle('shown', on);
+      if (f.classList.contains('shown') !== on) {
+        f.classList.toggle('shown', on);
+        tell(f, tab.address);
+      }
     }
     empty.hidden = tabs.length > 0;
     reload.disabled = list.selected === '';

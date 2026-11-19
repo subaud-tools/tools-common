@@ -14003,12 +14003,19 @@ function startTabs(session2, changed) {
     });
     return el2;
   };
+  const tell = (f, address) => {
+    try {
+      f.contentWindow?.postMessage({ type: "kit.shown", shown: f.classList.contains("shown") }, new URL(address).origin);
+    } catch {
+    }
+  };
   const frame = (tab) => {
     const el2 = document.createElement("iframe");
     el2.title = tab.title || tab.address;
     el2.dataset.id = tab.id;
     el2.allow = "clipboard-write";
     el2.src = tab.address;
+    el2.addEventListener("load", () => tell(el2, tab.address));
     frames.append(el2);
     return el2;
   };
@@ -14049,7 +14056,10 @@ function startTabs(session2, changed) {
         f = moved;
         shown.set(tab.id, f);
       }
-      f.classList.toggle("shown", on3);
+      if (f.classList.contains("shown") !== on3) {
+        f.classList.toggle("shown", on3);
+        tell(f, tab.address);
+      }
     }
     empty.hidden = tabs2.length > 0;
     reload.disabled = list.selected === "";
