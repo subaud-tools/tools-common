@@ -133,6 +133,10 @@ export interface LiveOptions {
   fetch?: typeof fetch;
   setTimeout?: (fn: () => void, ms: number) => unknown;
   clearTimeout?: (id: unknown) => void;
+  /** Takes visibilitychange; default globalThis.document. */
+  document?: Pick<Document, 'visibilityState' | 'addEventListener' | 'removeEventListener'>;
+  /** Hears {type: "kit.shown", shown} from its parent (proj's split page); default globalThis.window. */
+  window?: Pick<Window, 'parent' | 'addEventListener' | 'removeEventListener'>;
   /** false: don't draw the step the serve holds (GET /api/kit/spotlight) when the stream first opens. Default true. */
   spotlight?: boolean;
 }

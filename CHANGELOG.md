@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.98.0
+
+### Changed
+- kit: `live()` holds its stream only while the page is visible and shown. proj's split page now posts `{type: "kit.shown", shown}` to each tab's frame when it loads and when the selection changes, and `live()` takes it from its parent window only: an unselected split tab takes the hidden-tab path (closes its stream, checks in once a minute, reopens from its cursor when selected), so split tabs no longer use up the browser's six connections to a tool. A page never told counts as shown. `LiveOptions` types the injectable `document` and `window`.
+
 ## 0.97.0
 
 ### Added

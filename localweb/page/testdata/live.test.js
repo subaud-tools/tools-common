@@ -410,3 +410,107 @@ test('live: a throwing onNewBuild does not stop the stream', () => {
   eq(events.map(e => e.type), ['stale', 'after']);
   handle.stop();
 });
+
+// proj's split page posts {type: 'kit.shown', shown} to each frame: a tab it
+// doesn't show lets go of its stream as a hidden tab does.
+function fakeWindow() {
+  const listeners = [];
+  const win = {
+    parent: { name: 'split page' },
+    addEventListener: (t, f) => t === 'message' && listeners.push(f),
+    removeEventListener: (t, f) => { const i = listeners.indexOf(f); if (i >= 0) listeners.splice(i, 1); },
+    post(data, source = win.parent) { for (const f of [...listeners]) f({ data, source }); },
+    listeners,
+  };
+  return win;
+}
+
+test('live: unshown in a split page closes the stream and checks in once a minute; shown again reopens from its cursor', async () => {
+  const win = fakeWindow();
+  const { f, timers, es, events, statuses, handle } = setup({ window: win, document: fakeDocument() });
+  const first = es.last();
+  first.emitOpen();
+  first.emitMessage('4', { type: 'a' });
+  win.post({ type: 'kit.shown', shown: false });
+  assert(first.closed, 'unshown: stream closed');
+  eq([...timers.pending.values()].map(t => t.ms), [60000], 'unshown: one check-in a minute away');
+  f.queue.push(f.json({ cursor: '6', events: [{ type: 'b' }] }));
+  timers.tick();
+  await flush();
+  eq(f.calls[0].url, '/api/state?tab=T1&page=&since=4', 'the check-in is the poll');
+  eq(es.made.length, 1, 'unshown: no stream reopened');
+  eq([...timers.pending.values()].map(t => t.ms), [60000], 'the next check-in a minute later');
+  eq(statuses, ['live'], 'no status change while unshown');
+  win.post({ type: 'kit.shown', shown: true });
+  eq(timers.pending.size, 0, 'shown: check-ins stop');
+  eq(es.made.length, 2);
+  eq(es.last().url, '/api/events?tab=T1&page=&since=6', 'picks up after what it had');
+  eq(events.map(e => e.type), ['a', 'b']);
+  handle.stop();
+  win.post({ type: 'kit.shown', shown: false });
+  eq(es.made.length, 2, 'a stopped live() hears nothing more');
+});
+
+test('live: kit.shown from a window other than the parent is ignored', () => {
+  const win = fakeWindow();
+  const { timers, es, handle } = setup({ window: win });
+  es.last().emitOpen();
+  win.post({ type: 'kit.shown', shown: false }, { name: 'another frame' });
+  win.post({ type: 'kit.shown', shown: false }, null);
+  win.post({ type: 'kit.shown', shown: 'no' });
+  win.post({ type: 'other', shown: false });
+  assert(!es.last().closed, 'stream kept');
+  eq(timers.pending.size, 0);
+  handle.stop();
+});
+
+test('live: a page that is its own top window ignores kit.shown', () => {
+  const win = fakeWindow();
+  win.parent = win;
+  const { es, handle } = setup({ window: win });
+  es.last().emitOpen();
+  win.post({ type: 'kit.shown', shown: false });
+  assert(!es.last().closed, 'stream kept');
+  handle.stop();
+});
+
+test('live: a page told it is unshown before it starts live() holds no stream', () => {
+  // diazo fetches its plan before live(), so the split page's word on the
+  // frame's load comes first.
+  const win = fakeWindow();
+  setup({ window: win }).handle.stop(); // live.js is listening for this window
+  win.post({ type: 'kit.shown', shown: false });
+  const { timers, es, handle } = setup({ window: win });
+  eq(es.made.length, 0, 'no stream while unshown');
+  eq([...timers.pending.values()].map(t => t.ms), [0], 'checks in at once, as a tab that loads hidden');
+  win.post({ type: 'kit.shown', shown: true });
+  eq(es.made.length, 1, 'shown: the stream opens');
+  handle.stop();
+});
+
+test('live: a page never told keeps its stream', () => {
+  const win = fakeWindow();
+  const { timers, es, handle } = setup({ window: win });
+  es.last().emitOpen();
+  eq(es.made.length, 1);
+  assert(!es.last().closed);
+  eq(timers.pending.size, 0);
+  handle.stop();
+});
+
+test('live: hidden, then unshown, then shown, then visible opens exactly one stream', () => {
+  const win = fakeWindow(), doc = fakeDocument();
+  const { timers, es, handle } = setup({ window: win, document: doc });
+  es.last().emitOpen();
+  doc.set('hidden');
+  win.post({ type: 'kit.shown', shown: false });
+  eq([...timers.pending.values()].map(t => t.ms), [60000], 'one check-in');
+  win.post({ type: 'kit.shown', shown: true });
+  eq(es.made.length, 1, 'still hidden: no stream');
+  eq([...timers.pending.values()].map(t => t.ms), [60000], 'still one check-in');
+  doc.set('visible');
+  eq(es.made.length, 2, 'exactly one stream opened');
+  eq(timers.pending.size, 0);
+  eq(es.made.filter(e => !e.closed).length, 1);
+  handle.stop();
+});
