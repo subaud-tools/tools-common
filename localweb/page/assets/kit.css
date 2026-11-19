@@ -215,6 +215,38 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-also-here { margin-left: 8px; font: 11px var(--kit-mono); font-weight: 400; color: var(--kit-muted); border: 1px solid var(--kit-line); border-radius: 6px; padding: 0 6px; }
 .kit-also-detail { grid-column: 2; font: 12px var(--kit-mono); color: var(--kit-muted); }
 
+/* the band (dom.js band): the strip under the bar with the page's title, what
+   is beside it on its line and an optional row under it. Measured from
+   diazo's: 16px 24px padding on the panel ground over a hairline, an 18px
+   bold title, two 28px rows 12px apart. With a row under it the band is
+   104px high whatever the row holds, so the columns start at one place. */
+.kit-app:has(> .kit-band) { grid-template-rows: auto auto minmax(0, 1fr); }
+.kit-app > .kit-band { grid-column: 1 / -1; }
+.kit-band {
+  box-sizing: border-box; padding: 16px 24px; min-width: 0;
+  border-bottom: 1px solid var(--kit-line); background: var(--kit-panel);
+}
+.kit-band:has(> .kit-band-under) { min-height: 104px; }
+.kit-band-line { display: flex; align-items: center; gap: 12px; min-height: 28px; min-width: 0; }
+.kit-band-title {
+  flex: 0 1 auto; min-width: 0; margin: 0;
+  font: 700 18px/1.3 var(--kit-sans); letter-spacing: -.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.kit-band-line > :not(.kit-band-title) { flex: none; }
+.kit-band-under { display: flex; align-items: center; gap: 8px; min-height: 28px; min-width: 0; margin-top: 12px; }
+.kit-band-under > .kit-stages {
+  flex: 1 1 auto; min-width: 0; height: 28px; margin-top: 0;
+  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+}
+.kit-band-under > .kit-stages > * { flex: none; }
+/* a pill in the band is 24px, its words centred with or without a border */
+.kit-band .kit-pill, .kit-band .kit-working, .kit-band .kit-stage {
+  box-sizing: border-box; display: inline-flex; align-items: center;
+  height: 24px; padding: 0 12px; line-height: 22px;
+}
+@media (width <= 640px) { .kit-band { padding-inline: 12px; } }
+
 /* the list panel: a quiet ground */
 .kit-list {
   width: 400px; flex: none; display: flex; flex-direction: column; min-height: 0;
@@ -315,6 +347,50 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-btn.fill { background: var(--kit-signal); border-color: var(--kit-signal); color: var(--kit-signal-ink); font-weight: 700; }
 .kit-btn.danger { color: var(--kit-danger); }
 .kit-btn:disabled { opacity: .45; cursor: default; }
+
+/* a card's lines (dom.js cardLine): words left, small mono meta and
+   link-buttons right, a rule between lines */
+.kit-card-line {
+  display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 10px;
+  padding: 9px 0; border-top: 1px solid var(--kit-line); font-size: 14.5px;
+}
+.kit-card-line:first-child { border-top: 0; padding-top: 0; }
+.kit-card-line:last-child { padding-bottom: 0; }
+.kit-card-line-main { min-width: 0; overflow-wrap: anywhere; }
+.kit-card-line-side { font: 12px var(--kit-mono); color: var(--kit-muted); }
+.kit-card-line-meta { font: inherit; white-space: nowrap; }
+.kit-card-line-act { font: 12px var(--kit-mono); }
+.kit-card-line-act.danger { color: var(--kit-danger); }
+.kit-card-line-act:disabled { opacity: .45; cursor: default; }
+
+/* a labelled text field (dom.js textField) */
+.kit-field { margin-top: 10px; }
+.kit-field:first-child { margin-top: 0; }
+.kit-field-label { display: block; margin: 0 0 4px; font: 12px var(--kit-mono); color: var(--kit-muted); }
+.kit-input {
+  display: block; box-sizing: border-box; width: 100%; font: 14.5px var(--kit-sans); color: var(--kit-fg);
+  background: var(--kit-bg); border: 1px solid var(--kit-line); border-radius: 6px; padding: 6px 10px;
+}
+.kit-input.mono { font-family: var(--kit-mono); }
+.kit-input::placeholder { color: var(--kit-muted); }
+.kit-input:focus-visible { outline: 1px solid var(--kit-signal); outline-offset: 0; }
+.kit-field-hint { font-size: 13px; color: var(--kit-muted); margin: 6px 0 0; }
+
+/* a confirm box inside a card (dom.js confirmBox): a signal or danger tint */
+.kit-confirm { margin-top: 10px; padding: 12px 14px; border-radius: 6px; font-size: 14.5px; }
+.kit-confirm.signal { background: var(--kit-signal-soft); }
+.kit-confirm.danger { background: color-mix(in srgb, var(--kit-danger) 6%, transparent); }
+.kit-confirm-body p { margin: 0 0 8px; }
+.kit-confirm-body ul { margin: 6px 0 10px; padding-left: 20px; }
+.kit-confirm-body li { overflow-wrap: anywhere; }
+.kit-confirm-body code { font: 12.5px var(--kit-mono); }
+.kit-confirm-body > :last-child { margin-bottom: 0; }
+.kit-confirm > .kit-btns { margin-top: 10px; }
+
+/* a list with nothing in it (dom.js emptyCard) */
+.kit-card.kit-empty-card { text-align: center; padding: 26px 10px; }
+.kit-empty-card-text { color: var(--kit-muted); margin: 0 0 14px; }
+.kit-empty-card-text:last-child { margin-bottom: 0; }
 
 /* pills */
 .kit-pill { font: 11px var(--kit-mono); border-radius: 6px; padding: 1px 7px; }
@@ -468,6 +544,15 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
 }
 .kit-index-row .kit-meta { grid-column: 1; font: 11.5px var(--kit-mono); color: var(--kit-muted); }
+/* a row's mark (a step's ✓ ● ○ ✕): its own column before the title, in its
+   state's colour; the meta lines up under the title */
+.kit-index-main.has-mark { grid-template-columns: 18px minmax(0, 1fr); column-gap: 6px; align-items: baseline; }
+.kit-index-main.has-mark > :not(.kit-index-mark) { grid-column: 2; }
+.kit-index-mark { grid-column: 1; font: 12px var(--kit-mono); color: var(--kit-muted); text-align: center; }
+.kit-index-mark.done { color: var(--kit-ok); }
+.kit-index-mark.now { color: var(--kit-signal); }
+.kit-index-mark.later { color: var(--kit-muted); }
+.kit-index-mark.fail { color: var(--kit-danger); }
 .kit-index-row.attn .kit-meta { color: var(--kit-signal); font-weight: 700; }
 .kit-index-row.waits .kit-meta { color: var(--kit-wait); }
 .kit-index-row.draft { border-left-color: var(--kit-wait); }

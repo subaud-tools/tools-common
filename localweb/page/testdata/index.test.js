@@ -94,3 +94,29 @@ test('indexSection: a plain name with an action, and none without one', () => {
   const plain = indexSection({ name: 'Later', rows: [], empty: 'x' });
   eq(plain.outerHTML, '<section class="kit-index-section"><div class="kit-label">Later</div><p class="kit-empty">x</p></section>');
 });
+
+test('indexRow: a mark sits before the title in its state', () => {
+  const r = indexRow({ id: 'repos', title: 'Repos', meta: '2 min', mark: '✓', markState: 'done' });
+  fixture().append(r);
+  const main = r.firstChild;
+  eq([...main.children].map(c => [c.className, c.textContent]), [['kit-index-mark done', '✓'], ['kit-index-title', 'Repos'], ['kit-meta', '2 min']]);
+  eq(main.className, 'kit-index-main has-mark');
+  const token = name => { const p = document.createElement('span'); p.style.color = `var(${name})`; r.append(p); const c = getComputedStyle(p).color; p.remove(); return c; };
+  const colour = state => {
+    const x = indexRow({ id: 'a', title: 't', mark: '●', markState: state });
+    r.after(x);
+    const c = getComputedStyle(x.querySelector('.kit-index-mark')).color;
+    x.remove();
+    return c;
+  };
+  eq(['done', 'now', 'later', 'fail'].map(colour), ['--kit-ok', '--kit-signal', '--kit-muted', '--kit-danger'].map(token));
+  const mr = main.children[0].getBoundingClientRect(), tr = main.children[1].getBoundingClientRect(), xr = main.children[2].getBoundingClientRect();
+  assert(mr.right <= tr.left, 'the mark is left of the title');
+  assert(Math.abs(xr.left - tr.left) < 1, 'the meta lines up under the title');
+});
+
+test('indexRow: no mark, no mark element', () => {
+  const r = indexRow({ id: 'a', title: 't', meta: 'm' });
+  eq(r.querySelector('.kit-index-mark'), null);
+  eq(r.firstChild.className, 'kit-index-main');
+});

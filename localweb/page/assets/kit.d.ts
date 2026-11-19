@@ -250,6 +250,25 @@ export function bar(o: {
   signIn?: { fetch?: typeof fetch; setTimeout?: (fn: () => void, ms: number) => unknown; close?(): void; reload?(): void };
 }): BarHandle;
 
+export interface BandHandle {
+  /** header.kit-band: on the app grid it spans every column, between the bar and the columns. */
+  el: HTMLElement;
+  /** The title's words, in place: the h1 stays the same element. */
+  setTitle(title: string | Node): void;
+  /** Replaces the nodes on the title's line; the title and the row under stay. */
+  setBeside(nodes?: Array<Node | string> | null): void;
+  /** Replaces the row under the title; empty or null takes the row away. */
+  setUnder(nodes?: Array<Node | string> | null): void;
+}
+
+/**
+ * The strip under the bar with the page's title, measured from diazo's: an
+ * 18px bold title, beside it on its line a state pill, a size or an email, and
+ * under it a row (a stage track, filter pills, a back link). With a row under
+ * it the band is 104px high. No beside or under, no empty container.
+ */
+export function band(o: { title: string | Node; beside?: Array<Node | string>; under?: Array<Node | string> }): BandHandle;
+
 export interface Chip {
   id: string;
   label: string;
@@ -328,6 +347,60 @@ export interface Button {
 export function buttons(bs: Button[]): HTMLElement;
 
 export function card(o: { edge?: 'signal' | 'agent' | 'wait'; head?: string; body?: Node | string; actions?: Button[] }): HTMLElement;
+
+export interface CardLineAction {
+  label: string;
+  run?(): void;
+  /** A destructive verb: in the danger colour. */
+  danger?: boolean;
+  disabled?: boolean;
+  /** Its aria-label, when the label alone doesn't say what it acts on ("Remove alice@example.com"). */
+  title?: string;
+}
+
+/** One line in a card: its words on the left, its small mono meta and link-buttons on the right with a dot between each, a rule between lines. No meta and no actions, no right side. */
+export function cardLine(o: { main: Node | string | Array<Node | string>; meta?: Node | string; actions?: CardLineAction[] }): HTMLElement;
+
+/** A label over a text input (its id, given or made, ties them), with an optional hint line; onInput gets the value on every input. mono sets the input in the mono face. */
+export function textField(o: {
+  label: string;
+  value?: string;
+  placeholder?: string;
+  mono?: boolean;
+  hint?: string;
+  id?: string;
+  onInput?(value: string): void;
+}): { el: HTMLElement; input: HTMLInputElement };
+
+/** A tinted box inside a card that asks before something happens: its words, then a row of buttons (none, no row). tone: signal (the default) or danger. */
+export function confirmBox(o: { tone?: 'signal' | 'danger'; body: Node | string | Array<Node | string>; buttons?: Button[] }): HTMLElement;
+
+/** The card a list shows with nothing in it: a centred line of muted words and one button (none, no button). */
+export function emptyCard(o: { text: string; action?: { label: string; run?(): void; fill?: boolean } }): HTMLElement;
+
+export interface KeyedRows<T> {
+  /**
+   * Draws a row for each new key, removes the rows of keys gone, calls update
+   * only for an item whose data (compared as JSON) differs from the last set,
+   * and moves the rows into the items' order. An unchanged row is the same
+   * element, so an open menu, details or input in it is never replaced. A
+   * repeated key keeps its first item.
+   */
+  set(items: T[]): void;
+  /** The row drawn for a key, or null. */
+  get(key: string | number): HTMLElement | null;
+}
+
+/**
+ * Keeps a list's rows by key in container, which holds only the rows: a poll
+ * changes only the rows whose state changed. update changes a row in place;
+ * without it, a changed row is drawn anew in its place.
+ */
+export function keyedRows<T>(container: HTMLElement, o: {
+  key(item: T): string | number;
+  draw(item: T): HTMLElement;
+  update?(row: HTMLElement, item: T): void;
+}): KeyedRows<T>;
 
 /** Line-numbered source: two <pre>s, scrolls sideways; highlight returns the source's content. */
 export function codeBlock(src: string, o?: { start?: number; highlight?(src: string): Node }): HTMLElement;
@@ -502,6 +575,10 @@ export interface IndexRowOptions {
   waits?: boolean;
   /** It holds a draft: a wait-coloured edge and meta. */
   draft?: boolean;
+  /** A mark before the title, such as ✓, ●, ○ or ✕ (a step list's). No mark, no mark element. */
+  mark?: string;
+  /** The mark's colour: done (ok), now (signal), later (muted), fail (danger). */
+  markState?: 'done' | 'now' | 'later' | 'fail';
   /** Nodes after the row's button, before the dot. */
   extra?: Node[];
   select?(id: string): void;

@@ -223,6 +223,41 @@ export function bar(o) {
   return handle;
 }
 
+// band is the strip under the bar with the page's title: beside is nodes on
+// the title's line (a state pill, a size, an email), under is a row below it
+// (a stage track, filter pills, a back link). Each setter changes its own part
+// in place; an empty beside or under draws nothing.
+export function band(o) {
+  const title = h('h1', { class: 'kit-band-title' }, o.title);
+  const line = h('div', { class: 'kit-band-line' }, title);
+  const el = h('header', { class: 'kit-band' }, line);
+  let under = null;
+  const nodes = xs => [xs || []].flat().filter(x => x !== null && x !== undefined && x !== false);
+  const handle = {
+    el,
+    setTitle(t) {
+      title.replaceChildren(t);
+    },
+    setBeside(xs) {
+      while (line.lastChild !== title) line.lastChild.remove();
+      line.append(...nodes(xs));
+    },
+    setUnder(xs) {
+      const got = nodes(xs);
+      if (!got.length) {
+        under?.remove();
+        under = null;
+        return;
+      }
+      if (!under) el.append(under = h('div', { class: 'kit-band-under' }));
+      under.replaceChildren(...got);
+    },
+  };
+  handle.setBeside(o.beside);
+  handle.setUnder(o.under);
+  return handle;
+}
+
 function chipRow(group, chips, onChip) {
   return (chips || []).map(c =>
     h('button', { class: 'kit-chip' + (c.on ? ' on' : ''), type: 'button', dataset: { id: c.id }, onclick: () => onChip && onChip(group, c.id) }, c.label, count(c.count)));
@@ -418,6 +453,115 @@ export function card(o) {
     head ? h('div', { class: 'kit-card-head' }, head) : null,
     o.body !== undefined ? h('div', { class: 'kit-card-body' }, o.body) : null,
     o.actions && o.actions.length ? buttons(o.actions) : null);
+}
+
+// cardLine is one line in a card: its words on the left, and on the right its
+// small mono meta and link-buttons, a dot between each. Lines in a card have a
+// rule between them. An action is { label, run, danger, disabled, title }.
+export function cardLine(o) {
+  const side = [];
+  if (o.meta !== undefined && o.meta !== null && o.meta !== '') side.push(h('small', { class: 'kit-card-line-meta' }, o.meta));
+  for (const a of o.actions || []) {
+    side.push(h('button', {
+      class: 'kit-label-link kit-card-line-act' + (a.danger ? ' danger' : ''),
+      type: 'button',
+      disabled: !!a.disabled,
+      'aria-label': a.title || null,
+      onclick: () => a.run && a.run(),
+    }, a.label));
+  }
+  return h('div', { class: 'kit-card-line' },
+    h('span', { class: 'kit-card-line-main' }, o.main),
+    side.length ? h('span', { class: 'kit-card-line-side' }, side.flatMap((x, i) => (i ? [' · ', x] : [x]))) : null);
+}
+
+let fieldIds = 0;
+
+// textField is a label over a text input, with an optional hint line under it;
+// onInput gets the value on every input. mono sets the input in the mono face
+// (a repo, a code). It returns { el, input }.
+export function textField(o) {
+  const input = h('input', {
+    class: 'kit-input' + (o.mono ? ' mono' : ''), type: 'text', id: o.id || `kit-field-${++fieldIds}`,
+    value: o.value || '', placeholder: o.placeholder || '',
+  });
+  if (o.onInput) input.addEventListener('input', () => o.onInput(input.value));
+  const el = h('div', { class: 'kit-field' },
+    h('label', { class: 'kit-field-label', for: input.id }, o.label),
+    input,
+    o.hint ? h('p', { class: 'kit-field-hint' }, o.hint) : null);
+  return { el, input };
+}
+
+// confirmBox is a tinted box inside a card that asks before something happens:
+// its words, then a row of buttons. tone signal (the default) or danger.
+export function confirmBox(o) {
+  const tone = o.tone === 'danger' ? 'danger' : 'signal';
+  return h('div', { class: 'kit-confirm ' + tone, role: 'group' },
+    h('div', { class: 'kit-confirm-body' }, o.body),
+    o.buttons && o.buttons.length ? buttons(o.buttons) : null);
+}
+
+// emptyCard is the card a list shows with nothing in it: a centred line of
+// muted words and one button, { label, run, fill }.
+export function emptyCard(o) {
+  const a = o.action;
+  return h('div', { class: 'kit-card kit-empty-card' },
+    h('p', { class: 'kit-empty-card-text' }, o.text),
+    a ? h('button', { class: 'kit-btn' + (a.fill ? ' fill' : ''), type: 'button', onclick: () => a.run && a.run() }, a.label) : null);
+}
+
+// keyedRows keeps a list's rows by key, so a poll changes only what changed:
+// set(items) draws a row for a new key, removes the row of a key gone, calls
+// update(row, item) only for an item whose data (as JSON) differs from last
+// time, and puts the rows in the items' order by moving them. An open menu,
+// details or input inside an unchanged row is never replaced. Without update,
+// a changed row is drawn anew in its place. The container holds only the rows.
+export function keyedRows(container, o) {
+  let rows = new Map(); // key → { el, data }
+  const place = (el, ref) => {
+    if (el === ref) return;
+    // moveBefore keeps a moved row's focus and state where the browser has it.
+    if (container.moveBefore && el.parentNode === container && container.isConnected) {
+      try {
+        container.moveBefore(el, ref);
+        return;
+      } catch {
+        // fall through to the plain move
+      }
+    }
+    container.insertBefore(el, ref);
+  };
+  return {
+    set(items) {
+      const next = new Map();
+      for (const item of items) {
+        const key = String(o.key(item));
+        if (next.has(key)) continue;
+        const data = JSON.stringify(item);
+        const had = rows.get(key);
+        let el;
+        if (!had) el = o.draw(item);
+        else if (had.data === data) el = had.el;
+        else if (o.update) {
+          el = had.el;
+          o.update(el, item);
+        } else {
+          el = o.draw(item);
+          had.el.replaceWith(el);
+        }
+        next.set(key, { el, data });
+      }
+      for (const [key, r] of rows) if (!next.has(key)) r.el.remove();
+      let ref = container.firstChild;
+      for (const { el } of next.values()) {
+        place(el, ref);
+        ref = el.nextSibling;
+      }
+      rows = next;
+    },
+    get: key => rows.get(String(key))?.el ?? null,
+  };
 }
 
 // codeBlock shows source with line numbers: a gutter <pre> and a source <pre>,

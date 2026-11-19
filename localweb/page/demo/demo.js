@@ -1,5 +1,5 @@
 import { demoRecord, DEMO } from './record.js';
-import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, narrowMode, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
+import { h, bar, band, cardLine, textField, confirmBox, emptyCard, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, narrowMode, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
 
 const MARK = `<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14161d"/><path d="M13 22H28M13 32H26M13 42H28" stroke="#9aa0ab" stroke-width="3.6" stroke-linecap="round"/><path d="M13 22H28" stroke="#d98f66" stroke-width="3.6" stroke-linecap="round"/><path d="M33 17V47" stroke="#d98f66" stroke-width="2.4"/><rect x="38" y="18" width="14" height="28" rx="3" fill="none" stroke="#d98f66" stroke-width="2.4"/></svg>`;
 const mark = () => {
@@ -382,6 +382,51 @@ function sendPage(long) {
   return f;
 }
 
+// ?view=page: a page in the family's shape (billet's), the band under the bar,
+// then the step list down the left and the cards.
+function shapePage() {
+  const f = frame({ name: 'kitdemo', left: { panel: 'index', label: 'Steps' }, centre: { label: 'The step' } });
+  const pill = h('span', { class: 'kit-pill ok' }, 'running');
+  const top = band({
+    title: 'alpha',
+    beside: [pill, h('span', { class: 'kit-meta' }, 'm7i.large · 200 GB')],
+    under: [stageTrack({
+      label: 'Where setting up stands',
+      open() {},
+      stages: [
+        { key: 'sign', label: 'Sign in', state: 'done' },
+        { key: 'repos', label: 'Repos', state: 'now', live: true },
+        { key: 'machine', label: 'Machine', state: '' },
+      ],
+    })],
+  });
+  const step = (id, title, meta, mark, markState, on) => indexRow({ id, title, meta, mark, markState, on, select() {} });
+  f.leftBody.append(indexSection({ name: 'Steps', empty: '', rows: [
+    step('sign', 'Sign in to GitHub', '2 min', '✓', 'done'),
+    step('repos', 'Pick the repos', 'started 14:02', '●', 'now', true),
+    step('machine', 'Start the machine', '', '○', 'later'),
+    step('dotfiles', 'Your dotfiles', 'failed', '✕', 'fail'),
+  ] }));
+  const wrap = h('div', { style: 'max-width:720px' });
+  f.centre.append(wrap);
+  wrap.append(
+    card({ head: 'How you sign in', body: [
+      cardLine({ main: 'iCloud Keychain', meta: 'added 4 Nov', actions: [{ label: 'Rename', run() {} }, { label: 'Remove', danger: true, run() {} }] }),
+      cardLine({ main: '1Password', meta: 'added 6 Nov', actions: [{ label: 'Rename', run() {} }, { label: 'Remove', danger: true, run() {} }] }),
+      confirmBox({ tone: 'danger', body: [h('p', null, 'Remove 1Password? You can no longer sign in with it.')], buttons: [{ label: 'Remove', danger: true, run() {} }, { label: 'Cancel', run() {} }] }),
+      cardLine({ main: 'Code by email', meta: 'always on' }),
+    ] }),
+    card({ head: 'Machine', body: [
+      cardLine({ main: 'Replace the machine. Your files are kept.' }),
+      confirmBox({ body: 'Replace alpha’s machine? It is down for a few minutes.', buttons: [{ label: 'Replace', fill: true, run() {} }, { label: 'Cancel', run() {} }] }),
+    ] }),
+    card({ head: 'Repos', body: [
+      textField({ label: 'Add a repo', placeholder: 'owner/name', mono: true, hint: 'Everyone in the workspace gets it.' }).el,
+    ] }),
+    emptyCard({ text: 'No workspaces yet. A workspace is a machine of your own.', action: { label: 'New workspace', run() {} } }));
+  return [top, f];
+}
+
 // ------------------------------------------------------------------- the page
 const b = bar({
   brand: { name: view === 'label' ? 'cull' : 'casebook', mark: mark() },
@@ -414,6 +459,11 @@ if (view === 'parts' || view === 'tabs') {
   const f = sendPage(view === 'sendlong');
   app.append(b.el, f.left, f.centre, f.right);
   narrowMode({ root: app, left: f.left, right: f.right });
+} else if (view === 'page') {
+  app.className = 'kit-app';
+  const [top, f] = shapePage();
+  app.append(b.el, top.el, f.left, f.centre);
+  narrowMode({ root: app, left: f.left });
 } else if (view === 'record') {
   // ?view=record: a Record of the demo's cards (record.js), as a tool serves it.
   app.className = 'kit-app';

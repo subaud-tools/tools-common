@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture, blurEl } from './harness.js';
-import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill } from '/_kit/dom.js';
+import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, textField, confirmBox, emptyCard, keyedRows } from '/_kit/dom.js';
 import { createKeys } from '/_kit/keys.js';
 import { fakeFetch, fakeTimers, flush } from './fakes.js';
 import { initTheme } from '/_kit/theme.js';
@@ -651,4 +651,265 @@ test('dom: messagePill shows each state\'s label with the line under it', () => 
     eq(el.querySelector('.kit-msg-line').textContent, `line for ${state}`, state);
   }
   eq(messagePill('answered').querySelector('.kit-msg-line'), null, 'no line, no line element');
+});
+
+test('dom: band draws the title, what is beside it and the row under it', () => {
+  const pill = h('span', { class: 'kit-pill' }, 'running');
+  const size = h('span', null, 'm7i.large');
+  const back = h('a', { href: '/' }, '← Workspaces');
+  const b = band({ title: 'alpha', beside: [pill, size], under: [back] });
+  eq([b.el.tagName, b.el.className], ['HEADER', 'kit-band']);
+  const line = b.el.firstChild;
+  eq(line.className, 'kit-band-line');
+  const title = line.firstChild;
+  eq([title.tagName, title.className, title.textContent], ['H1', 'kit-band-title', 'alpha']);
+  assert(line.children[1] === pill && line.children[2] === size, 'beside follows the title on its line');
+  const under = b.el.children[1];
+  eq([b.el.children.length, under.className], [2, 'kit-band-under']);
+  assert(under.firstChild === back, 'under holds its nodes');
+});
+
+test('dom: band with no beside or under draws no empty containers', () => {
+  const b = band({ title: 'Account' });
+  eq(b.el.outerHTML, '<header class="kit-band"><div class="kit-band-line"><h1 class="kit-band-title">Account</h1></div></header>');
+  b.setUnder([]);
+  b.setBeside([]);
+  eq(b.el.querySelectorAll('.kit-band-under').length, 0);
+  eq(b.el.firstChild.children.length, 1);
+});
+
+test('dom: band setters change one part in place', () => {
+  const back = h('a', null, 'back');
+  const b = band({ title: 'alpha', beside: [h('span', null, 'stopped')], under: [back] });
+  const title = b.el.querySelector('.kit-band-title');
+  const under = b.el.querySelector('.kit-band-under');
+  const next = h('span', null, 'running');
+  b.setBeside([next]);
+  assert(b.el.querySelector('.kit-band-title') === title, 'the title is the same element');
+  assert(b.el.querySelector('.kit-band-under') === under && under.firstChild === back, 'the row under is the same');
+  eq([...b.el.firstChild.children].map(c => c.textContent), ['alpha', 'running']);
+  b.setTitle('beta');
+  assert(b.el.querySelector('.kit-band-title') === title, 'setTitle keeps the element');
+  eq(title.textContent, 'beta');
+  assert(b.el.firstChild.children[1] === next, 'setTitle leaves beside');
+  const track = h('nav', { class: 'kit-stages' });
+  b.setUnder([track]);
+  eq(b.el.querySelectorAll('.kit-band-under').length, 1);
+  assert(b.el.querySelector('.kit-band-under').firstChild === track, 'setUnder replaces the row under');
+  b.setUnder(null);
+  eq(b.el.querySelector('.kit-band-under'), null, 'an empty under takes the row away');
+  b.setUnder([back]);
+  assert(b.el.lastChild.className === 'kit-band-under' && b.el.lastChild.firstChild === back, 'and brings it back below the line');
+});
+
+test('dom: band measures as diazo\'s does', () => {
+  const fx = fixture();
+  fx.style.width = '1440px';
+  try {
+    const b = band({ title: 'Plans', under: [h('nav', { class: 'kit-stages' }, h('button', { class: 'kit-stage now', type: 'button' }, 'All'))] });
+    fx.append(b.el);
+    const s = cs(b.el), t = cs(b.el.querySelector('.kit-band-title'));
+    eq([s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft], ['16px', '24px', '16px', '24px']);
+    eq([s.borderBottomWidth, s.borderBottomStyle], ['1px', 'solid']);
+    const token = name => { const p = h('span', { style: `color: var(${name})` }); fx.append(p); const c = cs(p).color; p.remove(); return c; };
+    eq([s.borderBottomColor, s.backgroundColor], [token('--kit-line'), token('--kit-panel')]);
+    eq([t.fontSize, t.fontWeight, t.lineHeight, t.letterSpacing, t.marginTop], ['18px', '700', '23.4px', '-0.18px', '0px']);
+    eq(b.el.getBoundingClientRect().height, 104, 'with a row under, diazo\'s 104px');
+    const line = b.el.querySelector('.kit-band-line').getBoundingClientRect();
+    const under = b.el.querySelector('.kit-band-under').getBoundingClientRect();
+    eq([line.height, under.top - line.bottom, under.height], [28, 12, 28]);
+    eq(b.el.querySelector('.kit-stage').getBoundingClientRect().height, 24, 'a pill in the band is 24px');
+    const pill = h('span', { class: 'kit-pill ok' }, 'running');
+    b.setBeside([pill]);
+    const pr = pill.getBoundingClientRect(), tr = document.createRange();
+    tr.selectNodeContents(pill);
+    const words = tr.getBoundingClientRect();
+    eq(pr.height, 24, 'a borderless pill too');
+    assert(Math.abs((words.top + words.bottom) / 2 - (pr.top + pr.bottom) / 2) < 1, 'its words centred');
+    b.setUnder(null);
+    eq(b.el.getBoundingClientRect().height, 61, 'the title line alone');
+  } finally { fx.style.width = ''; }
+});
+
+test('dom: band spans every column of the app grid', () => {
+  const fx = fixture();
+  const app = h('div', { class: 'kit-app', style: 'height:400px' },
+    bar({ brand: { name: 't' } }).el, band({ title: 'x' }).el,
+    h('aside', { class: 'kit-list' }), h('main', { class: 'kit-read' }), h('aside', { class: 'kit-rail' }));
+  fx.append(app);
+  const el = app.querySelector('.kit-band');
+  const cols = ['.kit-list', '.kit-read', '.kit-rail'].map(s => app.querySelector(s).getBoundingClientRect());
+  eq([el.getBoundingClientRect().left, el.getBoundingClientRect().right].map(Math.round), [cols[0].left, cols[2].right].map(Math.round), 'from the first column to the last');
+  const bandBottom = el.getBoundingClientRect().bottom;
+  assert(Math.abs(app.querySelector('.kit-read').getBoundingClientRect().top - bandBottom) < 1, 'the columns start under the band');
+  fx.replaceChildren();
+});
+
+test('dom: cardLine draws its words, its meta and its actions', () => {
+  const ran = [];
+  const l = cardLine({
+    main: 'iCloud Keychain',
+    meta: 'added 4 Nov',
+    actions: [{ label: 'Rename', run: () => ran.push('rename') }, { label: 'Remove', danger: true, title: 'Remove iCloud Keychain', run: () => ran.push('remove') }],
+  });
+  eq([l.tagName, l.className], ['DIV', 'kit-card-line']);
+  eq([...l.children].map(c => c.className), ['kit-card-line-main', 'kit-card-line-side']);
+  eq(l.firstChild.textContent, 'iCloud Keychain');
+  const side = l.lastChild;
+  eq(side.textContent, 'added 4 Nov · Rename · Remove');
+  eq(side.querySelector('.kit-card-line-meta').textContent, 'added 4 Nov');
+  const acts = [...side.querySelectorAll('button')];
+  eq(acts.map(b => [b.className, b.type, b.textContent]), [['kit-label-link kit-card-line-act', 'button', 'Rename'], ['kit-label-link kit-card-line-act danger', 'button', 'Remove']]);
+  eq(acts[1].getAttribute('aria-label'), 'Remove iCloud Keychain');
+  acts[1].click();
+  eq(ran, ['remove']);
+});
+
+test('dom: cardLine omits what it is not given', () => {
+  eq(cardLine({ main: 'Code by email' }).outerHTML, '<div class="kit-card-line"><span class="kit-card-line-main">Code by email</span></div>');
+  const metaOnly = cardLine({ main: 'Code by email', meta: 'always on' });
+  eq(metaOnly.lastChild.innerHTML, '<small class="kit-card-line-meta">always on</small>');
+  const actsOnly = cardLine({ main: 'x', actions: [{ label: 'Remove', disabled: true }] });
+  eq(actsOnly.lastChild.textContent, 'Remove');
+  assert(actsOnly.querySelector('button').disabled, 'a disabled action');
+});
+
+test('dom: cardLines in a card: a rule between them, its words and meta in the kit\'s type', () => {
+  const c = card({ head: 'How you sign in', body: [cardLine({ main: 'iCloud Keychain', meta: 'added 4 Nov' }), cardLine({ main: 'Code by email', meta: 'always on', actions: [{ label: 'Remove', danger: true }] })] });
+  fixture().append(c);
+  const [a, b] = c.querySelectorAll('.kit-card-line');
+  eq([cs(a).borderTopStyle, cs(a).paddingTop, cs(b).borderTopStyle, cs(b).borderTopWidth, cs(b).paddingTop, cs(b).paddingBottom], ['none', '0px', 'solid', '1px', '9px', '0px']);
+  eq([cs(a).fontSize, cs(a.querySelector('.kit-card-line-meta')).fontSize], ['14.5px', '12px']);
+  const ar = a.firstChild.getBoundingClientRect(), mr = a.lastChild.getBoundingClientRect();
+  assert(ar.left < mr.left && Math.abs(mr.right - a.getBoundingClientRect().right) < 1, 'words left, meta right');
+  const token = name => { const p = h('span', { style: `color: var(${name})` }); c.append(p); const col = cs(p).color; p.remove(); return col; };
+  eq(cs(b.querySelector('.danger')).color, token('--kit-danger'));
+});
+
+test('dom: textField is a label over an input, with a hint', () => {
+  const got = [];
+  const f = textField({ label: 'Name', value: 'alpha', placeholder: 'a name', hint: 'Lower case.', onInput: v => got.push(v) });
+  fixture().append(f.el);
+  eq(f.el.className, 'kit-field');
+  const [label, input, hint] = f.el.children;
+  eq([label.tagName, label.className, label.textContent], ['LABEL', 'kit-field-label', 'Name']);
+  assert(input === f.input && label.htmlFor === input.id && input.id, 'the label names the input');
+  eq([input.tagName, input.type, input.className, input.value, input.placeholder], ['INPUT', 'text', 'kit-input', 'alpha', 'a name']);
+  eq([hint.tagName, hint.className, hint.textContent], ['P', 'kit-field-hint', 'Lower case.']);
+  input.value = 'beta';
+  input.dispatchEvent(new Event('input'));
+  eq(got, ['beta']);
+  eq([cs(label).fontSize, cs(input).fontSize, cs(input).paddingTop, cs(input).paddingLeft, cs(input).borderRadius], ['12px', '14.5px', '6px', '10px', '6px']);
+  assert(Math.abs(input.getBoundingClientRect().width - f.el.getBoundingClientRect().width) < 1, 'the input takes the width');
+});
+
+test('dom: textField omits its hint and takes mono', () => {
+  const f = textField({ label: 'Repo', mono: true });
+  fixture().append(f.el);
+  eq(f.el.children.length, 2);
+  eq([f.input.className, f.input.value, f.input.placeholder], ['kit-input mono', '', '']);
+  assert(cs(f.input).fontFamily.includes('Mono'), 'mono');
+  assert(textField({ label: 'a' }).input.id !== textField({ label: 'b' }).input.id, 'each its own id');
+});
+
+test('dom: confirmBox holds its words and its buttons in its tone', () => {
+  let ran = 0;
+  const box = confirmBox({ tone: 'danger', body: [h('p', null, 'Remove alice?')], buttons: [{ label: 'Remove', danger: true, run: () => ran++ }, { label: 'Cancel' }] });
+  fixture().append(box);
+  eq([box.className, box.getAttribute('role')], ['kit-confirm danger', 'group']);
+  eq([...box.children].map(c => c.className), ['kit-confirm-body', 'kit-btns']);
+  eq(box.firstChild.textContent, 'Remove alice?');
+  const [rm] = box.querySelectorAll('.kit-btn');
+  eq(rm.className, 'kit-btn danger');
+  rm.click();
+  eq(ran, 1);
+  eq([cs(box).paddingTop, cs(box).paddingLeft, cs(box).borderRadius, cs(box).fontSize, cs(box.lastChild).marginTop], ['12px', '14px', '6px', '14.5px', '10px']);
+  const plain = confirmBox({ body: 'Replace the machine?' });
+  fixture().append(plain);
+  eq(plain.className, 'kit-confirm signal', 'signal by default');
+  eq(plain.children.length, 1, 'no buttons, no row');
+  eq(plain.firstChild.textContent, 'Replace the machine?');
+  assert(cs(plain).backgroundColor !== cs(box).backgroundColor, 'the tones differ');
+});
+
+test('dom: emptyCard is a centred line and one button', () => {
+  let ran = 0;
+  const c = emptyCard({ text: 'No workspaces yet.', action: { label: 'New workspace', run: () => ran++ } });
+  fixture().append(c);
+  eq(c.className, 'kit-card kit-empty-card');
+  eq([...c.children].map(x => [x.tagName, x.className, x.textContent]), [['P', 'kit-empty-card-text', 'No workspaces yet.'], ['BUTTON', 'kit-btn', 'New workspace']]);
+  c.lastChild.click();
+  eq(ran, 1);
+  eq([cs(c).textAlign, cs(c).paddingTop, cs(c.firstChild).marginBottom], ['center', '26px', '14px']);
+  eq(emptyCard({ text: 'Nothing here.' }).children.length, 1, 'no action, no button');
+});
+
+function keyed() {
+  const box = h('ul');
+  const calls = { draw: [], update: [] };
+  const rows = keyedRows(box, {
+    key: it => it.id,
+    draw: it => { calls.draw.push(it.id); return h('li', { dataset: { id: it.id } }, it.state); },
+    update: (row, it) => { calls.update.push(it.id); row.textContent = it.state; },
+  });
+  return { box, calls, rows, els: () => [...box.children] };
+}
+
+test('dom: keyedRows draws each row once, and the same items change nothing', () => {
+  const k = keyed();
+  const items = [{ id: 'a', state: 'ready' }, { id: 'b', state: 'stopped' }];
+  k.rows.set(items);
+  eq(k.els().map(e => e.textContent), ['ready', 'stopped']);
+  eq(k.calls, { draw: ['a', 'b'], update: [] });
+  const before = k.els();
+  k.rows.set([{ id: 'a', state: 'ready' }, { id: 'b', state: 'stopped' }]);
+  assert(k.els().every((e, i) => e === before[i]), 'every row the same element');
+  eq(k.calls, { draw: ['a', 'b'], update: [] }, 'neither draw nor update');
+});
+
+test('dom: keyedRows updates only the row whose data changed', () => {
+  const k = keyed();
+  k.rows.set([{ id: 'a', state: 'ready' }, { id: 'b', state: 'stopped' }, { id: 'c', state: 'ready' }]);
+  const before = k.els();
+  k.rows.set([{ id: 'a', state: 'ready' }, { id: 'b', state: 'starting' }, { id: 'c', state: 'ready' }]);
+  eq(k.calls.update, ['b']);
+  assert(k.els().every((e, i) => e === before[i]), 'updated in place');
+  eq(k.els()[1].textContent, 'starting');
+});
+
+test('dom: keyedRows keeps what is open in a row while another changes', () => {
+  const k = keyed();
+  fixture().append(k.box);
+  k.rows.set([{ id: 'a', state: 'ready' }, { id: 'b', state: 'stopped' }]);
+  const menu = h('div', { class: 'kit-row-pop' }, 'Open · Stop');
+  k.els()[0].append(menu);
+  k.rows.set([{ id: 'a', state: 'ready' }, { id: 'b', state: 'starting' }]);
+  assert(k.els()[0].lastChild === menu && menu.isConnected, 'the open menu survives');
+});
+
+test('dom: keyedRows adds, removes and reorders without redrawing', () => {
+  const k = keyed();
+  k.rows.set([{ id: 'a', state: '1' }, { id: 'b', state: '2' }, { id: 'c', state: '3' }]);
+  const [a, b, c] = k.els();
+  k.rows.set([{ id: 'c', state: '3' }, { id: 'a', state: '1' }, { id: 'b', state: '2' }]);
+  assert(k.els()[0] === c && k.els()[1] === a && k.els()[2] === b, 'moved, not redrawn');
+  eq(k.calls, { draw: ['a', 'b', 'c'], update: [] });
+  k.rows.set([{ id: 'a', state: '1' }, { id: 'd', state: '4' }]);
+  eq(k.els().map(e => e.dataset.id), ['a', 'd']);
+  assert(k.els()[0] === a && !b.isConnected && !c.isConnected, 'gone rows removed');
+  eq(k.calls.draw, ['a', 'b', 'c', 'd']);
+  k.rows.set([{ id: 'b', state: '2' }, { id: 'a', state: '1' }]);
+  assert(k.els()[1] === a && k.els()[0] !== b, 'a row that comes back is drawn anew');
+  k.rows.set([]);
+  eq(k.box.children.length, 0);
+});
+
+test('dom: keyedRows with no update draws a changed row anew in its place', () => {
+  const box = h('ul');
+  const rows = keyedRows(box, { key: it => it.id, draw: it => h('li', null, it.state) });
+  rows.set([{ id: 'a', state: 'x' }, { id: 'b', state: 'y' }]);
+  const [a, b] = box.children;
+  rows.set([{ id: 'a', state: 'x' }, { id: 'b', state: 'z' }]);
+  assert(box.children[0] === a && box.children[1] !== b, 'only b redrawn');
+  eq([...box.children].map(e => e.textContent), ['x', 'z']);
 });
