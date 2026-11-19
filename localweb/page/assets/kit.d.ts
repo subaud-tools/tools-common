@@ -206,6 +206,8 @@ export type StatusTone = 'muted' | 'signal' | 'danger';
 
 export interface BarHandle {
   el: HTMLElement;
+  /** Settles once the bar has asked the guide whether the page's tool is beta (and, if so, put " · beta" after the brand). */
+  beta: Promise<void>;
   themeControl: HTMLElement;
   /** The Guide button every page's bar has, left of the theme control: it opens openGuide(). */
   guideControl: HTMLElement;
@@ -1357,9 +1359,9 @@ export function openGuide(o?: { url?: string; tour?: Tour | null; copy?: (text: 
  * and More in the Guide, which opens the Guide. Leaves el as it was, and resolves false, when the guide has no section for the tool or doesn't load.
  */
 export function guideAsks(el: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<boolean>;
-/** The beta tag (.kit-beta) after a beta tool's name; small (.kit-beta.sm) beside a name in a list. */
-export function betaBadge(small?: boolean): HTMLSpanElement;
-/** Loads /api/kit/guide and, when the page's tool is beta, appends the badge to el. The bar calls it on its brand. A page not served over http(s) (a Record opened from disk) asks for nothing. */
+/** The mark after a beta tool's name: " · beta" in the kit's muted meta text (.kit-meta). The space and the dot keep it apart from the name for a screen reader. */
+export function betaMark(): HTMLSpanElement;
+/** Loads /api/kit/guide and, when the page's tool is beta, appends betaMark() to el. The bar calls it on its brand. A page not served over http(s) (a Record opened from disk) asks for nothing. */
 export function badgeIfBeta(el: HTMLElement, o?: { url?: string; protocol?: string }): Promise<void>;
 /** Draws the Guide as the whole page in root, as /_kit/guide/ does. */
 export function guidePage(root: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<void>;

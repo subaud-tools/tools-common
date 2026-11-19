@@ -19,14 +19,15 @@ const md = (src, cls) => {
   return d;
 };
 
-// betaBadge is the beta tag after a beta tool's name (guide data's beta):
-// small beside a name in a list.
-export function betaBadge(small) {
-  return h('span', { class: small ? 'kit-beta sm' : 'kit-beta' }, 'beta');
+// betaMark is the mark after a beta tool's name (guide data's beta): the
+// kit's muted meta text, " · beta". The space and the dot keep it apart from
+// the name for a screen reader.
+export function betaMark() {
+  return h('span', { class: 'kit-meta' }, ' · beta');
 }
 
 // badgeIfBeta loads the guide and, when the page's tool is beta, puts the
-// badge at the end of el (the bar's brand). A tool with no guide entry, or a
+// mark at the end of el (the bar's brand). A tool with no guide entry, or a
 // guide that doesn't load, draws nothing. A page not served over http(s) (a
 // downloaded Record opened from disk) has no guide and asks for none: the
 // browser would log the failed fetch as a console error. o.url and
@@ -36,9 +37,9 @@ export async function badgeIfBeta(el, o = {}) {
   try {
     const data = await load(o.url);
     const t = (data.tools || []).find(x => x.name === data.tool);
-    if (t && t.beta) el.append(betaBadge());
+    if (t && t.beta) el.append(betaMark());
   } catch {
-    // no guide here: no badge
+    // no guide here: no mark
   }
 }
 
@@ -67,7 +68,7 @@ export function guideView(data, o = {}) {
   let shown = null;
 
   function pickButton(id, label, beta) {
-    const b = h('button', { class: 'kit-guide-pick', type: 'button', dataset: { pick: id }, onclick: () => show(id) }, label, beta ? betaBadge(true) : null);
+    const b = h('button', { class: 'kit-guide-pick', type: 'button', dataset: { pick: id }, onclick: () => show(id) }, label, beta ? betaMark() : null);
     picks.set(id, b);
     return b;
   }
@@ -85,8 +86,7 @@ export function guideView(data, o = {}) {
       : null;
     const pub = t.guide ? h('a', { class: 'kit-guide-public', href: t.guide, target: '_blank', rel: 'noopener' }, `${t.name}'s guide on the web ›`) : null;
     return [
-      h('h2', {}, t.name, t.beta ? betaBadge() : null),
-      t.beta ? h('p', { class: 'kit-guide-beta' }, `${t.name} is beta: it works, but it is still changing.`) : null,
+      h('h2', {}, t.name, t.beta ? betaMark() : null),
       h('p', { class: 'kit-guide-summary' }, t.summary),
       h('h3', {}, 'When to reach for it'), md(t.when),
       t.skip ? h('h3', {}, 'When to skip it') : null, t.skip ? md(t.skip) : null,
