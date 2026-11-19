@@ -2,6 +2,7 @@
 // values: a tool works out its own rows, counts and groups, keeps what is
 // chosen and redraws on a press.
 import { h } from './dom.js';
+import { remembered } from './remembered.js';
 
 // filterRow is a section of the left column: All with the total, then one row
 // per item. Several can be chosen; All is on when none is. onToggle hears the
@@ -61,6 +62,29 @@ export function sortSwitch({ orders, chosen, onPick, label = 'sort' }) {
       'aria-pressed': String(o.value === chosen),
       onclick: () => onPick(o.value),
     }, o.label)));
+}
+
+// sortedList is one list in the order chosen on its sort switch: the switch,
+// then one card of row(item) for each item, or the empty line with none. Each
+// order compares two items. The choice is remembered under <name>.sort, the
+// first order when none is or the one remembered is gone. A press re-sorts in
+// place; set(items) redraws with new items in the same order.
+export function sortedList({ name, orders, items, row, empty, label }) {
+  const key = `${name}.sort`;
+  const known = v => orders.some(o => o.value === v);
+  let chosen = known(remembered.get(key)) ? remembered.get(key) : orders[0].value;
+  let now = items;
+  const el = h('div', { class: 'kit-sorted' });
+  const draw = () => {
+    const { compare } = orders.find(o => o.value === chosen);
+    const rows = [...now].sort(compare).map(row);
+    el.replaceChildren(
+      sortSwitch({ orders, chosen, label, onPick: v => { chosen = v; remembered.set(key, v); draw(); } }),
+      h('section', { class: 'kit-card' },
+        rows.length ? h('ul', { class: 'kit-group-rows' }, rows) : h('p', { class: 'kit-empty' }, empty)));
+  };
+  draw();
+  return { el, set(next) { now = next; draw(); } };
 }
 
 function group({ key, title, rows, empty, edge }, startFolded, onFold) {

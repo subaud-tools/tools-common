@@ -570,6 +570,8 @@ export interface IndexRowOptions {
   /** What the row opens: its data-card, and what select gets. */
   id: string;
   title: string;
+  /** Where it lives (repo · folder): a muted line of its own (span.kit-meta.kit-place) between the title and the meta, muted whatever the row's state. */
+  place?: string;
   meta?: string;
   /** The row in front of the reader. */
   on?: boolean;
@@ -885,6 +887,21 @@ export interface SortOrder {
 
 /** The line over a list that orders it (div.kit-sort): a muted span.kit-sort-label reading label (default sort), then one button.kit-chip per order, the chosen one on with aria-pressed="true". onPick hears the order pressed; the caller keeps it (with remembered) and redraws. Placed directly over its list, never in the left column or the band. */
 export function sortSwitch(o: { orders: SortOrder[]; chosen: string; onPick(value: string): void; label?: string }): HTMLElement;
+
+/** An order a sorted list offers: a sort switch's chip, and how it compares two items (as Array.prototype.sort's). */
+export interface SortedOrder<T> extends SortOrder {
+  compare(a: T, b: T): number;
+}
+
+export interface SortedList<T> {
+  /** div.kit-sorted: the sort switch, then one section.kit-card. */
+  el: HTMLElement;
+  /** Redraw with new items, in the order chosen. */
+  set(items: T[]): void;
+}
+
+/** One list in the order chosen on its sort switch (div.kit-sorted): the switch, then one section.kit-card holding ul.kit-group-rows with row(item) for each item in that order, or p.kit-empty reading empty when there are none. The choice is remembered under <name>.sort; with none, or one no order has, the first order. A press re-sorts and redraws in place; the items given are not reordered. label replaces the switch's sort. */
+export function sortedList<T>(o: { name: string; orders: SortedOrder<T>[]; items: T[]; row(item: T): HTMLElement; empty: string; label?: string }): SortedList<T>;
 
 export interface ListGroup {
   key: string;

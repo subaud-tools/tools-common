@@ -577,6 +577,8 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-index-row.waits .kit-meta { color: var(--kit-wait); }
 .kit-index-row.draft { border-left-color: var(--kit-wait); }
 .kit-index-row.draft .kit-meta { color: var(--kit-wait); font-weight: 700; }
+/* a row's place (indexRow's place): its own muted line whatever the row's state */
+.kit-index-row .kit-meta.kit-place { color: var(--kit-muted); font-weight: 400; }
 .kit-attn-at { flex: none; align-self: center; }
 .kit-attn-dot {
   box-sizing: content-box; width: 7px; height: 7px; margin: 0 4px;
@@ -774,6 +776,8 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-index-row.kit-sub { font-size: inherit; color: inherit; margin-top: 0; }
 .kit-index-row.kit-sub .kit-index-main { padding-left: 26px; }
 .kit-pill-n { margin-left: 6px; }
+/* the sorted list (frontpage.js sortedList): the sort switch over one card of rows */
+.kit-sorted > .kit-card { max-width: 1100px; margin: 0 0 24px; }
 /* the sort switch (frontpage.js sortSwitch): one line over the list it orders,
    the muted label then a chip per order; lifted from proj's Saved view. */
 .kit-sort { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }

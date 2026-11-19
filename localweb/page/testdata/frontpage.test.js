@@ -1,5 +1,6 @@
 import { test, eq, assert, fixture } from './harness.js';
-import { filterRow, statusPills, groupList, rowMenu, sortSwitch } from '/_kit/frontpage.js';
+import { filterRow, statusPills, groupList, rowMenu, sortSwitch, sortedList } from '/_kit/frontpage.js';
+import { indexRow } from '/_kit/index.js';
 
 const projects = [{ value: 'diazo', label: 'diazo', count: 3 }, { value: 'sift', label: 'sift', count: 2 }];
 const rowsOf = el => [...el.querySelectorAll('.kit-filter')].map(b => [b.dataset.value, b.querySelector('.kit-index-title').textContent, b.querySelector('.kit-meta').textContent]);
@@ -375,4 +376,86 @@ test('sortSwitch: one line, its label muted beside the chips', () => {
   el.append(fx);
   eq(getComputedStyle(el.querySelector('.kit-sort-label')).color, getComputedStyle(fx).color);
   eq(getComputedStyle(el.querySelector('.kit-chip')).marginTop, '0px');
+});
+
+const docs = [{ name: 'b.md', at: 1 }, { name: 'c.md', at: 3 }, { name: 'a.md', at: 2 }];
+const docOrders = [
+  { value: 'recent', label: 'recent', compare: (a, b) => b.at - a.at },
+  { value: 'name', label: 'name', compare: (a, b) => a.name.localeCompare(b.name) },
+];
+const docRow = d => indexRow({ id: d.name, title: d.name });
+const sorted = (o = {}) => sortedList({ name: 'kittest', orders: docOrders, items: docs, row: docRow, empty: 'No documents.', ...o });
+const namesOf = el => [...el.querySelectorAll('.kit-group-rows > li .kit-index-title')].map(t => t.textContent);
+const fresh = () => localStorage.removeItem('kittest.sort');
+
+test('sortedList: the sort switch, then one card of rows in the first order by default', () => {
+  fresh();
+  const { el } = sorted();
+  eq(el.className, 'kit-sorted');
+  eq([...el.children].map(c => c.className), ['kit-sort', 'kit-card']);
+  eq(el.children[1].tagName, 'SECTION');
+  eq(namesOf(el), ['c.md', 'a.md', 'b.md']);
+  eq(el.querySelector('.kit-chip.on').dataset.value, 'recent');
+});
+
+test('sortedList: a press on another order re-sorts in place and is remembered', () => {
+  fresh();
+  const { el } = sorted();
+  el.querySelector('[data-value="name"]').click();
+  eq(namesOf(el), ['a.md', 'b.md', 'c.md']);
+  eq(el.querySelector('.kit-chip.on').dataset.value, 'name');
+  eq(localStorage.getItem('kittest.sort'), 'name');
+  eq(namesOf(sorted().el), ['a.md', 'b.md', 'c.md'], 'a new list with the same name');
+  fresh();
+});
+
+test('sortedList: an unknown remembered order falls back to the first', () => {
+  localStorage.setItem('kittest.sort', 'gone');
+  const { el } = sorted();
+  eq(namesOf(el), ['c.md', 'a.md', 'b.md']);
+  eq(el.querySelector('.kit-chip.on').dataset.value, 'recent');
+  fresh();
+});
+
+test('sortedList: set redraws with new items and keeps the order', () => {
+  fresh();
+  const list = sorted();
+  list.el.querySelector('[data-value="name"]').click();
+  list.set([...docs, { name: '0.md', at: 9 }]);
+  eq(namesOf(list.el), ['0.md', 'a.md', 'b.md', 'c.md']);
+  eq(list.el.querySelector('.kit-chip.on').dataset.value, 'name');
+  list.set([]);
+  eq(list.el.querySelector('.kit-card .kit-empty').textContent, 'No documents.');
+  fresh();
+});
+
+test('sortedList: no items shows the empty line in the card, label names the switch', () => {
+  fresh();
+  const { el } = sorted({ items: [], label: 'order' });
+  eq(el.querySelector('.kit-card > .kit-empty').textContent, 'No documents.');
+  assert(!el.querySelector('.kit-group-rows'), 'no list');
+  eq(el.querySelector('.kit-sort-label').textContent, 'order');
+});
+
+test('sortedList: the items given are not reordered', () => {
+  fresh();
+  const items = [...docs];
+  sorted({ items });
+  eq(items.map(d => d.name), ['b.md', 'c.md', 'a.md']);
+});
+
+test('indexRow: place is its own muted line between the title and the meta, only when given', () => {
+  const el = indexRow({ id: 'r', title: 'spec.md', place: 'tools-ops · docs', meta: 'waiting on you', attention: true });
+  fixture().append(el);
+  const main = el.querySelector('.kit-index-main');
+  eq([...main.children].map(c => c.className), ['kit-index-title', 'kit-meta kit-place', 'kit-meta']);
+  eq(el.querySelector('.kit-place').textContent, 'tools-ops · docs');
+  const [title, place, meta] = main.children;
+  assert(place.getBoundingClientRect().top >= title.getBoundingClientRect().bottom - 1, 'below the title');
+  assert(meta.getBoundingClientRect().top >= place.getBoundingClientRect().bottom - 1, 'above the meta');
+  const fx = document.createElement('span');
+  fx.style.color = 'var(--kit-muted)';
+  el.append(fx);
+  eq(getComputedStyle(place).color, getComputedStyle(fx).color, 'muted while the meta is in the signal colour');
+  eq(indexRow({ id: 'r', title: 't', meta: 'm' }).querySelector('.kit-place'), null);
 });

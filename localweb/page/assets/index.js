@@ -13,8 +13,8 @@ export function attentionDot() {
   return box;
 }
 
-// indexRow is one row: a button that calls select(id) with its title and meta,
-// then extra (nodes), then the dot when attention is set. on, attention, waits
+// indexRow is one row: a button that calls select(id) with its title, its
+// place (a muted line of its own, where it lives) and meta, then extra (nodes), then the dot when attention is set. on, attention, waits
 // and draft are its classes. mark (✓, ●, ○, ✕) goes before the title in its
 // markState's colour: done, now, later or fail.
 export function indexRow(o) {
@@ -24,6 +24,7 @@ export function indexRow(o) {
     h('button', { class: 'kit-index-main' + (mark ? ' has-mark' : ''), type: 'button', onclick: () => o.select && o.select(o.id) },
       mark,
       h('span', { class: 'kit-index-title' }, o.title),
+      o.place ? h('span', { class: 'kit-meta kit-place' }, o.place) : null,
       o.meta ? h('span', { class: 'kit-meta' }, o.meta) : null),
     o.extra,
     o.attention ? attentionDot() : null);
