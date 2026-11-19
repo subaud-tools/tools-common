@@ -88,7 +88,7 @@ func main() {
 - `version` — prints `"<Name> <Version>"` (e.g. `kempt 0.1.0 (abc, 2026-08-30)`).
 - `help` — prints usage, or `help <command>` for one command.
 - `update` — self-updates via the `/dl` contract below.
-- `login` — signs nothing in: it prints `This machine isn't signed in to subaud.tools. Get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine.` and exits 1. The setup line saves the machine's token at `ConfigDir("subaud")/token` (mode 600), shared by every tool; `$SUBAUD_TOKEN` wins over it.
+- `login` — signs nothing in: it prints `This machine isn't signed in to subaud.tools. Get your setup line at https://subaud.tools/account/ (Set up a machine) and paste it in a terminal on this machine.` and exits 1. The setup line saves the machine's token at `ConfigDir("subaud")/token` (mode 600), shared by every tool; `$SUBAUD_TOKEN` wins over it.
 - `logout` — removes this machine from the account and deletes its token.
 - `man` — prints a roff man page.
 - `commands` — lists commands; `commands --json` is the machine-readable index.

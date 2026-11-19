@@ -259,7 +259,7 @@ func TestLoginAndLogoutAreBuiltIn(t *testing.T) {
 	if code := a.Dispatch([]string{"login"}, &out, &errw); code != 1 {
 		t.Fatalf("login: exit %d: %s", code, errw.String())
 	}
-	want := "kempt login: This machine isn't signed in to subaud.tools. Get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine.\n"
+	want := "kempt login: This machine isn't signed in to subaud.tools. Get your setup line at https://subaud.tools/account/ (Set up a machine) and paste it in a terminal on this machine.\n"
 	if out.String() != "" || errw.String() != want {
 		t.Fatalf("out %q, errw %q, want %q", out.String(), errw.String(), want)
 	}
@@ -277,7 +277,7 @@ func TestLoginAndLogoutAreBuiltIn(t *testing.T) {
 	if code := a.Dispatch([]string{"login"}, &out, &errw); code != 0 {
 		t.Fatalf("login when signed in: exit %d: %s", code, errw.String())
 	}
-	wantIn := "This machine is signed in to subaud.tools. To sign it in again, get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine.\n"
+	wantIn := "This machine is signed in to subaud.tools. To sign it in again, get your setup line at https://subaud.tools/account/ (Set up a machine) and paste it in a terminal on this machine.\n"
 	if out.String() != wantIn || errw.String() != "" {
 		t.Fatalf("login when signed in: out %q, errw %q, want %q", out.String(), errw.String(), wantIn)
 	}
