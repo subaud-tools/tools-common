@@ -570,7 +570,11 @@ export interface IndexRowOptions {
   /** What the row opens: its data-card, and what select gets. */
   id: string;
   title: string;
+  /** Where it lives (repo · folder): a muted line of its own (span.kit-meta.kit-place) between the title and the meta, muted whatever the row's state. */
+  place?: string;
   meta?: string;
+  /** Where a search matched (galley's "in the text: …"): a line of its own inside the row's button after the meta (span.kit-found, 12px, muted); a <mark> in it gets the signal-soft ground. */
+  found?: Node | string;
   /** The row in front of the reader. */
   on?: boolean;
   /** It needs the reader: a dot, and its meta in the signal colour. */
@@ -866,13 +870,40 @@ export interface FilterItem {
   value: string;
   label: string;
   count: number;
+  /** filterRow: rows nested under this one (a repo's folders), each drawn indented (li.kit-sub) right after it, only while it or one of them is chosen. A press on one calls onToggle with its value. Not counted in All. One level only: a sub-item's own subs are ignored. */
+  subs?: FilterItem[];
 }
 
-/** A section of the left column: All with the total, then one row per item with its count. Several can be chosen; All is on when none is. onToggle hears the value pressed, '' for All. */
+/** A section of the left column: All with the total of the top items, then one row per item with its count, each followed by its subs while it or one of them is chosen. Several can be chosen; All is on when none is. onToggle hears the value pressed, '' for All. */
 export function filterRow(o: { label: string; items: FilterItem[]; chosen: string[]; onToggle(value: string): void }): HTMLElement;
 
 /** The status pills, drawn as a stage track with no arrows, since statuses aren't a sequence. A pill with no count is hidden unless chosen. The value '' is the tool's All, on when none is chosen. onToggle hears the value pressed. */
 export function statusPills(o: { pills: FilterItem[]; chosen: string[]; onToggle(value: string): void; label?: string }): HTMLElement;
+
+/** An order a sort switch offers. */
+export interface SortOrder {
+  value: string;
+  /** The chip's words. */
+  label: string;
+}
+
+/** The line over a list that orders it (div.kit-sort): a muted span.kit-sort-label reading label (default sort), then one button.kit-chip per order, the chosen one on with aria-pressed="true". onPick hears the order pressed; the caller keeps it (with remembered) and redraws. Placed directly over its list, never in the left column or the band. When the press had the focus in the switch and onPick redraws it at once, the new switch's chosen chip gets the focus. */
+export function sortSwitch(o: { orders: SortOrder[]; chosen: string; onPick(value: string): void; label?: string }): HTMLElement;
+
+/** An order a sorted list offers: a sort switch's chip, and how it compares two items (as Array.prototype.sort's). */
+export interface SortedOrder<T> extends SortOrder {
+  compare(a: T, b: T): number;
+}
+
+export interface SortedList<T> {
+  /** div.kit-sorted: the sort switch, then one section.kit-card. */
+  el: HTMLElement;
+  /** Redraw with new items, in the order chosen. */
+  set(items: T[]): void;
+}
+
+/** One list in the order chosen on its sort switch (div.kit-sorted): the switch, then one section.kit-card holding ul.kit-group-rows with row(item) for each item in that order, or p.kit-empty reading empty when there are none. The choice is remembered under <name>.sort; with none, or one no order has, the first order. A press re-sorts and redraws in place; the items given are not reordered. label replaces the switch's sort. title, when given, opens the card with div.kit-label.kit-group-head reading title(n) for the n rows shown, redrawn on every press and set (it doesn't fold). After a press with the focus in the switch, the chosen chip has it. */
+export function sortedList<T>(o: { name: string; orders: SortedOrder<T>[]; items: T[]; row(item: T): HTMLElement; empty: string; label?: string; title?(n: number): string }): SortedList<T>;
 
 export interface ListGroup {
   key: string;

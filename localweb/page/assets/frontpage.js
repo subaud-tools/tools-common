@@ -2,14 +2,17 @@
 // values: a tool works out its own rows, counts and groups, keeps what is
 // chosen and redraws on a press.
 import { h } from './dom.js';
+import { remembered } from './remembered.js';
 
 // filterRow is a section of the left column: All with the total, then one row
 // per item. Several can be chosen; All is on when none is. onToggle hears the
-// value pressed, '' for All.
+// value pressed, '' for All. An item's subs are rows of their own, indented
+// right after it, drawn only while it or one of them is chosen; All counts the
+// top items alone.
 export function filterRow({ label, items, chosen, onToggle }) {
-  const row = ({ value, label: text, count }) => {
+  const row = ({ value, label: text, count }, sub) => {
     const on = value ? chosen.includes(value) : !chosen.length;
-    return h('li', { class: `kit-index-row${on ? ' on' : ''}` },
+    return h('li', { class: `kit-index-row${sub ? ' kit-sub' : ''}${on ? ' on' : ''}` },
       h('button', {
         class: 'kit-index-main kit-filter',
         type: 'button',
@@ -23,7 +26,11 @@ export function filterRow({ label, items, chosen, onToggle }) {
   const total = items.reduce((n, it) => n + it.count, 0);
   return h('section', { class: 'kit-index-section kit-filter-row' },
     h('div', { class: 'kit-label' }, label),
-    h('ul', { class: 'kit-index-rows' }, row({ value: '', label: 'All', count: total }), items.map(row)));
+    h('ul', { class: 'kit-index-rows' }, row({ value: '', label: 'All', count: total }), items.flatMap(it => {
+      const subs = it.subs || [];
+      const open = chosen.includes(it.value) || subs.some(s => chosen.includes(s.value));
+      return [row(it), ...(open ? subs.map(s => row(s, true)) : [])];
+    })));
 }
 
 // statusPills draws the pills as a stage track with no arrows, since statuses
@@ -40,6 +47,63 @@ export function statusPills({ pills, chosen, onToggle, label = 'Filter by status
         'aria-pressed': String(on(p.value)),
         onclick: () => onToggle(p.value),
       }, p.label, h('span', { class: 'kit-pill-n' }, String(p.count)))));
+}
+
+// The press being handled: a switch drawn during it, with the order pressed
+// chosen, is the redraw, and its chosen chip takes the focus back.
+let picking = null;
+
+// sortSwitch is the line over a list that orders it: the muted label (sort),
+// then one chip per order, the chosen one on. onPick hears the order pressed;
+// the caller keeps it (with remembered) and redraws. When the press had the
+// focus in the switch, the redrawn switch's chosen chip gets it back.
+export function sortSwitch({ orders, chosen, onPick, label = 'sort' }) {
+  const el = h('div', { class: 'kit-sort' },
+    h('span', { class: 'kit-sort-label' }, label),
+    orders.map(o => h('button', {
+      class: `kit-chip${o.value === chosen ? ' on' : ''}`,
+      type: 'button',
+      'data-value': o.value,
+      'aria-pressed': String(o.value === chosen),
+      onclick: () => pick(o.value),
+    }, o.label)));
+  if (picking && !picking.made && picking.value === chosen) picking.made = el.querySelector('.kit-chip.on');
+  function pick(value) {
+    const had = el.contains(document.activeElement);
+    const p = picking = { value, made: null };
+    try {
+      onPick(value);
+    } finally {
+      picking = null;
+    }
+    if (had && p.made?.isConnected) p.made.focus();
+  }
+  return el;
+}
+
+// sortedList is one list in the order chosen on its sort switch: the switch,
+// then one card of row(item) for each item, or the empty line with none. Each
+// order compares two items. The choice is remembered under <name>.sort, the
+// first order when none is or the one remembered is gone. A press re-sorts in
+// place; set(items) redraws with new items in the same order. title, when
+// given, heads the card with title(n) for the n rows shown.
+export function sortedList({ name, orders, items, row, empty, label, title }) {
+  const key = `${name}.sort`;
+  const known = v => orders.some(o => o.value === v);
+  let chosen = known(remembered.get(key)) ? remembered.get(key) : orders[0].value;
+  let now = items;
+  const el = h('div', { class: 'kit-sorted' });
+  const draw = () => {
+    const { compare } = orders.find(o => o.value === chosen);
+    const rows = [...now].sort(compare).map(row);
+    el.replaceChildren(
+      sortSwitch({ orders, chosen, label, onPick: v => { chosen = v; remembered.set(key, v); draw(); } }),
+      h('section', { class: 'kit-card' },
+        title ? h('div', { class: 'kit-label kit-group-head' }, title(rows.length)) : null,
+        rows.length ? h('ul', { class: 'kit-group-rows' }, rows) : h('p', { class: 'kit-empty' }, empty)));
+  };
+  draw();
+  return { el, set(next) { now = next; draw(); } };
 }
 
 function group({ key, title, rows, empty, edge }, startFolded, onFold) {

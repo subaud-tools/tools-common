@@ -1,5 +1,5 @@
 import { demoRecord, DEMO } from './record.js';
-import { h, bar, band, cardLine, textField, confirmBox, emptyCard, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, narrowMode, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
+import { h, bar, band, cardLine, textField, confirmBox, emptyCard, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, narrowMode, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, sortedList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
 
 const MARK = `<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14161d"/><path d="M13 22H28M13 32H26M13 42H28" stroke="#9aa0ab" stroke-width="3.6" stroke-linecap="round"/><path d="M13 22H28" stroke="#d98f66" stroke-width="3.6" stroke-linecap="round"/><path d="M33 17V47" stroke="#d98f66" stroke-width="2.4"/><rect x="38" y="18" width="14" height="28" rx="3" fill="none" stroke="#d98f66" stroke-width="2.4"/></svg>`;
 const mark = () => {
@@ -321,12 +321,36 @@ function frontPage(f) {
   let projects = [];
   let statuses = [];
   const folded = ['built'];
+  // A sorted list keeps its own order (kitdemo.sort); its rows name their place.
+  const reviews = [
+    { name: 'spec.md', place: 'tools-ops · docs', meta: 'waiting on you · 2 rounds · 1 h ago', you: true, at: 3 },
+    { name: 'plan.md', place: 'tools-ops · plans', meta: 'with the agent · 1 round · 2 days ago', at: 1, found: ['in the text: …each ', 'Lambda', ' function gets its own role…'] },
+    { name: 'guide-text.md', place: 'diazo · docs', meta: 'approved Nov 17 · 3 rounds · 5 min ago', at: 9 },
+  ];
+  const sorted = sortedList({
+    name: 'kitdemo',
+    orders: [
+      { value: 'needs', label: 'needs you', compare: (a, b) => (b.you ? 1 : 0) - (a.you ? 1 : 0) || b.at - a.at },
+      { value: 'recent', label: 'recent', compare: (a, b) => b.at - a.at },
+      { value: 'name', label: 'name', compare: (a, b) => a.name.localeCompare(b.name) },
+    ],
+    items: reviews,
+    row: r => indexRow({
+      id: r.name, title: r.name, place: r.place, meta: r.meta, attention: r.you, select() {},
+      found: r.found && h('span', {}, r.found[0], h('mark', {}, r.found[1]), r.found[2]),
+    }),
+    empty: 'No reviews open.',
+    title: n => `${n} review${n === 1 ? '' : 's'}`,
+  });
   const toggled = (on, v) => (!v ? [] : on.includes(v) ? on.filter(x => x !== v) : [...on, v]);
   const line = text => h('li', { class: 'kit-row' }, h('span', { class: 'kit-title' }, text));
   const draw = () => {
     left.replaceChildren(filterRow({
       label: 'Projects',
-      items: [{ value: 'diazo', label: 'diazo', count: 3 }, { value: 'sift', label: 'sift', count: 1 }],
+      items: [
+        { value: 'diazo', label: 'diazo', count: 3, subs: [{ value: 'diazo/docs', label: 'docs', count: 2 }, { value: 'diazo/plans', label: 'plans', count: 1 }] },
+        { value: 'sift', label: 'sift', count: 1 },
+      ],
       chosen: projects,
       onToggle: v => { projects = toggled(projects, v); draw(); },
     }));
@@ -350,7 +374,8 @@ function frontPage(f) {
   };
   draw();
   f.leftBody.append(left);
-  f.centre.append(h('div', { class: 'kit-label' }, 'the front page: filter rows, status pills and groups that fold'), slot);
+  f.centre.append(h('div', { class: 'kit-label' }, 'the front page: filter rows, status pills and groups that fold'), slot,
+    h('div', { class: 'kit-label' }, 'or one sorted list: the sort switch over one card, each row naming its place'), sorted.el);
 }
 
 // ?view=sendshort|sendlong: a short and a long page of drafts, the send bar

@@ -1,5 +1,6 @@
-import { test, eq, assert, fixture } from './harness.js';
-import { filterRow, statusPills, groupList, rowMenu } from '/_kit/frontpage.js';
+import { test, eq, assert, fixture, focusEl } from './harness.js';
+import { filterRow, statusPills, groupList, rowMenu, sortSwitch, sortedList } from '/_kit/frontpage.js';
+import { indexRow } from '/_kit/index.js';
 
 const projects = [{ value: 'diazo', label: 'diazo', count: 3 }, { value: 'sift', label: 'sift', count: 2 }];
 const rowsOf = el => [...el.querySelectorAll('.kit-filter')].map(b => [b.dataset.value, b.querySelector('.kit-index-title').textContent, b.querySelector('.kit-meta').textContent]);
@@ -29,6 +30,42 @@ test('filterRow: a press says which value, and All says the empty one', () => {
   el.querySelector('[data-value="sift"]').click();
   el.querySelector('[data-value=""]').click();
   eq(got, ['sift', '']);
+});
+
+const repos = [
+  { value: 'tools-ops', label: 'tools-ops', count: 4, subs: [{ value: 'tools-ops/docs', label: 'docs', count: 3 }, { value: 'tools-ops/plans', label: 'plans', count: 1 }] },
+  { value: 'galley', label: 'galley', count: 2 },
+];
+
+test('filterRow: sub-items are hidden while nothing is chosen, and All counts the top items only', () => {
+  const el = filterRow({ label: 'Repos', items: repos, chosen: [], onToggle() {} });
+  eq(rowsOf(el), [['', 'All', '6'], ['tools-ops', 'tools-ops', '4'], ['galley', 'galley', '2']]);
+  eq(el.querySelectorAll('.kit-sub').length, 0);
+});
+
+test('filterRow: a chosen item shows its sub-items right after it, indented', () => {
+  const el = filterRow({ label: 'Repos', items: repos, chosen: ['tools-ops'], onToggle() {} });
+  fixture().append(el);
+  eq(rowsOf(el), [['', 'All', '6'], ['tools-ops', 'tools-ops', '4'], ['tools-ops/docs', 'docs', '3'], ['tools-ops/plans', 'plans', '1'], ['galley', 'galley', '2']]);
+  const subs = [...el.querySelectorAll('li.kit-index-row.kit-sub')];
+  eq(subs.map(li => li.querySelector('.kit-filter').dataset.value), ['tools-ops/docs', 'tools-ops/plans']);
+  const pad = b => parseFloat(getComputedStyle(b.querySelector('.kit-index-main')).paddingLeft);
+  const top = el.querySelector('[data-value="galley"]').closest('li');
+  assert(pad(subs[0]) > pad(top), `indented: ${pad(subs[0])} > ${pad(top)}`);
+  eq(getComputedStyle(subs[0]).fontSize, getComputedStyle(top).fontSize);
+});
+
+test('filterRow: sub-items show while only a sub-item is chosen, and it is on', () => {
+  const el = filterRow({ label: 'Repos', items: repos, chosen: ['tools-ops/plans'], onToggle() {} });
+  eq(el.querySelectorAll('.kit-sub').length, 2);
+  eq(onOf(el), ['tools-ops/plans']);
+});
+
+test('filterRow: a press on a sub-item says its value', () => {
+  const got = [];
+  const el = filterRow({ label: 'Repos', items: repos, chosen: ['tools-ops'], onToggle: v => got.push(v) });
+  el.querySelector('[data-value="tools-ops/docs"]').click();
+  eq(got, ['tools-ops/docs']);
 });
 
 const pills = [{ value: '', label: 'All', count: 3 }, { value: 'needs', label: 'Needs you', count: 3 }, { value: 'built', label: 'Built', count: 0 }];
@@ -304,4 +341,194 @@ test('rowMenu: buttonClass replaces the ⋯ button\'s class', () => {
   const btn = el.querySelector('button[aria-haspopup="menu"]');
   eq(btn.className, 'kit-ctl dz-band-more');
   eq(el.querySelector('.kit-row-more'), null);
+});
+
+const orders = [{ value: 'needs', label: 'needs you' }, { value: 'recent', label: 'recent' }, { value: 'name', label: 'name' }];
+const chipsOf = el => [...el.querySelectorAll('button.kit-chip')].map(b => [b.dataset.value, b.textContent, b.classList.contains('on'), b.getAttribute('aria-pressed')]);
+
+test('sortSwitch: the muted label sort, then one chip per order, the chosen one on', () => {
+  const el = sortSwitch({ orders, chosen: 'recent', onPick() {} });
+  eq(el.className, 'kit-sort');
+  eq(el.firstChild.className, 'kit-sort-label');
+  eq(el.firstChild.textContent, 'sort');
+  eq(chipsOf(el), [['needs', 'needs you', false, 'false'], ['recent', 'recent', true, 'true'], ['name', 'name', false, 'false']]);
+});
+
+test('sortSwitch: label replaces sort', () => {
+  eq(sortSwitch({ orders, chosen: 'name', onPick() {}, label: 'order' }).querySelector('.kit-sort-label').textContent, 'order');
+});
+
+test('sortSwitch: a press says which order, and the caller keeps it', () => {
+  const got = [];
+  const el = sortSwitch({ orders, chosen: 'needs', onPick: v => got.push(v) });
+  el.querySelector('[data-value="name"]').click();
+  eq(got, ['name']);
+  eq(chipsOf(el).map(c => c[2]), [true, false, false]);
+});
+
+test('sortSwitch: one line, its label muted beside the chips', () => {
+  const el = sortSwitch({ orders, chosen: 'needs', onPick() {} });
+  fixture().append(el);
+  const s = getComputedStyle(el);
+  eq([s.display, s.alignItems, s.flexWrap], ['flex', 'center', 'wrap']);
+  const fx = document.createElement('span');
+  fx.style.color = 'var(--kit-muted)';
+  el.append(fx);
+  eq(getComputedStyle(el.querySelector('.kit-sort-label')).color, getComputedStyle(fx).color);
+  eq(getComputedStyle(el.querySelector('.kit-chip')).marginTop, '0px');
+});
+
+const docs = [{ name: 'b.md', at: 1 }, { name: 'c.md', at: 3 }, { name: 'a.md', at: 2 }];
+const docOrders = [
+  { value: 'recent', label: 'recent', compare: (a, b) => b.at - a.at },
+  { value: 'name', label: 'name', compare: (a, b) => a.name.localeCompare(b.name) },
+];
+const docRow = d => indexRow({ id: d.name, title: d.name });
+const sorted = (o = {}) => sortedList({ name: 'kittest', orders: docOrders, items: docs, row: docRow, empty: 'No documents.', ...o });
+const namesOf = el => [...el.querySelectorAll('.kit-group-rows > li .kit-index-title')].map(t => t.textContent);
+const fresh = () => localStorage.removeItem('kittest.sort');
+
+test('sortedList: the sort switch, then one card of rows in the first order by default', () => {
+  fresh();
+  const { el } = sorted();
+  eq(el.className, 'kit-sorted');
+  eq([...el.children].map(c => c.className), ['kit-sort', 'kit-card']);
+  eq(el.children[1].tagName, 'SECTION');
+  eq(namesOf(el), ['c.md', 'a.md', 'b.md']);
+  eq(el.querySelector('.kit-chip.on').dataset.value, 'recent');
+});
+
+test('sortedList: a press on another order re-sorts in place and is remembered', () => {
+  fresh();
+  const { el } = sorted();
+  el.querySelector('[data-value="name"]').click();
+  eq(namesOf(el), ['a.md', 'b.md', 'c.md']);
+  eq(el.querySelector('.kit-chip.on').dataset.value, 'name');
+  eq(localStorage.getItem('kittest.sort'), 'name');
+  eq(namesOf(sorted().el), ['a.md', 'b.md', 'c.md'], 'a new list with the same name');
+  fresh();
+});
+
+test('sortedList: an unknown remembered order falls back to the first', () => {
+  localStorage.setItem('kittest.sort', 'gone');
+  const { el } = sorted();
+  eq(namesOf(el), ['c.md', 'a.md', 'b.md']);
+  eq(el.querySelector('.kit-chip.on').dataset.value, 'recent');
+  fresh();
+});
+
+test('sortedList: set redraws with new items and keeps the order', () => {
+  fresh();
+  const list = sorted();
+  list.el.querySelector('[data-value="name"]').click();
+  list.set([...docs, { name: '0.md', at: 9 }]);
+  eq(namesOf(list.el), ['0.md', 'a.md', 'b.md', 'c.md']);
+  eq(list.el.querySelector('.kit-chip.on').dataset.value, 'name');
+  list.set([]);
+  eq(list.el.querySelector('.kit-card .kit-empty').textContent, 'No documents.');
+  fresh();
+});
+
+test('sortedList: no items shows the empty line in the card, label names the switch', () => {
+  fresh();
+  const { el } = sorted({ items: [], label: 'order' });
+  eq(el.querySelector('.kit-card > .kit-empty').textContent, 'No documents.');
+  assert(!el.querySelector('.kit-group-rows'), 'no list');
+  eq(el.querySelector('.kit-sort-label').textContent, 'order');
+});
+
+test('sortedList: the items given are not reordered', () => {
+  fresh();
+  const items = [...docs];
+  sorted({ items });
+  eq(items.map(d => d.name), ['b.md', 'c.md', 'a.md']);
+});
+
+test('indexRow: place is its own muted line between the title and the meta, only when given', () => {
+  const el = indexRow({ id: 'r', title: 'spec.md', place: 'tools-ops · docs', meta: 'waiting on you', attention: true });
+  fixture().append(el);
+  const main = el.querySelector('.kit-index-main');
+  eq([...main.children].map(c => c.className), ['kit-index-title', 'kit-meta kit-place', 'kit-meta']);
+  eq(el.querySelector('.kit-place').textContent, 'tools-ops · docs');
+  const [title, place, meta] = main.children;
+  assert(place.getBoundingClientRect().top >= title.getBoundingClientRect().bottom - 1, 'below the title');
+  assert(meta.getBoundingClientRect().top >= place.getBoundingClientRect().bottom - 1, 'above the meta');
+  const fx = document.createElement('span');
+  fx.style.color = 'var(--kit-muted)';
+  el.append(fx);
+  eq(getComputedStyle(place).color, getComputedStyle(fx).color, 'muted while the meta is in the signal colour');
+  eq(indexRow({ id: 'r', title: 't', meta: 'm' }).querySelector('.kit-place'), null);
+});
+
+test('sortedList: title opens the card with the count of rows shown, redrawn on a press and on set', () => {
+  fresh();
+  const list = sorted({ title: n => `${n} documents` });
+  const head = () => list.el.querySelector('.kit-card > div.kit-label.kit-group-head');
+  eq(head().textContent, '3 documents');
+  assert(list.el.querySelector('.kit-card').firstChild === head(), 'first in the card');
+  list.el.querySelector('[data-value="name"]').click();
+  eq(head().textContent, '3 documents');
+  list.set(docs.slice(0, 1));
+  eq(head().textContent, '1 documents');
+  list.set([]);
+  eq(head().textContent, '0 documents');
+  assert(!sorted().el.querySelector('.kit-group-head'), 'no title, no head');
+  fresh();
+});
+
+test('sortedList: a press with focus in the switch puts focus on the chosen chip after the redraw', () => {
+  fresh();
+  const { el } = sorted();
+  fixture().append(el);
+  focusEl(el.querySelector('[data-value="name"]'));
+  el.querySelector('[data-value="name"]').click();
+  const now = el.querySelector('.kit-chip.on');
+  eq(now.dataset.value, 'name');
+  assert(document.activeElement === now, 'focus on the new chosen chip');
+  fresh();
+});
+
+test('sortSwitch: a caller redrawing on a press gets focus back on the chosen chip', () => {
+  const box = fixture();
+  let chosen = 'needs';
+  const draw = () => box.replaceChildren(sortSwitch({ orders, chosen, onPick: v => { chosen = v; draw(); } }));
+  draw();
+  focusEl(box.querySelector('[data-value="recent"]'));
+  box.querySelector('[data-value="recent"]').click();
+  assert(document.activeElement === box.querySelector('.kit-chip.on[data-value="recent"]'), 'focus on the new chip');
+});
+
+test('sortSwitch: a press with focus elsewhere leaves focus alone', () => {
+  const fx = fixture();
+  const other = document.createElement('input');
+  const box = document.createElement('div');
+  fx.append(other, box);
+  let chosen = 'needs';
+  const draw = () => box.replaceChildren(sortSwitch({ orders, chosen, onPick: v => { chosen = v; draw(); } }));
+  draw();
+  focusEl(other);
+  box.querySelector('[data-value="name"]').click();
+  assert(document.activeElement === other, 'focus stays');
+});
+
+test('indexRow: found is its own line in the button after the meta, a mark in it on the signal-soft ground', () => {
+  const m = document.createElement('span');
+  m.append('in the text: …each ', Object.assign(document.createElement('mark'), { textContent: 'Lambda' }), ' function…');
+  const el = indexRow({ id: 'r', title: 'spec.md', place: 'p', meta: 'm', found: m });
+  fixture().append(el);
+  const main = el.querySelector('.kit-index-main');
+  eq([...main.children].map(c => c.className), ['kit-index-title', 'kit-meta kit-place', 'kit-meta', 'kit-found']);
+  const found = main.querySelector('.kit-found');
+  assert(found.contains(m), 'the node given');
+  const meta = main.children[2];
+  assert(found.getBoundingClientRect().top >= meta.getBoundingClientRect().bottom - 1, 'below the meta');
+  const fx = document.createElement('span');
+  fx.style.color = 'var(--kit-muted)';
+  fx.style.backgroundColor = 'var(--kit-signal-soft)';
+  el.append(fx);
+  const st = getComputedStyle(found);
+  eq([st.fontSize, st.color], ['12px', getComputedStyle(fx).color]);
+  eq(getComputedStyle(found.querySelector('mark')).backgroundColor, getComputedStyle(fx).backgroundColor);
+  eq(indexRow({ id: 'r', title: 't', found: 'in the name' }).querySelector('.kit-found').textContent, 'in the name');
+  eq(indexRow({ id: 'r', title: 't' }).querySelector('.kit-found'), null);
 });
