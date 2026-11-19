@@ -153,7 +153,7 @@ func New(cfg Config) *App {
 	a.Register(Command{
 		Name:    "login",
 		Summary: "say how to sign this machine in to its subaud.tools account, for every subaud tool on it",
-		Help: "Signs nothing in: it says where the setup line is (https://subaud.tools/account/, Add or sign in a machine),\n" +
+		Help: "Signs nothing in: it says where the setup line is (https://subaud.tools/account/, Set up a machine),\n" +
 			"and exits 1 when this machine keeps no token. Pasted in a terminal on this machine, the line saves the machine's token in " + auth.TokenPath() + "\n" +
 			"(mode 600); $" + auth.TokenEnv + " wins over it.",
 		Run: func(args []string, out, errw io.Writer) error {

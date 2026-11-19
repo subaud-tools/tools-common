@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.99.0
+
+### Changed
+- auth: the setup line names the account page's **Set up a machine** (it was Add or sign in a machine, a button the page no longer has): `SetupLine`, so `ErrNotSignedIn`, `ErrSignInRefused` and `login`'s output, and `login`'s help.
+
 ## 0.98.0
 
 ### Changed

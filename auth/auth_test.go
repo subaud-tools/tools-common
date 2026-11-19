@@ -16,7 +16,7 @@ import (
 const testToken = "sbt_6BJIVEOXHYYRWEJUT6PJNAR7SJNZANJUJQS5ISSFCMQOITF6SUHQ"
 
 // The setup line pointer every sign-in message ends with.
-const pointer = "Get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine."
+const pointer = "Get your setup line at https://subaud.tools/account/ (Set up a machine) and paste it in a terminal on this machine."
 
 func TestTheSignInErrorsPointToTheSetupLine(t *testing.T) {
 	if got, want := ErrNotSignedIn.Error(), "This machine isn't signed in to subaud.tools. "+pointer; got != want {

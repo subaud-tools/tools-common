@@ -30,7 +30,7 @@ const TokenEnv = "SUBAUD_TOKEN" //nolint:gosec // a variable's name, not a crede
 
 // SetupLine says where a machine gets signed in: the setup line on the
 // account page, pasted in a terminal on the machine.
-const SetupLine = "Get your setup line at https://subaud.tools/account/ (Add or sign in a machine) and paste it in a terminal on this machine."
+const SetupLine = "Get your setup line at https://subaud.tools/account/ (Set up a machine) and paste it in a terminal on this machine."
 
 // ErrNotSignedIn is returned by Token when there is no token, and by every
 // tool's login.
