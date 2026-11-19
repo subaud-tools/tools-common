@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.101.1
+
+### Fixed
+- kit: the bar asks for the guide (for the beta badge) only on a page served over http(s). A downloaded Record opened from disk asked for file:///api/kit/guide, which the browser logs as a console error. `badgeIfBeta(el, { url, protocol })` takes an options object.
+
 ## 0.101.0
 
 ### Added
