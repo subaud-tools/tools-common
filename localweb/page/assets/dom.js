@@ -511,6 +511,59 @@ export function emptyCard(o) {
     a ? h('button', { class: 'kit-btn' + (a.fill ? ' fill' : ''), type: 'button', onclick: () => a.run && a.run() }, a.label) : null);
 }
 
+// keyedRows keeps a list's rows by key, so a poll changes only what changed:
+// set(items) draws a row for a new key, removes the row of a key gone, calls
+// update(row, item) only for an item whose data (as JSON) differs from last
+// time, and puts the rows in the items' order by moving them. An open menu,
+// details or input inside an unchanged row is never replaced. Without update,
+// a changed row is drawn anew in its place. The container holds only the rows.
+export function keyedRows(container, o) {
+  let rows = new Map(); // key → { el, data }
+  const place = (el, ref) => {
+    if (el === ref) return;
+    // moveBefore keeps a moved row's focus and state where the browser has it.
+    if (container.moveBefore && el.parentNode === container && container.isConnected) {
+      try {
+        container.moveBefore(el, ref);
+        return;
+      } catch {
+        // fall through to the plain move
+      }
+    }
+    container.insertBefore(el, ref);
+  };
+  return {
+    set(items) {
+      const next = new Map();
+      for (const item of items) {
+        const key = String(o.key(item));
+        if (next.has(key)) continue;
+        const data = JSON.stringify(item);
+        const had = rows.get(key);
+        let el;
+        if (!had) el = o.draw(item);
+        else if (had.data === data) el = had.el;
+        else if (o.update) {
+          el = had.el;
+          o.update(el, item);
+        } else {
+          el = o.draw(item);
+          had.el.replaceWith(el);
+        }
+        next.set(key, { el, data });
+      }
+      for (const [key, r] of rows) if (!next.has(key)) r.el.remove();
+      let ref = container.firstChild;
+      for (const { el } of next.values()) {
+        place(el, ref);
+        ref = el.nextSibling;
+      }
+      rows = next;
+    },
+    get: key => rows.get(String(key))?.el ?? null,
+  };
+}
+
 // codeBlock shows source with line numbers: a gutter <pre> and a source <pre>,
 // two text nodes however long the file. It scrolls sideways, never wraps.
 export function codeBlock(src, o = {}) {

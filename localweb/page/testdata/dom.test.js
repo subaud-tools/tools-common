@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture, blurEl } from './harness.js';
-import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, textField, confirmBox, emptyCard } from '/_kit/dom.js';
+import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, textField, confirmBox, emptyCard, keyedRows } from '/_kit/dom.js';
 import { createKeys } from '/_kit/keys.js';
 import { fakeFetch, fakeTimers, flush } from './fakes.js';
 import { initTheme } from '/_kit/theme.js';
@@ -842,4 +842,74 @@ test('dom: emptyCard is a centred line and one button', () => {
   eq(ran, 1);
   eq([cs(c).textAlign, cs(c).paddingTop, cs(c.firstChild).marginBottom], ['center', '26px', '14px']);
   eq(emptyCard({ text: 'Nothing here.' }).children.length, 1, 'no action, no button');
+});
+
+function keyed() {
+  const box = h('ul');
+  const calls = { draw: [], update: [] };
+  const rows = keyedRows(box, {
+    key: it => it.id,
+    draw: it => { calls.draw.push(it.id); return h('li', { dataset: { id: it.id } }, it.state); },
+    update: (row, it) => { calls.update.push(it.id); row.textContent = it.state; },
+  });
+  return { box, calls, rows, els: () => [...box.children] };
+}
+
+test('dom: keyedRows draws each row once, and the same items change nothing', () => {
+  const k = keyed();
+  const items = [{ id: 'a', state: 'ready' }, { id: 'b', state: 'stopped' }];
+  k.rows.set(items);
+  eq(k.els().map(e => e.textContent), ['ready', 'stopped']);
+  eq(k.calls, { draw: ['a', 'b'], update: [] });
+  const before = k.els();
+  k.rows.set([{ id: 'a', state: 'ready' }, { id: 'b', state: 'stopped' }]);
+  assert(k.els().every((e, i) => e === before[i]), 'every row the same element');
+  eq(k.calls, { draw: ['a', 'b'], update: [] }, 'neither draw nor update');
+});
+
+test('dom: keyedRows updates only the row whose data changed', () => {
+  const k = keyed();
+  k.rows.set([{ id: 'a', state: 'ready' }, { id: 'b', state: 'stopped' }, { id: 'c', state: 'ready' }]);
+  const before = k.els();
+  k.rows.set([{ id: 'a', state: 'ready' }, { id: 'b', state: 'starting' }, { id: 'c', state: 'ready' }]);
+  eq(k.calls.update, ['b']);
+  assert(k.els().every((e, i) => e === before[i]), 'updated in place');
+  eq(k.els()[1].textContent, 'starting');
+});
+
+test('dom: keyedRows keeps what is open in a row while another changes', () => {
+  const k = keyed();
+  fixture().append(k.box);
+  k.rows.set([{ id: 'a', state: 'ready' }, { id: 'b', state: 'stopped' }]);
+  const menu = h('div', { class: 'kit-row-pop' }, 'Open · Stop');
+  k.els()[0].append(menu);
+  k.rows.set([{ id: 'a', state: 'ready' }, { id: 'b', state: 'starting' }]);
+  assert(k.els()[0].lastChild === menu && menu.isConnected, 'the open menu survives');
+});
+
+test('dom: keyedRows adds, removes and reorders without redrawing', () => {
+  const k = keyed();
+  k.rows.set([{ id: 'a', state: '1' }, { id: 'b', state: '2' }, { id: 'c', state: '3' }]);
+  const [a, b, c] = k.els();
+  k.rows.set([{ id: 'c', state: '3' }, { id: 'a', state: '1' }, { id: 'b', state: '2' }]);
+  assert(k.els()[0] === c && k.els()[1] === a && k.els()[2] === b, 'moved, not redrawn');
+  eq(k.calls, { draw: ['a', 'b', 'c'], update: [] });
+  k.rows.set([{ id: 'a', state: '1' }, { id: 'd', state: '4' }]);
+  eq(k.els().map(e => e.dataset.id), ['a', 'd']);
+  assert(k.els()[0] === a && !b.isConnected && !c.isConnected, 'gone rows removed');
+  eq(k.calls.draw, ['a', 'b', 'c', 'd']);
+  k.rows.set([{ id: 'b', state: '2' }, { id: 'a', state: '1' }]);
+  assert(k.els()[1] === a && k.els()[0] !== b, 'a row that comes back is drawn anew');
+  k.rows.set([]);
+  eq(k.box.children.length, 0);
+});
+
+test('dom: keyedRows with no update draws a changed row anew in its place', () => {
+  const box = h('ul');
+  const rows = keyedRows(box, { key: it => it.id, draw: it => h('li', null, it.state) });
+  rows.set([{ id: 'a', state: 'x' }, { id: 'b', state: 'y' }]);
+  const [a, b] = box.children;
+  rows.set([{ id: 'a', state: 'x' }, { id: 'b', state: 'z' }]);
+  assert(box.children[0] === a && box.children[1] !== b, 'only b redrawn');
+  eq([...box.children].map(e => e.textContent), ['x', 'z']);
 });

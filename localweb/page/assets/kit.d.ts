@@ -378,6 +378,30 @@ export function confirmBox(o: { tone?: 'signal' | 'danger'; body: Node | string 
 /** The card a list shows with nothing in it: a centred line of muted words and one button (none, no button). */
 export function emptyCard(o: { text: string; action?: { label: string; run?(): void; fill?: boolean } }): HTMLElement;
 
+export interface KeyedRows<T> {
+  /**
+   * Draws a row for each new key, removes the rows of keys gone, calls update
+   * only for an item whose data (compared as JSON) differs from the last set,
+   * and moves the rows into the items' order. An unchanged row is the same
+   * element, so an open menu, details or input in it is never replaced. A
+   * repeated key keeps its first item.
+   */
+  set(items: T[]): void;
+  /** The row drawn for a key, or null. */
+  get(key: string | number): HTMLElement | null;
+}
+
+/**
+ * Keeps a list's rows by key in container, which holds only the rows: a poll
+ * changes only the rows whose state changed. update changes a row in place;
+ * without it, a changed row is drawn anew in its place.
+ */
+export function keyedRows<T>(container: HTMLElement, o: {
+  key(item: T): string | number;
+  draw(item: T): HTMLElement;
+  update?(row: HTMLElement, item: T): void;
+}): KeyedRows<T>;
+
 /** Line-numbered source: two <pre>s, scrolls sideways; highlight returns the source's content. */
 export function codeBlock(src: string, o?: { start?: number; highlight?(src: string): Node }): HTMLElement;
 
