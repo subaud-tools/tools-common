@@ -49,27 +49,45 @@ export function statusPills({ pills, chosen, onToggle, label = 'Filter by status
       }, p.label, h('span', { class: 'kit-pill-n' }, String(p.count)))));
 }
 
+// The press being handled: a switch drawn during it, with the order pressed
+// chosen, is the redraw, and its chosen chip takes the focus back.
+let picking = null;
+
 // sortSwitch is the line over a list that orders it: the muted label (sort),
 // then one chip per order, the chosen one on. onPick hears the order pressed;
-// the caller keeps it (with remembered) and redraws.
+// the caller keeps it (with remembered) and redraws. When the press had the
+// focus in the switch, the redrawn switch's chosen chip gets it back.
 export function sortSwitch({ orders, chosen, onPick, label = 'sort' }) {
-  return h('div', { class: 'kit-sort' },
+  const el = h('div', { class: 'kit-sort' },
     h('span', { class: 'kit-sort-label' }, label),
     orders.map(o => h('button', {
       class: `kit-chip${o.value === chosen ? ' on' : ''}`,
       type: 'button',
       'data-value': o.value,
       'aria-pressed': String(o.value === chosen),
-      onclick: () => onPick(o.value),
+      onclick: () => pick(o.value),
     }, o.label)));
+  if (picking && !picking.made && picking.value === chosen) picking.made = el.querySelector('.kit-chip.on');
+  function pick(value) {
+    const had = el.contains(document.activeElement);
+    const p = picking = { value, made: null };
+    try {
+      onPick(value);
+    } finally {
+      picking = null;
+    }
+    if (had && p.made?.isConnected) p.made.focus();
+  }
+  return el;
 }
 
 // sortedList is one list in the order chosen on its sort switch: the switch,
 // then one card of row(item) for each item, or the empty line with none. Each
 // order compares two items. The choice is remembered under <name>.sort, the
 // first order when none is or the one remembered is gone. A press re-sorts in
-// place; set(items) redraws with new items in the same order.
-export function sortedList({ name, orders, items, row, empty, label }) {
+// place; set(items) redraws with new items in the same order. title, when
+// given, heads the card with title(n) for the n rows shown.
+export function sortedList({ name, orders, items, row, empty, label, title }) {
   const key = `${name}.sort`;
   const known = v => orders.some(o => o.value === v);
   let chosen = known(remembered.get(key)) ? remembered.get(key) : orders[0].value;
@@ -81,6 +99,7 @@ export function sortedList({ name, orders, items, row, empty, label }) {
     el.replaceChildren(
       sortSwitch({ orders, chosen, label, onPick: v => { chosen = v; remembered.set(key, v); draw(); } }),
       h('section', { class: 'kit-card' },
+        title ? h('div', { class: 'kit-label kit-group-head' }, title(rows.length)) : null,
         rows.length ? h('ul', { class: 'kit-group-rows' }, rows) : h('p', { class: 'kit-empty' }, empty)));
   };
   draw();

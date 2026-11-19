@@ -324,7 +324,7 @@ function frontPage(f) {
   // A sorted list keeps its own order (kitdemo.sort); its rows name their place.
   const reviews = [
     { name: 'spec.md', place: 'tools-ops · docs', meta: 'waiting on you · 2 rounds · 1 h ago', you: true, at: 3 },
-    { name: 'plan.md', place: 'tools-ops · plans', meta: 'with the agent · 1 round · 2 days ago', at: 1 },
+    { name: 'plan.md', place: 'tools-ops · plans', meta: 'with the agent · 1 round · 2 days ago', at: 1, found: ['in the text: …each ', 'Lambda', ' function gets its own role…'] },
     { name: 'guide-text.md', place: 'diazo · docs', meta: 'approved Nov 17 · 3 rounds · 5 min ago', at: 9 },
   ];
   const sorted = sortedList({
@@ -335,8 +335,12 @@ function frontPage(f) {
       { value: 'name', label: 'name', compare: (a, b) => a.name.localeCompare(b.name) },
     ],
     items: reviews,
-    row: r => indexRow({ id: r.name, title: r.name, place: r.place, meta: r.meta, attention: r.you, select() {} }),
+    row: r => indexRow({
+      id: r.name, title: r.name, place: r.place, meta: r.meta, attention: r.you, select() {},
+      found: r.found && h('span', {}, r.found[0], h('mark', {}, r.found[1]), r.found[2]),
+    }),
     empty: 'No reviews open.',
+    title: n => `${n} review${n === 1 ? '' : 's'}`,
   });
   const toggled = (on, v) => (!v ? [] : on.includes(v) ? on.filter(x => x !== v) : [...on, v]);
   const line = text => h('li', { class: 'kit-row' }, h('span', { class: 'kit-title' }, text));

@@ -1,4 +1,4 @@
-import { test, eq, assert, fixture } from './harness.js';
+import { test, eq, assert, fixture, focusEl } from './harness.js';
 import { filterRow, statusPills, groupList, rowMenu, sortSwitch, sortedList } from '/_kit/frontpage.js';
 import { indexRow } from '/_kit/index.js';
 
@@ -458,4 +458,77 @@ test('indexRow: place is its own muted line between the title and the meta, only
   el.append(fx);
   eq(getComputedStyle(place).color, getComputedStyle(fx).color, 'muted while the meta is in the signal colour');
   eq(indexRow({ id: 'r', title: 't', meta: 'm' }).querySelector('.kit-place'), null);
+});
+
+test('sortedList: title opens the card with the count of rows shown, redrawn on a press and on set', () => {
+  fresh();
+  const list = sorted({ title: n => `${n} documents` });
+  const head = () => list.el.querySelector('.kit-card > div.kit-label.kit-group-head');
+  eq(head().textContent, '3 documents');
+  assert(list.el.querySelector('.kit-card').firstChild === head(), 'first in the card');
+  list.el.querySelector('[data-value="name"]').click();
+  eq(head().textContent, '3 documents');
+  list.set(docs.slice(0, 1));
+  eq(head().textContent, '1 documents');
+  list.set([]);
+  eq(head().textContent, '0 documents');
+  assert(!sorted().el.querySelector('.kit-group-head'), 'no title, no head');
+  fresh();
+});
+
+test('sortedList: a press with focus in the switch puts focus on the chosen chip after the redraw', () => {
+  fresh();
+  const { el } = sorted();
+  fixture().append(el);
+  focusEl(el.querySelector('[data-value="name"]'));
+  el.querySelector('[data-value="name"]').click();
+  const now = el.querySelector('.kit-chip.on');
+  eq(now.dataset.value, 'name');
+  assert(document.activeElement === now, 'focus on the new chosen chip');
+  fresh();
+});
+
+test('sortSwitch: a caller redrawing on a press gets focus back on the chosen chip', () => {
+  const box = fixture();
+  let chosen = 'needs';
+  const draw = () => box.replaceChildren(sortSwitch({ orders, chosen, onPick: v => { chosen = v; draw(); } }));
+  draw();
+  focusEl(box.querySelector('[data-value="recent"]'));
+  box.querySelector('[data-value="recent"]').click();
+  assert(document.activeElement === box.querySelector('.kit-chip.on[data-value="recent"]'), 'focus on the new chip');
+});
+
+test('sortSwitch: a press with focus elsewhere leaves focus alone', () => {
+  const fx = fixture();
+  const other = document.createElement('input');
+  const box = document.createElement('div');
+  fx.append(other, box);
+  let chosen = 'needs';
+  const draw = () => box.replaceChildren(sortSwitch({ orders, chosen, onPick: v => { chosen = v; draw(); } }));
+  draw();
+  focusEl(other);
+  box.querySelector('[data-value="name"]').click();
+  assert(document.activeElement === other, 'focus stays');
+});
+
+test('indexRow: found is its own line in the button after the meta, a mark in it on the signal-soft ground', () => {
+  const m = document.createElement('span');
+  m.append('in the text: …each ', Object.assign(document.createElement('mark'), { textContent: 'Lambda' }), ' function…');
+  const el = indexRow({ id: 'r', title: 'spec.md', place: 'p', meta: 'm', found: m });
+  fixture().append(el);
+  const main = el.querySelector('.kit-index-main');
+  eq([...main.children].map(c => c.className), ['kit-index-title', 'kit-meta kit-place', 'kit-meta', 'kit-found']);
+  const found = main.querySelector('.kit-found');
+  assert(found.contains(m), 'the node given');
+  const meta = main.children[2];
+  assert(found.getBoundingClientRect().top >= meta.getBoundingClientRect().bottom - 1, 'below the meta');
+  const fx = document.createElement('span');
+  fx.style.color = 'var(--kit-muted)';
+  fx.style.backgroundColor = 'var(--kit-signal-soft)';
+  el.append(fx);
+  const st = getComputedStyle(found);
+  eq([st.fontSize, st.color], ['12px', getComputedStyle(fx).color]);
+  eq(getComputedStyle(found.querySelector('mark')).backgroundColor, getComputedStyle(fx).backgroundColor);
+  eq(indexRow({ id: 'r', title: 't', found: 'in the name' }).querySelector('.kit-found').textContent, 'in the name');
+  eq(indexRow({ id: 'r', title: 't' }).querySelector('.kit-found'), null);
 });

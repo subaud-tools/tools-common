@@ -579,6 +579,10 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-index-row.draft .kit-meta { color: var(--kit-wait); font-weight: 700; }
 /* a row's place (indexRow's place): its own muted line whatever the row's state */
 .kit-index-row .kit-meta.kit-place { color: var(--kit-muted); font-weight: 400; }
+/* a row's search match (indexRow's found): its own line under the meta, the
+   matched words marked */
+.kit-index-row .kit-found { grid-column: 1; margin-top: 2px; font-size: 12px; color: var(--kit-muted); overflow-wrap: anywhere; }
+.kit-found mark { background: var(--kit-signal-soft); color: inherit; padding: 0 1px; border-radius: 2px; }
 .kit-attn-at { flex: none; align-self: center; }
 .kit-attn-dot {
   box-sizing: content-box; width: 7px; height: 7px; margin: 0 4px;
@@ -778,6 +782,10 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-pill-n { margin-left: 6px; }
 /* the sorted list (frontpage.js sortedList): the sort switch over one card of rows */
 .kit-sorted > .kit-card { max-width: 1100px; margin: 0 0 24px; }
+/* its title heads the card like a group's, but it doesn't fold */
+.kit-sorted .kit-group-head { cursor: default; }
+.kit-sorted .kit-group-head::before { content: none; }
+.kit-sorted .kit-group-head:hover { color: var(--kit-muted); }
 /* the sort switch (frontpage.js sortSwitch): one line over the list it orders,
    the muted label then a chip per order; lifted from proj's Saved view. */
 .kit-sort { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }

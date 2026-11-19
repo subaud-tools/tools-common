@@ -8,9 +8,10 @@ tags and PRs.
 
 ### Added
 - kit: `sortSwitch({ orders, chosen, onPick, label? })`, the line over a list that orders it: the muted label (`sort`), then one `.kit-chip` per order, the chosen one on. The caller keeps the choice and redraws. Its look is proj's Saved view's sort line, under `kit-sort` names.
-- kit: `sortedList({ name, orders, items, row, empty, label? })`, the sort switch over one card of rows in the chosen order (each order with its `compare`), or the empty line with none. The choice is remembered under `<name>.sort`, the first order by default; it returns `{ el, set(items) }`.
+- kit: `sortedList({ name, orders, items, row, empty, label?, title? })`, the sort switch over one card of rows in the chosen order (each order with its `compare`), or the empty line with none. The choice is remembered under `<name>.sort`, the first order by default; it returns `{ el, set(items) }`. An optional `title(n)` heads the card (`.kit-label.kit-group-head`) for the n rows shown, redrawn on every press and `set`. After a press with the focus in the switch, the redrawn switch's chosen chip has it, as it does for a caller of `sortSwitch` that redraws at once.
 - kit: `indexRow`'s `place`, a muted line of its own between the title and the meta (`.kit-meta.kit-place`), saying where the row lives.
-- kit: `filterRow` items take `subs`, rows of their own drawn indented (`li.kit-sub`) right after their item while it or one of them is chosen. All counts the top items only; with no `subs` the rows are as before.
+- kit: `indexRow`'s `found` (a node or text), a line of its own inside the row's button after the meta (`.kit-found`, 12px, muted), saying where a search matched; a `<mark>` in it has the signal-soft ground.
+- kit: `filterRow` items take `subs`, rows of their own drawn indented (`li.kit-sub`) right after their item while it or one of them is chosen. All counts the top items only; one level only; with no `subs` the rows are as before.
 
 ### Changed
 - PAGE-STANDARD: a front page whose left column filters shows one list in the sort switch's order, each row naming its place; folding groups only group by something the left column doesn't filter.
