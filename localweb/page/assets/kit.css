@@ -139,6 +139,9 @@ code { font: .88em var(--kit-mono); }
 }
 .kit-app > .kit-bar { grid-column: 1 / -1; }
 .kit-app > .kit-list, .kit-app > .kit-read, .kit-app > .kit-rail { min-height: 0; }
+/* the centre (frame.js) is the middle column whatever else the page has, so
+   a page with no left column still gives it the width */
+.kit-app > .kit-mid { grid-column: 2; }
 .kit-rail {
   width: 360px; display: flex; flex-direction: column; min-height: 0;
   border-left: 1px solid var(--kit-line);
