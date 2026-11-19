@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.100.1
+
+### Fixed
+- kit: on the app grid the band is placed in row 2 and every other child after the bar in the last row, so a band appended after the columns still sits right under the bar and the columns start under it (on wide pages as on narrow ones).
+- kit: the last item beside the band's title shrinks first, with an ellipsis, so a long email beside a title on a phone keeps the title whole and ends inside the band's edge.
+
 ## 0.100.0
 
 ### Added
