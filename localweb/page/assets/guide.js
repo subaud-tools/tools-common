@@ -27,10 +27,14 @@ export function betaBadge(small) {
 
 // badgeIfBeta loads the guide and, when the page's tool is beta, puts the
 // badge at the end of el (the bar's brand). A tool with no guide entry, or a
-// guide that doesn't load, draws nothing.
-export async function badgeIfBeta(el, url) {
+// guide that doesn't load, draws nothing. A page not served over http(s) (a
+// downloaded Record opened from disk) has no guide and asks for none: the
+// browser would log the failed fetch as a console error. o.url and
+// o.protocol (location.protocol by default) are for tests.
+export async function badgeIfBeta(el, o = {}) {
+  if (!/^https?:$/.test(o.protocol || location.protocol)) return;
   try {
-    const data = await load(url);
+    const data = await load(o.url);
     const t = (data.tools || []).find(x => x.name === data.tool);
     if (t && t.beta) el.append(betaBadge());
   } catch {

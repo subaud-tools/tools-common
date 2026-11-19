@@ -1359,7 +1359,7 @@ export function openGuide(o?: { url?: string; tour?: Tour | null; copy?: (text: 
 export function guideAsks(el: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<boolean>;
 /** The beta tag (.kit-beta) after a beta tool's name; small (.kit-beta.sm) beside a name in a list. */
 export function betaBadge(small?: boolean): HTMLSpanElement;
-/** Loads /api/kit/guide and, when the page's tool is beta, appends the badge to el. The bar calls it on its brand. */
-export function badgeIfBeta(el: HTMLElement, url?: string): Promise<void>;
+/** Loads /api/kit/guide and, when the page's tool is beta, appends the badge to el. The bar calls it on its brand. A page not served over http(s) (a Record opened from disk) asks for nothing. */
+export function badgeIfBeta(el: HTMLElement, o?: { url?: string; protocol?: string }): Promise<void>;
 /** Draws the Guide as the whole page in root, as /_kit/guide/ does. */
 export function guidePage(root: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<void>;

@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture } from './harness.js';
-import { guideView, openGuide, guideAsks } from '/_kit/guide.js';
+import { guideView, openGuide, guideAsks, badgeIfBeta } from '/_kit/guide.js';
 import { tour } from '/_kit/tour.js';
 import { bar } from '/_kit/dom.js';
 
@@ -237,4 +237,14 @@ test('bar: no badge for a tool that is not beta, has no guide entry, or when the
   assert(!(await brandAfter(data(), 'diazo')).querySelector('.kit-beta'), 'diazo');
   assert(!(await brandAfter({ ...betaData(), tool: '' }, 'x')).querySelector('.kit-beta'), 'no entry');
   assert(!(await brandAfter(500)).querySelector('.kit-beta'), 'fetch failed');
+});
+
+test('badgeIfBeta: a page opened from disk (a downloaded Record) asks for nothing and draws no badge', async () => {
+  const el = fixture();
+  await withFetch(betaData(), () => badgeIfBeta(el, { protocol: 'file:' }));
+  eq(serve.asked, []);
+  assert(!el.querySelector('.kit-beta'), 'no badge from disk');
+  await withFetch(betaData(), () => badgeIfBeta(el, { protocol: 'http:' }));
+  eq(serve.asked, ['/api/kit/guide']);
+  assert(el.querySelector('.kit-beta'), 'badge over http');
 });
