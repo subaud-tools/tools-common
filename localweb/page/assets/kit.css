@@ -190,6 +190,14 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   border: 0; border-radius: 6px; padding: 7px 26px; cursor: pointer;
 }
 .kit-primary[hidden] { display: none; }
+/* the bar on a phone: tighter, and an empty status takes no room, so the
+   brand, Guide, theme, a menu and the primary fit on one line at 390px */
+@media (width <= 640px) {
+  .kit-bar { gap: 6px; padding: 0 12px; }
+  .kit-bar .kit-ctl { padding: 4px 8px; }
+  .kit-bar .kit-status:empty { display: none; }
+  .kit-primary { padding: 7px 12px; white-space: nowrap; }
+}
 /* the bar's "also open" area: other work a click away, before the live pill.
    Chips keep their size; what doesn't fit folds into "+N more" (dom.js).
    The dot says who it waits on: you (signal), the agent (agent), nobody. */

@@ -771,6 +771,29 @@ test('dom: a centre with no left column fills the app grid under the band', () =
   fx.replaceChildren();
 });
 
+test('dom: the bar fits a phone: brand, Guide, theme, a menu and the primary on one line', async () => {
+  const win = document.createElement('iframe');
+  win.style.cssText = 'width:390px; height:300px; border:0; display:block';
+  win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{margin:0}</style><body>';
+  const loaded = new Promise(r => win.addEventListener('load', r, { once: true }));
+  fixture().append(win);
+  await loaded;
+  const doc = win.contentDocument;
+  await new Promise(r => setTimeout(r, 50));
+  const b = bar({ brand: { name: 'billet', href: '/' }, primary: { label: 'New', run() {} } });
+  b.el.insertBefore(h('button', { class: 'kit-ctl', type: 'button' }, 'you ▾'), b.el.querySelector('.kit-primary'));
+  doc.body.append(b.el);
+  const r = b.el.getBoundingClientRect();
+  eq(r.height, 52, 'the bar stays 52px');
+  for (const c of b.el.children) {
+    const cr = c.getBoundingClientRect();
+    if (!cr.width) continue;
+    assert(cr.right <= r.right + 0.5, `${c.className} ends inside the bar (${cr.right} > ${r.right})`);
+    assert(cr.height <= 40, `${c.className} is one line (${cr.height}px)`);
+  }
+  fixture().replaceChildren();
+});
+
 test('dom: a long email beside the title shrinks on a phone and the title stays', () => {
   const fx = fixture();
   fx.style.width = '390px';
