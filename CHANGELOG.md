@@ -4,6 +4,13 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.101.0
+
+### Added
+- guide: an optional `beta: true` in a tool's front matter, parsed into `Tool.Beta` and carried to the Guide data as `beta`. casebook, sift, cull and muda are beta; a test pins exactly those four.
+- kit: the bar puts a `.kit-beta` badge after the tool's name when the guide data says the page's tool is beta (`badgeIfBeta`, which loads /api/kit/guide; no entry or no guide draws nothing). The Guide tab badges a beta tool's heading, opens its section with "‹tool› is beta: it works, but it is still changing.", and puts the small badge (`.kit-beta.sm`) beside beta tools in its side list. One amber outlined tag, lower case, the same for every tool.
+- using-the-tools skill: "(beta)" after a beta tool's name, and a line telling the agent to say a tool is beta the first time it introduces it.
+
 ## 0.100.2
 
 ### Fixed

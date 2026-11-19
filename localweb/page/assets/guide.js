@@ -19,6 +19,25 @@ const md = (src, cls) => {
   return d;
 };
 
+// betaBadge is the beta tag after a beta tool's name (guide data's beta):
+// small beside a name in a list.
+export function betaBadge(small) {
+  return h('span', { class: small ? 'kit-beta sm' : 'kit-beta' }, 'beta');
+}
+
+// badgeIfBeta loads the guide and, when the page's tool is beta, puts the
+// badge at the end of el (the bar's brand). A tool with no guide entry, or a
+// guide that doesn't load, draws nothing.
+export async function badgeIfBeta(el, url) {
+  try {
+    const data = await load(url);
+    const t = (data.tools || []).find(x => x.name === data.tool);
+    if (t && t.beta) el.append(betaBadge());
+  } catch {
+    // no guide here: no badge
+  }
+}
+
 async function clip(text) {
   await navigator.clipboard.writeText(text);
 }
@@ -43,8 +62,8 @@ export function guideView(data, o = {}) {
   const picks = new Map();
   let shown = null;
 
-  function pickButton(id, label) {
-    const b = h('button', { class: 'kit-guide-pick', type: 'button', dataset: { pick: id }, onclick: () => show(id) }, label);
+  function pickButton(id, label, beta) {
+    const b = h('button', { class: 'kit-guide-pick', type: 'button', dataset: { pick: id }, onclick: () => show(id) }, label, beta ? betaBadge(true) : null);
     picks.set(id, b);
     return b;
   }
@@ -62,7 +81,8 @@ export function guideView(data, o = {}) {
       : null;
     const pub = t.guide ? h('a', { class: 'kit-guide-public', href: t.guide, target: '_blank', rel: 'noopener' }, `${t.name}'s guide on the web ›`) : null;
     return [
-      h('h2', {}, t.name),
+      h('h2', {}, t.name, t.beta ? betaBadge() : null),
+      t.beta ? h('p', { class: 'kit-guide-beta' }, `${t.name} is beta: it works, but it is still changing.`) : null,
       h('p', { class: 'kit-guide-summary' }, t.summary),
       h('h3', {}, 'When to reach for it'), md(t.when),
       t.skip ? h('h3', {}, 'When to skip it') : null, t.skip ? md(t.skip) : null,
@@ -92,11 +112,11 @@ export function guideView(data, o = {}) {
   const light = tools.filter(t => !t.core);
   const side = h('nav', { class: 'kit-guide-side', 'aria-label': 'Tools' },
     h('div', { class: 'kit-label' }, 'Installed'),
-    h('ul', { class: 'kit-guide-core' }, core.map(t => h('li', {}, pickButton(t.name, t.name)))),
+    h('ul', { class: 'kit-guide-core' }, core.map(t => h('li', {}, pickButton(t.name, t.name, t.beta)))),
     light.length
       ? h('details', { class: 'kit-guide-also' },
         h('summary', { class: 'kit-label' }, 'Also installed'),
-        h('ul', {}, light.map(t => h('li', {}, pickButton(t.name, t.name)))))
+        h('ul', {}, light.map(t => h('li', {}, pickButton(t.name, t.name, t.beta)))))
       : null,
     h('ul', {}, h('li', {}, pickButton('fit', 'How they fit together'))),
     h('a', { class: 'kit-guide-family', href: data.family || 'https://subaud.tools', target: '_blank', rel: 'noopener' }, 'All the tools at subaud.tools ›'));

@@ -24,6 +24,7 @@ The shared record says what this user has done: `$XDG_STATE_HOME/subaud/record.j
 - A tool the user has used: use it, with no introduction.
 - A tool they haven't: name it in one sentence (its summary below), then point to its section in the Guide (the Guide button on any tool's page) before you run it. One tool per request; don't list the others.
 - A tool with a walk ({{range $i, $w := .Walks}}{{if $i}}, {{end}}{{$w.Tool}}{{end}}): you may also offer it. The user says "Show me around ‹tool›.", and the getting-started-with-subaud skill runs it.
+- A tool marked (beta) below works, but it is still changing: say it is beta the first time you introduce it.
 - Every ask is something the user says to you. Never tell them to type a tool's command.
 
 ## How they hand off
@@ -32,7 +33,7 @@ The shared record says what this user has done: `$XDG_STATE_HOME/subaud/record.j
 
 ## Each tool
 {{range .Tools}}
-### {{.Name}}
+### {{.Name}}{{if .Beta}} (beta){{end}}
 
 {{.Summary}}
 

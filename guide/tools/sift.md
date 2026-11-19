@@ -2,6 +2,7 @@
 name: sift
 summary: Audits the instruction files your agents read and finds what's too big, duplicated, stale or in the wrong place.
 weight: light
+beta: true
 asks:
   - Run a sift round on my agent instruction files.
 ---

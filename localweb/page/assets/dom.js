@@ -1,7 +1,7 @@
 import { createSelection } from './selection.js';
 import { MESSAGE_STATES } from './msgstate.js';
 import { submitOnEnter } from './enter.js';
-import { openGuide } from './guide.js';
+import { openGuide, badgeIfBeta } from './guide.js';
 
 // DOM builders for the kit's components. Each returns plain elements styled by
 // kit.css; the CSS classes are the contract and also work from static HTML.
@@ -167,9 +167,12 @@ export function bar(o) {
   let run = null;
   primary.addEventListener('click', () => run && run());
 
+  // A beta tool (its guide entry says so) wears the badge after its name.
+  const brand = h(o.brand.href ? 'a' : 'span', { class: 'kit-brand', href: o.brand.href || null }, o.brand.mark || null, o.brand.name);
+  void badgeIfBeta(brand);
   const handle = {
     el: h('header', { class: 'kit-bar' },
-      h(o.brand.href ? 'a' : 'span', { class: 'kit-brand', href: o.brand.href || null }, o.brand.mark || null, o.brand.name),
+      brand,
       ...ctls.values(), status, h('span', { class: 'kit-sp' }), also.el, pill, guideControl, themeControl, primary),
     themeControl,
     guideControl,

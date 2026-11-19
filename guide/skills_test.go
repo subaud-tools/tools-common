@@ -68,11 +68,15 @@ func TestSkillsRenderFromTheContent(t *testing.T) {
 	tl, _ := Tools()
 	using := string(sk[0].Body)
 	for _, x := range tl {
-		if !strings.Contains(using, "### "+x.Name+"\n") || !strings.Contains(using, x.Summary) {
-			t.Errorf("using-the-tools has no section for %s with its summary", x.Name)
+		head := "### " + x.Name + "\n"
+		if x.Beta {
+			head = "### " + x.Name + " (beta)\n"
+		}
+		if !strings.Contains(using, head) || !strings.Contains(using, x.Summary) {
+			t.Errorf("using-the-tools has no section %q for %s with its summary", head, x.Name)
 		}
 	}
-	for _, want := range []string{"record.json", "How a change usually goes", "one-line fix"} {
+	for _, want := range []string{"record.json", "How a change usually goes", "one-line fix", "say it is beta the first time you introduce it"} {
 		if !strings.Contains(using, want) {
 			t.Errorf("using-the-tools does not say %q", want)
 		}

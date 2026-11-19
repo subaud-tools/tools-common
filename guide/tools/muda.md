@@ -2,6 +2,7 @@
 name: muda
 summary: Finds waste in how your code gets delivered (slow or flaky CI, needless waits, cloud cost), measures it, and fixes it one pull request at a time.
 weight: core
+beta: true
 asks:
   - Use muda to measure this repository's delivery pipeline.
   - CI is slow here. Find out why with muda.

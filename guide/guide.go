@@ -36,6 +36,7 @@ type Tool struct {
 	Name     string   // command name, the file's name
 	Summary  string   // what it is, in one sentence
 	Core     bool     // a full section (weight: core) or a short entry (weight: light)
+	Beta     bool     // beta: true, it works but is still changing; the kit badges it
 	Asks     []string // things to say to the agent
 	When     string   // markdown: when to reach for it
 	Skip     string   // markdown: when to skip it
@@ -374,6 +375,14 @@ func parseTool(file, text string) (Tool, []error) {
 	case "light", "":
 	default:
 		bad("weight is core or light, not %s", w)
+	}
+	switch b := front["beta"]; {
+	case b == nil:
+	case len(b) == 1 && b[0] == "true":
+		t.Beta = true
+	case len(b) == 1 && b[0] == "false":
+	default:
+		bad("beta is true or false, not %s", strings.Join(b, " "))
 	}
 	t.Asks = front["asks"]
 	if t.Core {
