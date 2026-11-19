@@ -447,7 +447,8 @@ test('live: unshown in a split page closes the stream and checks in once a minut
   eq(es.last().url, '/api/events?tab=T1&page=&since=6', 'picks up after what it had');
   eq(events.map(e => e.type), ['a', 'b']);
   handle.stop();
-  eq(win.listeners.length, 0, 'stop removes the listener');
+  win.post({ type: 'kit.shown', shown: false });
+  eq(es.made.length, 2, 'a stopped live() hears nothing more');
 });
 
 test('live: kit.shown from a window other than the parent is ignored', () => {
@@ -470,6 +471,20 @@ test('live: a page that is its own top window ignores kit.shown', () => {
   es.last().emitOpen();
   win.post({ type: 'kit.shown', shown: false });
   assert(!es.last().closed, 'stream kept');
+  handle.stop();
+});
+
+test('live: a page told it is unshown before it starts live() holds no stream', () => {
+  // diazo fetches its plan before live(), so the split page's word on the
+  // frame's load comes first.
+  const win = fakeWindow();
+  setup({ window: win }).handle.stop(); // live.js is listening for this window
+  win.post({ type: 'kit.shown', shown: false });
+  const { timers, es, handle } = setup({ window: win });
+  eq(es.made.length, 0, 'no stream while unshown');
+  eq([...timers.pending.values()].map(t => t.ms), [0], 'checks in at once, as a tab that loads hidden');
+  win.post({ type: 'kit.shown', shown: true });
+  eq(es.made.length, 1, 'shown: the stream opens');
   handle.stop();
 });
 

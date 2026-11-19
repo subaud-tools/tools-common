@@ -59,8 +59,29 @@
 // selection changes (the other way from kit.forward). live() takes it only
 // from its parent window, and an unshown page takes the hidden-tab path above:
 // the stream is held only while the page is visible and shown. A page never
-// told counts as shown.
+// told counts as shown. The word can come before the page starts live() (diazo
+// fetches its plan first), so live.js listens from the moment it loads and
+// keeps the last word per window.
 import { spotlight, clearSpotlight, resumeSpotlight } from './spotlight.js';
+
+const shownBy = new WeakMap(); // window -> {shown, heard: Set of callbacks}
+
+function shownOf(win) {
+  let w = shownBy.get(win);
+  if (w) return w;
+  w = { shown: true, heard: new Set() };
+  shownBy.set(win, w);
+  win.addEventListener('message', ev => {
+    if (win.parent === win || ev.source !== win.parent) return;
+    const d = ev.data;
+    if (!d || d.type !== 'kit.shown' || typeof d.shown !== 'boolean') return;
+    w.shown = d.shown;
+    for (const f of [...w.heard]) f();
+  });
+  return w;
+}
+
+if (globalThis.window && typeof globalThis.window.addEventListener === 'function') shownOf(globalThis.window);
 
 function forward(tool) {
   try {
@@ -92,7 +113,7 @@ export function live(opts) {
   let stopped = false;
   let epoch = 0; // bumped whenever the stream opens; stale polls are dropped
   let resumed = opts.spotlight === false;
-  let shown = true; // until the split page says otherwise
+  const shown = win ? shownOf(win) : { shown: true };
 
   const withQuery = url =>
     `${url}${url.includes('?') ? '&' : '?'}tab=${encodeURIComponent(tab)}&page=${encodeURIComponent(page)}` +
@@ -211,7 +232,7 @@ export function live(opts) {
 
   const hidden = () => !!doc && doc.visibilityState === 'hidden';
   // away: hidden, or a split page's tab that isn't shown; no stream is held.
-  const away = () => hidden() || !shown;
+  const away = () => hidden() || !shown.shown;
 
   // refresh holds the stream while the page is on screen and checks in while
   // it is away; a change that leaves it where it was does nothing.
@@ -230,25 +251,17 @@ export function live(opts) {
     if (!es) openStream();
   }
 
-  function onMessage(ev) {
-    if (!win || win.parent === win || ev.source !== win.parent) return;
-    const d = ev.data;
-    if (!d || d.type !== 'kit.shown' || typeof d.shown !== 'boolean') return;
-    shown = d.shown;
-    refresh();
-  }
-
   function halt() {
     stopped = true;
     cancelPoll();
     if (es) es.close();
     es = null;
     if (doc) doc.removeEventListener('visibilitychange', refresh);
-    if (win) win.removeEventListener('message', onMessage);
+    if (win) shown.heard.delete(refresh);
   }
 
   if (doc) doc.addEventListener('visibilitychange', refresh);
-  if (win) win.addEventListener('message', onMessage);
+  if (win) shown.heard.add(refresh);
   wasAway = away();
   if (!wasAway) openStream();
   else schedule(0);
