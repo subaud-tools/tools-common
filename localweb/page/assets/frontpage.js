@@ -79,7 +79,9 @@ let menuOpen = null;
 // then runs it. onMenu hears it open and close. open draws it already open,
 // as the one open menu on the page, for a caller that redraws its rows: it
 // neither scrolls nor takes focus, and onMenu does not hear that opening (the
-// caller asked for it), only the closing. buttonClass replaces kit-row-more
+// caller asked for it), only the closing; the menu it replaces closes without
+// telling onMenu, so a caller keeping open from onMenu keeps it through every
+// redraw. buttonClass replaces kit-row-more
 // on the ⋯ button.
 export function rowMenu({ label, items, onMenu, open = false, buttonClass = 'kit-row-more' }) {
   const btn = h('button', {
@@ -98,17 +100,17 @@ export function rowMenu({ label, items, onMenu, open = false, buttonClass = 'kit
   const esc = e => {
     if (e.key === 'Escape') close();
   };
-  function close() {
+  function close(quiet) {
     if (pop.hidden) return;
     pop.hidden = true;
     btn.setAttribute('aria-expanded', 'false');
     document.removeEventListener('click', outside, true);
     document.removeEventListener('keydown', esc);
     if (menuOpen === close) menuOpen = null;
-    onMenu?.(false);
+    if (!quiet) onMenu?.(false);
   }
-  function show() {
-    menuOpen?.();
+  function show(quiet) {
+    menuOpen?.(quiet);
     pop.hidden = false;
     btn.setAttribute('aria-expanded', 'true');
     document.addEventListener('click', outside, true);
@@ -131,7 +133,7 @@ export function rowMenu({ label, items, onMenu, open = false, buttonClass = 'kit
   pop.addEventListener('click', e => {
     if (!e.target.closest?.(':disabled')) close();
   }, true);
-  if (open) show();
+  if (open) show(true);
   return wrap;
 }
 

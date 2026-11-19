@@ -272,6 +272,24 @@ test('rowMenu: open closes the menu already open, and a second opening closes it
   parts(c).btn.click();
 });
 
+test('rowMenu: a caller keeping open from onMenu keeps it open through redraws', () => {
+  let isOpen = false;
+  const draw = () => {
+    const el = rowMenu({ label: 'More', open: isOpen, items: [{ label: 'A', run() {} }], onMenu: o => { isOpen = o; } });
+    fixture().replaceChildren(el);
+    return el;
+  };
+  parts(draw()).btn.click();
+  eq(isOpen, true);
+  draw();
+  draw();
+  const el = draw();
+  eq(isOpen, true);
+  assert(!parts(el).pop.hidden, 'still open after three redraws');
+  parts(el).btn.click();
+  eq(isOpen, false);
+});
+
 test('rowMenu: open is closed by a press outside', () => {
   const el = rowMenu({ label: 'More', open: true, items: [{ label: 'A', run() {} }] });
   const out = document.createElement('button');
