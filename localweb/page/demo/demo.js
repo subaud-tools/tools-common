@@ -326,7 +326,10 @@ function frontPage(f) {
   const draw = () => {
     left.replaceChildren(filterRow({
       label: 'Projects',
-      items: [{ value: 'diazo', label: 'diazo', count: 3 }, { value: 'sift', label: 'sift', count: 1 }],
+      items: [
+        { value: 'diazo', label: 'diazo', count: 3, subs: [{ value: 'diazo/docs', label: 'docs', count: 2 }, { value: 'diazo/plans', label: 'plans', count: 1 }] },
+        { value: 'sift', label: 'sift', count: 1 },
+      ],
       chosen: projects,
       onToggle: v => { projects = toggled(projects, v); draw(); },
     }));

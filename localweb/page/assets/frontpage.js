@@ -5,11 +5,13 @@ import { h } from './dom.js';
 
 // filterRow is a section of the left column: All with the total, then one row
 // per item. Several can be chosen; All is on when none is. onToggle hears the
-// value pressed, '' for All.
+// value pressed, '' for All. An item's subs are rows of their own, indented
+// right after it, drawn only while it or one of them is chosen; All counts the
+// top items alone.
 export function filterRow({ label, items, chosen, onToggle }) {
-  const row = ({ value, label: text, count }) => {
+  const row = ({ value, label: text, count }, sub) => {
     const on = value ? chosen.includes(value) : !chosen.length;
-    return h('li', { class: `kit-index-row${on ? ' on' : ''}` },
+    return h('li', { class: `kit-index-row${sub ? ' kit-sub' : ''}${on ? ' on' : ''}` },
       h('button', {
         class: 'kit-index-main kit-filter',
         type: 'button',
@@ -23,7 +25,11 @@ export function filterRow({ label, items, chosen, onToggle }) {
   const total = items.reduce((n, it) => n + it.count, 0);
   return h('section', { class: 'kit-index-section kit-filter-row' },
     h('div', { class: 'kit-label' }, label),
-    h('ul', { class: 'kit-index-rows' }, row({ value: '', label: 'All', count: total }), items.map(row)));
+    h('ul', { class: 'kit-index-rows' }, row({ value: '', label: 'All', count: total }), items.flatMap(it => {
+      const subs = it.subs || [];
+      const open = chosen.includes(it.value) || subs.some(s => chosen.includes(s.value));
+      return [row(it), ...(open ? subs.map(s => row(s, true)) : [])];
+    })));
 }
 
 // statusPills draws the pills as a stage track with no arrows, since statuses

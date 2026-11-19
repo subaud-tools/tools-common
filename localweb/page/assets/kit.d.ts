@@ -866,9 +866,11 @@ export interface FilterItem {
   value: string;
   label: string;
   count: number;
+  /** filterRow: rows nested under this one (a repo's folders), each drawn indented (li.kit-sub) right after it, only while it or one of them is chosen. A press on one calls onToggle with its value. Not counted in All. */
+  subs?: FilterItem[];
 }
 
-/** A section of the left column: All with the total, then one row per item with its count. Several can be chosen; All is on when none is. onToggle hears the value pressed, '' for All. */
+/** A section of the left column: All with the total of the top items, then one row per item with its count, each followed by its subs while it or one of them is chosen. Several can be chosen; All is on when none is. onToggle hears the value pressed, '' for All. */
 export function filterRow(o: { label: string; items: FilterItem[]; chosen: string[]; onToggle(value: string): void }): HTMLElement;
 
 /** The status pills, drawn as a stage track with no arrows, since statuses aren't a sequence. A pill with no count is hidden unless chosen. The value '' is the tool's All, on when none is chosen. onToggle hears the value pressed. */

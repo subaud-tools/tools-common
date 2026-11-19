@@ -769,6 +769,10 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
   column-gap: 8px; padding: 5px 8px;
 }
 .kit-filter > .kit-meta { grid-column: 2; }
+/* a filter row's sub-item (filterRow's subs): indented under its item. It
+   shares list()'s .kit-sub name, whose type and colour it takes none of. */
+.kit-index-row.kit-sub { font-size: inherit; color: inherit; margin-top: 0; }
+.kit-index-row.kit-sub .kit-index-main { padding-left: 26px; }
 .kit-pill-n { margin-left: 6px; }
 .kit-group.kit-card { max-width: 1100px; margin: 0 0 24px; }
 .kit-group-head {
@@ -814,6 +818,7 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
   .kit-filter-row .kit-index-row { border: 1px solid var(--kit-line); background: var(--kit-card); }
   .kit-filter-row .kit-index-row.on { background: color-mix(in srgb, var(--kit-signal) 14%, var(--kit-card)); }
   .kit-filter { grid-template-columns: auto auto; padding: 2px 8px; }
+  .kit-index-row.kit-sub .kit-index-main { padding-left: 8px; }
   .kit-filter > .kit-index-title { font-size: 13px; }
 }
 

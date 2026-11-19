@@ -31,6 +31,42 @@ test('filterRow: a press says which value, and All says the empty one', () => {
   eq(got, ['sift', '']);
 });
 
+const repos = [
+  { value: 'tools-ops', label: 'tools-ops', count: 4, subs: [{ value: 'tools-ops/docs', label: 'docs', count: 3 }, { value: 'tools-ops/plans', label: 'plans', count: 1 }] },
+  { value: 'galley', label: 'galley', count: 2 },
+];
+
+test('filterRow: sub-items are hidden while nothing is chosen, and All counts the top items only', () => {
+  const el = filterRow({ label: 'Repos', items: repos, chosen: [], onToggle() {} });
+  eq(rowsOf(el), [['', 'All', '6'], ['tools-ops', 'tools-ops', '4'], ['galley', 'galley', '2']]);
+  eq(el.querySelectorAll('.kit-sub').length, 0);
+});
+
+test('filterRow: a chosen item shows its sub-items right after it, indented', () => {
+  const el = filterRow({ label: 'Repos', items: repos, chosen: ['tools-ops'], onToggle() {} });
+  fixture().append(el);
+  eq(rowsOf(el), [['', 'All', '6'], ['tools-ops', 'tools-ops', '4'], ['tools-ops/docs', 'docs', '3'], ['tools-ops/plans', 'plans', '1'], ['galley', 'galley', '2']]);
+  const subs = [...el.querySelectorAll('li.kit-index-row.kit-sub')];
+  eq(subs.map(li => li.querySelector('.kit-filter').dataset.value), ['tools-ops/docs', 'tools-ops/plans']);
+  const pad = b => parseFloat(getComputedStyle(b.querySelector('.kit-index-main')).paddingLeft);
+  const top = el.querySelector('[data-value="galley"]').closest('li');
+  assert(pad(subs[0]) > pad(top), `indented: ${pad(subs[0])} > ${pad(top)}`);
+  eq(getComputedStyle(subs[0]).fontSize, getComputedStyle(top).fontSize);
+});
+
+test('filterRow: sub-items show while only a sub-item is chosen, and it is on', () => {
+  const el = filterRow({ label: 'Repos', items: repos, chosen: ['tools-ops/plans'], onToggle() {} });
+  eq(el.querySelectorAll('.kit-sub').length, 2);
+  eq(onOf(el), ['tools-ops/plans']);
+});
+
+test('filterRow: a press on a sub-item says its value', () => {
+  const got = [];
+  const el = filterRow({ label: 'Repos', items: repos, chosen: ['tools-ops'], onToggle: v => got.push(v) });
+  el.querySelector('[data-value="tools-ops/docs"]').click();
+  eq(got, ['tools-ops/docs']);
+});
+
 const pills = [{ value: '', label: 'All', count: 3 }, { value: 'needs', label: 'Needs you', count: 3 }, { value: 'built', label: 'Built', count: 0 }];
 const pillsOf = el => [...el.querySelectorAll('.kit-stage')].map(b => b.textContent);
 
