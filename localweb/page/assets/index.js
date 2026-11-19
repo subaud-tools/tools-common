@@ -15,11 +15,14 @@ export function attentionDot() {
 
 // indexRow is one row: a button that calls select(id) with its title and meta,
 // then extra (nodes), then the dot when attention is set. on, attention, waits
-// and draft are its classes.
+// and draft are its classes. mark (✓, ●, ○, ✕) goes before the title in its
+// markState's colour: done, now, later or fail.
 export function indexRow(o) {
   const states = [o.on && ' on', o.attention && ' attn', o.waits && ' waits', o.draft && ' draft'];
+  const mark = o.mark ? h('span', { class: 'kit-index-mark' + (o.markState ? ' ' + o.markState : '') }, o.mark) : null;
   return h('li', { class: 'kit-index-row' + states.filter(Boolean).join(''), 'data-card': o.id },
-    h('button', { class: 'kit-index-main', type: 'button', onclick: () => o.select && o.select(o.id) },
+    h('button', { class: 'kit-index-main' + (mark ? ' has-mark' : ''), type: 'button', onclick: () => o.select && o.select(o.id) },
+      mark,
       h('span', { class: 'kit-index-title' }, o.title),
       o.meta ? h('span', { class: 'kit-meta' }, o.meta) : null),
     o.extra,

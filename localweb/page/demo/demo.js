@@ -400,6 +400,13 @@ function shapePage() {
       ],
     })],
   });
+  const step = (id, title, meta, mark, markState, on) => indexRow({ id, title, meta, mark, markState, on, select() {} });
+  f.leftBody.append(indexSection({ name: 'Steps', empty: '', rows: [
+    step('sign', 'Sign in to GitHub', '2 min', '✓', 'done'),
+    step('repos', 'Pick the repos', 'started 14:02', '●', 'now', true),
+    step('machine', 'Start the machine', '', '○', 'later'),
+    step('dotfiles', 'Your dotfiles', 'failed', '✕', 'fail'),
+  ] }));
   f.centre.append(card({ head: 'Repos', body: 'Pick the repos to clone.' }));
   return [top, f];
 }

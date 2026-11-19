@@ -521,6 +521,10 @@ export interface IndexRowOptions {
   waits?: boolean;
   /** It holds a draft: a wait-coloured edge and meta. */
   draft?: boolean;
+  /** A mark before the title, such as ✓, ●, ○ or ✕ (a step list's). No mark, no mark element. */
+  mark?: string;
+  /** The mark's colour: done (ok), now (signal), later (muted), fail (danger). */
+  markState?: 'done' | 'now' | 'later' | 'fail';
   /** Nodes after the row's button, before the dot. */
   extra?: Node[];
   select?(id: string): void;

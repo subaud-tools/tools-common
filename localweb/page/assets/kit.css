@@ -500,6 +500,15 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
 }
 .kit-index-row .kit-meta { grid-column: 1; font: 11.5px var(--kit-mono); color: var(--kit-muted); }
+/* a row's mark (a step's ✓ ● ○ ✕): its own column before the title, in its
+   state's colour; the meta lines up under the title */
+.kit-index-main.has-mark { grid-template-columns: 18px minmax(0, 1fr); column-gap: 6px; align-items: baseline; }
+.kit-index-main.has-mark > :not(.kit-index-mark) { grid-column: 2; }
+.kit-index-mark { grid-column: 1; font: 12px var(--kit-mono); color: var(--kit-muted); text-align: center; }
+.kit-index-mark.done { color: var(--kit-ok); }
+.kit-index-mark.now { color: var(--kit-signal); }
+.kit-index-mark.later { color: var(--kit-muted); }
+.kit-index-mark.fail { color: var(--kit-danger); }
 .kit-index-row.attn .kit-meta { color: var(--kit-signal); font-weight: 700; }
 .kit-index-row.waits .kit-meta { color: var(--kit-wait); }
 .kit-index-row.draft { border-left-color: var(--kit-wait); }
