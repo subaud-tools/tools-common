@@ -876,6 +876,16 @@ export function filterRow(o: { label: string; items: FilterItem[]; chosen: strin
 /** The status pills, drawn as a stage track with no arrows, since statuses aren't a sequence. A pill with no count is hidden unless chosen. The value '' is the tool's All, on when none is chosen. onToggle hears the value pressed. */
 export function statusPills(o: { pills: FilterItem[]; chosen: string[]; onToggle(value: string): void; label?: string }): HTMLElement;
 
+/** An order a sort switch offers. */
+export interface SortOrder {
+  value: string;
+  /** The chip's words. */
+  label: string;
+}
+
+/** The line over a list that orders it (div.kit-sort): a muted span.kit-sort-label reading label (default sort), then one button.kit-chip per order, the chosen one on with aria-pressed="true". onPick hears the order pressed; the caller keeps it (with remembered) and redraws. Placed directly over its list, never in the left column or the band. */
+export function sortSwitch(o: { orders: SortOrder[]; chosen: string; onPick(value: string): void; label?: string }): HTMLElement;
+
 export interface ListGroup {
   key: string;
   title: string;

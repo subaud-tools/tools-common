@@ -48,6 +48,21 @@ export function statusPills({ pills, chosen, onToggle, label = 'Filter by status
       }, p.label, h('span', { class: 'kit-pill-n' }, String(p.count)))));
 }
 
+// sortSwitch is the line over a list that orders it: the muted label (sort),
+// then one chip per order, the chosen one on. onPick hears the order pressed;
+// the caller keeps it (with remembered) and redraws.
+export function sortSwitch({ orders, chosen, onPick, label = 'sort' }) {
+  return h('div', { class: 'kit-sort' },
+    h('span', { class: 'kit-sort-label' }, label),
+    orders.map(o => h('button', {
+      class: `kit-chip${o.value === chosen ? ' on' : ''}`,
+      type: 'button',
+      'data-value': o.value,
+      'aria-pressed': String(o.value === chosen),
+      onclick: () => onPick(o.value),
+    }, o.label)));
+}
+
 function group({ key, title, rows, empty, edge }, startFolded, onFold) {
   const head = h('button', { class: 'kit-label kit-group-head', type: 'button' }, `${title} · ${rows.length}`);
   const sec = h('section', { class: `kit-card kit-group${edge ? ` edge-${edge}` : ''}`, 'data-group': key },

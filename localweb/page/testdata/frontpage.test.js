@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture } from './harness.js';
-import { filterRow, statusPills, groupList, rowMenu } from '/_kit/frontpage.js';
+import { filterRow, statusPills, groupList, rowMenu, sortSwitch } from '/_kit/frontpage.js';
 
 const projects = [{ value: 'diazo', label: 'diazo', count: 3 }, { value: 'sift', label: 'sift', count: 2 }];
 const rowsOf = el => [...el.querySelectorAll('.kit-filter')].map(b => [b.dataset.value, b.querySelector('.kit-index-title').textContent, b.querySelector('.kit-meta').textContent]);
@@ -340,4 +340,39 @@ test('rowMenu: buttonClass replaces the ⋯ button\'s class', () => {
   const btn = el.querySelector('button[aria-haspopup="menu"]');
   eq(btn.className, 'kit-ctl dz-band-more');
   eq(el.querySelector('.kit-row-more'), null);
+});
+
+const orders = [{ value: 'needs', label: 'needs you' }, { value: 'recent', label: 'recent' }, { value: 'name', label: 'name' }];
+const chipsOf = el => [...el.querySelectorAll('button.kit-chip')].map(b => [b.dataset.value, b.textContent, b.classList.contains('on'), b.getAttribute('aria-pressed')]);
+
+test('sortSwitch: the muted label sort, then one chip per order, the chosen one on', () => {
+  const el = sortSwitch({ orders, chosen: 'recent', onPick() {} });
+  eq(el.className, 'kit-sort');
+  eq(el.firstChild.className, 'kit-sort-label');
+  eq(el.firstChild.textContent, 'sort');
+  eq(chipsOf(el), [['needs', 'needs you', false, 'false'], ['recent', 'recent', true, 'true'], ['name', 'name', false, 'false']]);
+});
+
+test('sortSwitch: label replaces sort', () => {
+  eq(sortSwitch({ orders, chosen: 'name', onPick() {}, label: 'order' }).querySelector('.kit-sort-label').textContent, 'order');
+});
+
+test('sortSwitch: a press says which order, and the caller keeps it', () => {
+  const got = [];
+  const el = sortSwitch({ orders, chosen: 'needs', onPick: v => got.push(v) });
+  el.querySelector('[data-value="name"]').click();
+  eq(got, ['name']);
+  eq(chipsOf(el).map(c => c[2]), [true, false, false]);
+});
+
+test('sortSwitch: one line, its label muted beside the chips', () => {
+  const el = sortSwitch({ orders, chosen: 'needs', onPick() {} });
+  fixture().append(el);
+  const s = getComputedStyle(el);
+  eq([s.display, s.alignItems, s.flexWrap], ['flex', 'center', 'wrap']);
+  const fx = document.createElement('span');
+  fx.style.color = 'var(--kit-muted)';
+  el.append(fx);
+  eq(getComputedStyle(el.querySelector('.kit-sort-label')).color, getComputedStyle(fx).color);
+  eq(getComputedStyle(el.querySelector('.kit-chip')).marginTop, '0px');
 });

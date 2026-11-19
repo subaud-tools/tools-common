@@ -774,6 +774,11 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-index-row.kit-sub { font-size: inherit; color: inherit; margin-top: 0; }
 .kit-index-row.kit-sub .kit-index-main { padding-left: 26px; }
 .kit-pill-n { margin-left: 6px; }
+/* the sort switch (frontpage.js sortSwitch): one line over the list it orders,
+   the muted label then a chip per order; lifted from proj's Saved view. */
+.kit-sort { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
+.kit-sort-label { color: var(--kit-muted); font-size: 13px; }
+.kit-sort .kit-chip { margin: 0; }
 .kit-group.kit-card { max-width: 1100px; margin: 0 0 24px; }
 .kit-group-head {
   display: block; margin: 0 0 12px; padding: 0; border: 0; background: none;
