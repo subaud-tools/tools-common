@@ -73,25 +73,23 @@ let menuOpen = null;
 // rowMenu is a row's ⋯ button and its menu, as diazo's front page rows have:
 // a press opens it, and a press on an item, outside it or Esc closes it. Each
 // item is a menuitem button: action and walk become data-action and data-walk,
-// so a caller keeps its hooks, and danger marks a destructive one. A press on
-// an item closes the menu, then runs it. onMenu hears it open and close.
-export function rowMenu({ label, items, onMenu }) {
+// so a caller keeps its hooks, and danger marks a destructive one. An item
+// with href is a menuitem link instead, { separator: true } a line between
+// items, and a disabled item never runs. A press on an item closes the menu,
+// then runs it. onMenu hears it open and close. open draws it already open,
+// as the one open menu on the page, for a caller that redraws its rows: it
+// neither scrolls nor takes focus, and onMenu does not hear that opening (the
+// caller asked for it), only the closing. buttonClass replaces kit-row-more
+// on the ⋯ button.
+export function rowMenu({ label, items, onMenu, open = false, buttonClass = 'kit-row-more' }) {
   const btn = h('button', {
-    class: 'kit-row-more',
+    class: buttonClass,
     type: 'button',
     'aria-label': label,
     'aria-haspopup': 'menu',
     'aria-expanded': 'false',
   }, '⋯');
-  const pop = h('div', { class: 'kit-row-pop', role: 'menu' }, items.map(it =>
-    h('button', {
-      type: 'button',
-      role: 'menuitem',
-      class: it.danger ? 'danger' : undefined,
-      'data-action': it.action,
-      'data-walk': it.walk,
-      onclick: () => it.run(),
-    }, it.label)));
+  const pop = h('div', { class: 'kit-row-pop', role: 'menu' }, items.map(menuItem));
   pop.hidden = true;
   const wrap = h('div', { class: 'kit-row-menu' }, btn, pop);
   const outside = e => {
@@ -109,23 +107,38 @@ export function rowMenu({ label, items, onMenu }) {
     if (menuOpen === close) menuOpen = null;
     onMenu?.(false);
   }
-  btn.addEventListener('click', () => {
-    if (!pop.hidden) {
-      close();
-      return;
-    }
+  function show() {
     menuOpen?.();
     pop.hidden = false;
     btn.setAttribute('aria-expanded', 'true');
     document.addEventListener('click', outside, true);
     document.addEventListener('keydown', esc);
     menuOpen = close;
+  }
+  btn.addEventListener('click', () => {
+    if (!pop.hidden) {
+      close();
+      return;
+    }
+    show();
     onMenu?.(true);
     // ⋯ sits at a row's foot on a phone: a menu opening past the window's
     // edge scrolls into it.
     pop.scrollIntoView({ block: 'nearest' });
   });
-  // A press on an item closes the menu, then does what the item does.
-  pop.addEventListener('click', () => close(), true);
+  // A press on an item closes the menu, then does what the item does; a press
+  // on a disabled one leaves it open.
+  pop.addEventListener('click', e => {
+    if (!e.target.closest?.(':disabled')) close();
+  }, true);
+  if (open) show();
   return wrap;
+}
+
+function menuItem(it) {
+  if (it.separator) return h('hr', { role: 'separator' });
+  const hooks = { role: 'menuitem', class: it.danger ? 'danger' : undefined, 'data-action': it.action, 'data-walk': it.walk };
+  if (it.href !== undefined) return h('a', { ...hooks, href: it.href, onclick: () => it.run?.() }, it.label);
+  // A script's click reaches a disabled button's listener too: it still never runs.
+  return h('button', { ...hooks, type: 'button', disabled: it.disabled || undefined, onclick: e => e.currentTarget.disabled || it.run() }, it.label);
 }

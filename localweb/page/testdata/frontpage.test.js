@@ -195,3 +195,95 @@ test('rowMenu: opening a second menu closes the first', () => {
   assert(!parts(b).pop.hidden, 'the second open');
   parts(b).btn.click();
 });
+
+test('rowMenu: an item with href is a menuitem link that keeps its hooks', () => {
+  const el = rowMenu({ label: 'More', items: [{ label: 'Record', href: '/p/1/record', action: 'record', walk: 'w2' }] });
+  const a = parts(el).pop.querySelector('a');
+  eq([a.textContent, a.getAttribute('role'), a.getAttribute('href'), a.dataset.action, a.dataset.walk], ['Record', 'menuitem', '/p/1/record', 'record', 'w2']);
+});
+
+test('rowMenu: a link reads like the buttons, with no underline', () => {
+  const el = rowMenu({ label: 'More', items: [{ label: 'Record', href: '#r' }, { label: 'Rename', run() {} }] });
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  btn.click();
+  const a = getComputedStyle(pop.querySelector('a')), b = getComputedStyle(pop.querySelector('button'));
+  eq([a.display, a.textDecorationLine, a.color, a.fontSize, a.paddingLeft], ['block', 'none', b.color, b.fontSize, b.paddingLeft]);
+  btn.click();
+});
+
+test('rowMenu: a separator is a line between the items', () => {
+  const el = rowMenu({ label: 'More', items: [{ label: 'A', run() {} }, { separator: true }, { label: 'B', run() {} }] });
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  eq([...pop.children].map(c => [c.tagName, c.getAttribute('role')]), [['BUTTON', 'menuitem'], ['HR', 'separator'], ['BUTTON', 'menuitem']]);
+  btn.click();
+  const hr = getComputedStyle(pop.querySelector('hr'));
+  eq([hr.borderTopWidth, hr.borderBottomWidth, hr.marginTop], ['1px', '0px', '4px']);
+  btn.click();
+});
+
+test('rowMenu: a disabled item is greyed out and never runs', () => {
+  const got = [];
+  const el = rowMenu({ label: 'More', items: [{ label: 'Remove all', run: () => got.push('remove'), disabled: true }] });
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  btn.click();
+  const item = pop.querySelector('button');
+  assert(item.disabled, 'disabled');
+  item.click();
+  item.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  eq(got, []);
+  const fx = document.createElement('span');
+  fx.style.color = 'var(--kit-muted)';
+  el.append(fx);
+  eq(getComputedStyle(item).color, getComputedStyle(fx).color);
+  eq(getComputedStyle(item).cursor, 'default');
+  btn.click();
+});
+
+test('rowMenu: open draws it open, without onMenu, and Esc still closes it', () => {
+  const heard = [];
+  const el = rowMenu({ label: 'More', open: true, items: [{ label: 'A', run() {} }], onMenu: o => heard.push(o) });
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  assert(!pop.hidden, 'open');
+  eq(btn.getAttribute('aria-expanded'), 'true');
+  assert(!el.contains(document.activeElement), 'takes no focus');
+  eq(heard, []);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert(pop.hidden, 'closed');
+  eq(heard, [false]);
+});
+
+test('rowMenu: open closes the menu already open, and a second opening closes it', () => {
+  const a = menu();
+  fixture().append(a);
+  parts(a).btn.click();
+  const b = rowMenu({ label: 'More', open: true, items: [{ label: 'A', run() {} }] });
+  fixture().append(b);
+  assert(parts(a).pop.hidden, 'the open one closed');
+  assert(!parts(b).pop.hidden, 'drawn open');
+  const c = menu();
+  fixture().append(c);
+  parts(c).btn.click();
+  assert(parts(b).pop.hidden, 'the drawn-open one closed');
+  eq(parts(b).btn.getAttribute('aria-expanded'), 'false');
+  parts(c).btn.click();
+});
+
+test('rowMenu: open is closed by a press outside', () => {
+  const el = rowMenu({ label: 'More', open: true, items: [{ label: 'A', run() {} }] });
+  const out = document.createElement('button');
+  fixture().append(el, out);
+  assert(!el.querySelector('.kit-row-pop').hidden, 'drawn open');
+  out.click();
+  assert(el.querySelector('.kit-row-pop').hidden, 'closed');
+});
+
+test('rowMenu: buttonClass replaces the ⋯ button\'s class', () => {
+  const el = rowMenu({ label: 'More', buttonClass: 'kit-ctl dz-band-more', items: [{ label: 'A', run() {} }] });
+  const btn = el.querySelector('button[aria-haspopup="menu"]');
+  eq(btn.className, 'kit-ctl dz-band-more');
+  eq(el.querySelector('.kit-row-more'), null);
+});
