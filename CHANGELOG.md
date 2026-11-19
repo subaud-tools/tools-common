@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.100.2
+
+### Fixed
+- kit: the bar fits a phone. At 640px or less it is tighter (6px apart, 12px sideways padding, 8px inside its controls, 12px inside the primary) and an empty status takes no room, so the brand, Guide, theme, a menu and the primary sit on one line at 390px; the primary was cut off at the right edge.
+
 ## 0.100.1
 
 ### Fixed
