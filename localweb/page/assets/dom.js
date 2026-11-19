@@ -223,6 +223,41 @@ export function bar(o) {
   return handle;
 }
 
+// band is the strip under the bar with the page's title: beside is nodes on
+// the title's line (a state pill, a size, an email), under is a row below it
+// (a stage track, filter pills, a back link). Each setter changes its own part
+// in place; an empty beside or under draws nothing.
+export function band(o) {
+  const title = h('h1', { class: 'kit-band-title' }, o.title);
+  const line = h('div', { class: 'kit-band-line' }, title);
+  const el = h('header', { class: 'kit-band' }, line);
+  let under = null;
+  const nodes = xs => [xs || []].flat().filter(x => x !== null && x !== undefined && x !== false);
+  const handle = {
+    el,
+    setTitle(t) {
+      title.replaceChildren(t);
+    },
+    setBeside(xs) {
+      while (line.lastChild !== title) line.lastChild.remove();
+      line.append(...nodes(xs));
+    },
+    setUnder(xs) {
+      const got = nodes(xs);
+      if (!got.length) {
+        under?.remove();
+        under = null;
+        return;
+      }
+      if (!under) el.append(under = h('div', { class: 'kit-band-under' }));
+      under.replaceChildren(...got);
+    },
+  };
+  handle.setBeside(o.beside);
+  handle.setUnder(o.under);
+  return handle;
+}
+
 function chipRow(group, chips, onChip) {
   return (chips || []).map(c =>
     h('button', { class: 'kit-chip' + (c.on ? ' on' : ''), type: 'button', dataset: { id: c.id }, onclick: () => onChip && onChip(group, c.id) }, c.label, count(c.count)));

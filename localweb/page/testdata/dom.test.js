@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture, blurEl } from './harness.js';
-import { h, bar, list, facts, card, buttons, codeBlock, fold, noteField, messagePill } from '/_kit/dom.js';
+import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill } from '/_kit/dom.js';
 import { createKeys } from '/_kit/keys.js';
 import { fakeFetch, fakeTimers, flush } from './fakes.js';
 import { initTheme } from '/_kit/theme.js';
@@ -651,4 +651,96 @@ test('dom: messagePill shows each state\'s label with the line under it', () => 
     eq(el.querySelector('.kit-msg-line').textContent, `line for ${state}`, state);
   }
   eq(messagePill('answered').querySelector('.kit-msg-line'), null, 'no line, no line element');
+});
+
+test('dom: band draws the title, what is beside it and the row under it', () => {
+  const pill = h('span', { class: 'kit-pill' }, 'running');
+  const size = h('span', null, 'm7i.large');
+  const back = h('a', { href: '/' }, '← Workspaces');
+  const b = band({ title: 'alpha', beside: [pill, size], under: [back] });
+  eq([b.el.tagName, b.el.className], ['HEADER', 'kit-band']);
+  const line = b.el.firstChild;
+  eq(line.className, 'kit-band-line');
+  const title = line.firstChild;
+  eq([title.tagName, title.className, title.textContent], ['H1', 'kit-band-title', 'alpha']);
+  assert(line.children[1] === pill && line.children[2] === size, 'beside follows the title on its line');
+  const under = b.el.children[1];
+  eq([b.el.children.length, under.className], [2, 'kit-band-under']);
+  assert(under.firstChild === back, 'under holds its nodes');
+});
+
+test('dom: band with no beside or under draws no empty containers', () => {
+  const b = band({ title: 'Account' });
+  eq(b.el.outerHTML, '<header class="kit-band"><div class="kit-band-line"><h1 class="kit-band-title">Account</h1></div></header>');
+  b.setUnder([]);
+  b.setBeside([]);
+  eq(b.el.querySelectorAll('.kit-band-under').length, 0);
+  eq(b.el.firstChild.children.length, 1);
+});
+
+test('dom: band setters change one part in place', () => {
+  const back = h('a', null, 'back');
+  const b = band({ title: 'alpha', beside: [h('span', null, 'stopped')], under: [back] });
+  const title = b.el.querySelector('.kit-band-title');
+  const under = b.el.querySelector('.kit-band-under');
+  const next = h('span', null, 'running');
+  b.setBeside([next]);
+  assert(b.el.querySelector('.kit-band-title') === title, 'the title is the same element');
+  assert(b.el.querySelector('.kit-band-under') === under && under.firstChild === back, 'the row under is the same');
+  eq([...b.el.firstChild.children].map(c => c.textContent), ['alpha', 'running']);
+  b.setTitle('beta');
+  assert(b.el.querySelector('.kit-band-title') === title, 'setTitle keeps the element');
+  eq(title.textContent, 'beta');
+  assert(b.el.firstChild.children[1] === next, 'setTitle leaves beside');
+  const track = h('nav', { class: 'kit-stages' });
+  b.setUnder([track]);
+  eq(b.el.querySelectorAll('.kit-band-under').length, 1);
+  assert(b.el.querySelector('.kit-band-under').firstChild === track, 'setUnder replaces the row under');
+  b.setUnder(null);
+  eq(b.el.querySelector('.kit-band-under'), null, 'an empty under takes the row away');
+  b.setUnder([back]);
+  assert(b.el.lastChild.className === 'kit-band-under' && b.el.lastChild.firstChild === back, 'and brings it back below the line');
+});
+
+test('dom: band measures as diazo\'s does', () => {
+  const fx = fixture();
+  fx.style.width = '1440px';
+  try {
+    const b = band({ title: 'Plans', under: [h('nav', { class: 'kit-stages' }, h('button', { class: 'kit-stage now', type: 'button' }, 'All'))] });
+    fx.append(b.el);
+    const s = cs(b.el), t = cs(b.el.querySelector('.kit-band-title'));
+    eq([s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft], ['16px', '24px', '16px', '24px']);
+    eq([s.borderBottomWidth, s.borderBottomStyle], ['1px', 'solid']);
+    const token = name => { const p = h('span', { style: `color: var(${name})` }); fx.append(p); const c = cs(p).color; p.remove(); return c; };
+    eq([s.borderBottomColor, s.backgroundColor], [token('--kit-line'), token('--kit-panel')]);
+    eq([t.fontSize, t.fontWeight, t.lineHeight, t.letterSpacing, t.marginTop], ['18px', '700', '23.4px', '-0.18px', '0px']);
+    eq(b.el.getBoundingClientRect().height, 104, 'with a row under, diazo\'s 104px');
+    const line = b.el.querySelector('.kit-band-line').getBoundingClientRect();
+    const under = b.el.querySelector('.kit-band-under').getBoundingClientRect();
+    eq([line.height, under.top - line.bottom, under.height], [28, 12, 28]);
+    eq(b.el.querySelector('.kit-stage').getBoundingClientRect().height, 24, 'a pill in the band is 24px');
+    const pill = h('span', { class: 'kit-pill ok' }, 'running');
+    b.setBeside([pill]);
+    const pr = pill.getBoundingClientRect(), tr = document.createRange();
+    tr.selectNodeContents(pill);
+    const words = tr.getBoundingClientRect();
+    eq(pr.height, 24, 'a borderless pill too');
+    assert(Math.abs((words.top + words.bottom) / 2 - (pr.top + pr.bottom) / 2) < 1, 'its words centred');
+    b.setUnder(null);
+    eq(b.el.getBoundingClientRect().height, 61, 'the title line alone');
+  } finally { fx.style.width = ''; }
+});
+
+test('dom: band spans every column of the app grid', () => {
+  const fx = fixture();
+  const app = h('div', { class: 'kit-app', style: 'height:400px' },
+    bar({ brand: { name: 't' } }).el, band({ title: 'x' }).el,
+    h('aside', { class: 'kit-list' }), h('main', { class: 'kit-read' }), h('aside', { class: 'kit-rail' }));
+  fx.append(app);
+  const el = app.querySelector('.kit-band');
+  const cols = ['.kit-list', '.kit-read', '.kit-rail'].map(s => app.querySelector(s).getBoundingClientRect());
+  eq([el.getBoundingClientRect().left, el.getBoundingClientRect().right].map(Math.round), [cols[0].left, cols[2].right].map(Math.round), 'from the first column to the last');
+  const bandBottom = el.getBoundingClientRect().bottom;
+  assert(Math.abs(app.querySelector('.kit-read').getBoundingClientRect().top - bandBottom) < 1, 'the columns start under the band');
+  fx.replaceChildren();
 });

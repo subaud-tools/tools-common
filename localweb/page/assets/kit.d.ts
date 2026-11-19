@@ -250,6 +250,25 @@ export function bar(o: {
   signIn?: { fetch?: typeof fetch; setTimeout?: (fn: () => void, ms: number) => unknown; close?(): void; reload?(): void };
 }): BarHandle;
 
+export interface BandHandle {
+  /** header.kit-band: on the app grid it spans every column, between the bar and the columns. */
+  el: HTMLElement;
+  /** The title's words, in place: the h1 stays the same element. */
+  setTitle(title: string | Node): void;
+  /** Replaces the nodes on the title's line; the title and the row under stay. */
+  setBeside(nodes?: Array<Node | string> | null): void;
+  /** Replaces the row under the title; empty or null takes the row away. */
+  setUnder(nodes?: Array<Node | string> | null): void;
+}
+
+/**
+ * The strip under the bar with the page's title, measured from diazo's: an
+ * 18px bold title, beside it on its line a state pill, a size or an email, and
+ * under it a row (a stage track, filter pills, a back link). With a row under
+ * it the band is 104px high. No beside or under, no empty container.
+ */
+export function band(o: { title: string | Node; beside?: Array<Node | string>; under?: Array<Node | string> }): BandHandle;
+
 export interface Chip {
   id: string;
   label: string;

@@ -215,6 +215,38 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-also-here { margin-left: 8px; font: 11px var(--kit-mono); font-weight: 400; color: var(--kit-muted); border: 1px solid var(--kit-line); border-radius: 6px; padding: 0 6px; }
 .kit-also-detail { grid-column: 2; font: 12px var(--kit-mono); color: var(--kit-muted); }
 
+/* the band (dom.js band): the strip under the bar with the page's title, what
+   is beside it on its line and an optional row under it. Measured from
+   diazo's: 16px 24px padding on the panel ground over a hairline, an 18px
+   bold title, two 28px rows 12px apart. With a row under it the band is
+   104px high whatever the row holds, so the columns start at one place. */
+.kit-app:has(> .kit-band) { grid-template-rows: auto auto minmax(0, 1fr); }
+.kit-app > .kit-band { grid-column: 1 / -1; }
+.kit-band {
+  box-sizing: border-box; padding: 16px 24px; min-width: 0;
+  border-bottom: 1px solid var(--kit-line); background: var(--kit-panel);
+}
+.kit-band:has(> .kit-band-under) { min-height: 104px; }
+.kit-band-line { display: flex; align-items: center; gap: 12px; min-height: 28px; min-width: 0; }
+.kit-band-title {
+  flex: 0 1 auto; min-width: 0; margin: 0;
+  font: 700 18px/1.3 var(--kit-sans); letter-spacing: -.01em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.kit-band-line > :not(.kit-band-title) { flex: none; }
+.kit-band-under { display: flex; align-items: center; gap: 8px; min-height: 28px; min-width: 0; margin-top: 12px; }
+.kit-band-under > .kit-stages {
+  flex: 1 1 auto; min-width: 0; height: 28px; margin-top: 0;
+  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+}
+.kit-band-under > .kit-stages > * { flex: none; }
+/* a pill in the band is 24px, its words centred with or without a border */
+.kit-band .kit-pill, .kit-band .kit-working, .kit-band .kit-stage {
+  box-sizing: border-box; display: inline-flex; align-items: center;
+  height: 24px; padding: 0 12px; line-height: 22px;
+}
+@media (width <= 640px) { .kit-band { padding-inline: 12px; } }
+
 /* the list panel: a quiet ground */
 .kit-list {
   width: 400px; flex: none; display: flex; flex-direction: column; min-height: 0;
