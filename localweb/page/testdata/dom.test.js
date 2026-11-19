@@ -760,6 +760,17 @@ test('dom: a band appended after the columns still sits under the bar', () => {
   fx.replaceChildren();
 });
 
+test('dom: a centre with no left column fills the app grid under the band', () => {
+  const fx = fixture();
+  const mid = h('main', { class: 'kit-read kit-col kit-mid' }, 'cards');
+  const app = h('div', { class: 'kit-app', style: 'height:400px;width:1200px' },
+    bar({ brand: { name: 't' } }).el, band({ title: 'Workspaces' }).el, mid);
+  fx.append(app);
+  const a = app.getBoundingClientRect(), m = mid.getBoundingClientRect();
+  eq([Math.round(m.left), Math.round(m.right)], [Math.round(a.left), Math.round(a.right)], 'from edge to edge');
+  fx.replaceChildren();
+});
+
 test('dom: a long email beside the title shrinks on a phone and the title stays', () => {
   const fx = fixture();
   fx.style.width = '390px';

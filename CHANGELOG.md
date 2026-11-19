@@ -9,6 +9,7 @@ tags and PRs.
 ### Fixed
 - kit: on the app grid the band is placed in row 2 and every other child after the bar in the last row, so a band appended after the columns still sits right under the bar and the columns start under it (on wide pages as on narrow ones).
 - kit: the last item beside the band's title shrinks first, with an ellipsis, so a long email beside a title on a phone keeps the title whole and ends inside the band's edge.
+- kit: frame's centre (`.kit-mid`) is always the app grid's middle column, so a page with no left column (a centre and a band only) gets the full width instead of the narrow first column.
 
 ## 0.100.0
 
