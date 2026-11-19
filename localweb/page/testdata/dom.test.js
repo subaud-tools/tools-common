@@ -745,6 +745,38 @@ test('dom: band spans every column of the app grid', () => {
   fx.replaceChildren();
 });
 
+test('dom: a band appended after the columns still sits under the bar', () => {
+  const fx = fixture();
+  const app = h('div', { class: 'kit-app', style: 'height:400px' },
+    bar({ brand: { name: 't' } }).el, h('aside', { class: 'kit-list' }), h('main', { class: 'kit-read' }));
+  fx.append(app);
+  app.append(band({ title: 'late' }).el);
+  const barBottom = app.querySelector('.kit-bar').getBoundingClientRect().bottom;
+  const b = app.querySelector('.kit-band').getBoundingClientRect();
+  assert(Math.abs(b.top - barBottom) < 1, `the band starts at the bar's bottom (${b.top} vs ${barBottom})`);
+  for (const s of ['.kit-list', '.kit-read']) {
+    assert(Math.abs(app.querySelector(s).getBoundingClientRect().top - b.bottom) < 1, `${s} starts under the band`);
+  }
+  fx.replaceChildren();
+});
+
+test('dom: a long email beside the title shrinks on a phone and the title stays', () => {
+  const fx = fixture();
+  fx.style.width = '390px';
+  try {
+    const email = 'a-very-long-address-for-a-phone-check@someone-example.org.uk';
+    eq(email.length, 60);
+    const b = band({ title: 'Account', beside: [h('span', { class: 'kit-band-sub' }, email)] });
+    fx.append(b.el);
+    const edge = b.el.getBoundingClientRect().right - parseFloat(cs(b.el).paddingRight);
+    const title = b.el.querySelector('.kit-band-title');
+    const beside = b.el.querySelector('.kit-band-sub');
+    eq(title.scrollWidth <= title.clientWidth, true, 'the title is shown whole');
+    assert(beside.getBoundingClientRect().right <= edge + 0.5, `the email ends inside the band (${beside.getBoundingClientRect().right} > ${edge})`);
+    eq(cs(beside).textOverflow, 'ellipsis', 'with an ellipsis');
+  } finally { fx.style.width = ''; fx.replaceChildren(); }
+});
+
 test('dom: cardLine draws its words, its meta and its actions', () => {
   const ran = [];
   const l = cardLine({

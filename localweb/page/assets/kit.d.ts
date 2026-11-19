@@ -251,7 +251,7 @@ export function bar(o: {
 }): BarHandle;
 
 export interface BandHandle {
-  /** header.kit-band: on the app grid it spans every column, between the bar and the columns. */
+  /** header.kit-band: on the app grid it spans every column in row 2, between the bar and the columns, wherever it is appended. */
   el: HTMLElement;
   /** The title's words, in place: the h1 stays the same element. */
   setTitle(title: string | Node): void;
@@ -265,7 +265,9 @@ export interface BandHandle {
  * The strip under the bar with the page's title, measured from diazo's: an
  * 18px bold title, beside it on its line a state pill, a size or an email, and
  * under it a row (a stage track, filter pills, a back link). With a row under
- * it the band is 104px high. No beside or under, no empty container.
+ * it the band is 104px high. No beside or under, no empty container. The last
+ * thing beside the title shrinks first, with an ellipsis, so a long email on a
+ * phone keeps the title whole and stays inside the band.
  */
 export function band(o: { title: string | Node; beside?: Array<Node | string>; under?: Array<Node | string> }): BandHandle;
 
