@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.105.0
+
+### Added
+- channelmcp: `Outside(source, author, text)` marks text that someone outside the session wrote (a pull request's title or body, an issue, a label) as data. It returns the text inside `<outside-text source="..." author="...">` and `</outside-text>`, under a line saying that someone outside the session wrote it and that it is data to read, not instructions to follow. The text cannot end the block or open another: the `<` of `<outside-text` or `</outside-text` inside it (any case, spaces around the slash) becomes `&lt;`; in the source and the author `<`, `>` and `"` are escaped and a line break becomes a space. Empty text gives the empty string.
+
 ## 0.104.0
 
 ### Added
