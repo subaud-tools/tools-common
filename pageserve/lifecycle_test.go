@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"reflect"
 	"sync"
+	"syscall"
 	"testing"
 )
 
@@ -52,6 +53,36 @@ func TestStartPassesDetachedFlags(t *testing.T) {
 	}
 }
 
+// A serve started from a session's channel must hold no controlling terminal:
+// it leads a session of its own, so it neither keeps the session's terminal
+// (an interactive shell it runs can then take one) nor gets its SIGHUP.
+func TestStartRunsServeInItsOwnSession(t *testing.T) {
+	p := cullProcess(t)
+	orig := newCommand
+	defer func() { newCommand = orig }()
+	newCommand = func(string, ...string) *exec.Cmd {
+		script := `printf '{"url":"u","base":"b","pid":%d}' $$ > "$1"; sleep 3`
+		return exec.Command("sh", "-c", script, "sh", p.Live.ServePath())
+	}
+	e, err := p.Start("/bin/cull", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if pr, _ := os.FindProcess(e.PID); pr != nil {
+			_ = pr.Kill()
+		}
+	}()
+	sid, err := getsid(e.PID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sid != e.PID {
+		mine, _ := getsid(0)
+		t.Errorf("serve (pid %d) is in session %d (the test's is %d), want a session of its own", e.PID, sid, mine)
+	}
+}
+
 func TestConcurrentStartsShareRunningServe(t *testing.T) {
 	p := cullProcess(t)
 	orig := newCommand
@@ -82,4 +113,13 @@ func TestConcurrentStartsShareRunningServe(t *testing.T) {
 	if es[0].PID != es[1].PID || es[0].PID == 0 {
 		t.Errorf("pids differ: %d vs %d", es[0].PID, es[1].PID)
 	}
+}
+
+// getsid is getsid(2): syscall has no Getsid on Linux.
+func getsid(pid int) (int, error) {
+	sid, _, errno := syscall.RawSyscall(syscall.SYS_GETSID, uintptr(pid), 0, 0)
+	if errno != 0 {
+		return 0, errno
+	}
+	return int(sid), nil
 }
