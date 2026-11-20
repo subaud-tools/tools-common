@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"reflect"
 	"sync"
+	"syscall"
 	"testing"
 )
 
@@ -49,6 +50,36 @@ func TestStartPassesDetachedFlags(t *testing.T) {
 			_ = pr.Kill()
 		}
 		_ = os.Remove(p.Live.ServePath())
+	}
+}
+
+// A serve started from a session's channel must hold no controlling terminal:
+// it leads a session of its own, so it neither keeps the session's terminal
+// (an interactive shell it runs can then take one) nor gets its SIGHUP.
+func TestStartRunsServeInItsOwnSession(t *testing.T) {
+	p := cullProcess(t)
+	orig := newCommand
+	defer func() { newCommand = orig }()
+	newCommand = func(string, ...string) *exec.Cmd {
+		script := `printf '{"url":"u","base":"b","pid":%d}' $$ > "$1"; sleep 3`
+		return exec.Command("sh", "-c", script, "sh", p.Live.ServePath())
+	}
+	e, err := p.Start("/bin/cull", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if pr, _ := os.FindProcess(e.PID); pr != nil {
+			_ = pr.Kill()
+		}
+	}()
+	sid, err := syscall.Getsid(e.PID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sid != e.PID {
+		mine, _ := syscall.Getsid(0)
+		t.Errorf("serve (pid %d) is in session %d (the test's is %d), want a session of its own", e.PID, sid, mine)
 	}
 }
 

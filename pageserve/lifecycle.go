@@ -33,8 +33,10 @@ type Process struct {
 // newCommand builds the detached process; tests replace it.
 var newCommand = exec.Command
 
-// Start runs exe with p.Args in its own process group, logging to
-// StateDir/serve.log, and waits for its entry.
+// Start runs exe with p.Args in a session of its own (so in its own process
+// group, holding no controlling terminal: a channel started from a terminal
+// session doesn't hand serve that terminal, and serve gets no SIGHUP when it
+// closes), logging to StateDir/serve.log, and waits for its entry.
 func (p Process) Start(exe string, port int) (Entry, error) {
 	tool := p.Live.Tool
 	if exe == "" {
@@ -57,7 +59,7 @@ func (p Process) Start(exe string, port int) (Entry, error) {
 	cmd := newCommand(exe, args...)
 	cmd.Dir = p.Dir
 	cmd.Stdout, cmd.Stderr = logf, logf
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	if err := cmd.Start(); err != nil {
 		return Entry{}, err
 	}

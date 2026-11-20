@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.103.1
+
+### Fixed
+- pageserve: `Process.Start` runs serve in a session of its own (`Setsid`, was `Setpgid`), so a serve started from a session's channel no longer keeps that session's controlling terminal. An interactive shell serve ran could try to take the terminal and fail (`can't set tty pgrp`), and closing the terminal sent serve a SIGHUP.
+
 ## 0.103.0
 
 ### Added
