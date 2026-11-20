@@ -824,7 +824,9 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-group-rows { list-style: none; margin: 0; padding: 0; }
 /* a row's ⋯ menu (frontpage.js rowMenu): the pop-out hangs below the button,
    right-aligned; a link reads like a button, a danger item in the danger
-   colour, a disabled one muted; a separator is a line. */
+   colour, a disabled one muted; a separator is a line. An item's detail is a
+   muted line under its label, as pickField's choices have, and a menu holding
+   any caps its width so the lines wrap; a heading is a small muted mono label. */
 .kit-row-menu { position: relative; }
 .kit-row-more {
   box-sizing: border-box; min-height: 25px; padding: 3px 8px;
@@ -848,6 +850,12 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-row-pop .danger { color: var(--kit-danger); }
 .kit-row-pop button:disabled { color: var(--kit-muted); background: none; cursor: default; }
 .kit-row-pop hr { border: 0; border-top: 1px solid var(--kit-line); margin: 4px 0; }
+.kit-row-pop .kit-row-detail { display: block; margin-top: 2px; font-size: 12px; color: var(--kit-muted); white-space: normal; }
+.kit-row-pop:has(.kit-row-detail) { width: max-content; max-width: min(340px, calc(100vw - 16px)); box-sizing: border-box; }
+.kit-row-pop .kit-row-head {
+  padding: 7px 9px 2px; font: 11px var(--kit-mono); text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--kit-muted); cursor: default;
+}
 @media (width <= 640px) {
   .kit-filter-row { padding: 0 12px; }
   .kit-filter-row > .kit-label { margin: 0 0 4px; }

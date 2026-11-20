@@ -136,8 +136,11 @@ export function groupList({ groups, folded, onFold }) {
 // item is a menuitem button: action and walk become data-action and data-walk,
 // so a caller keeps its hooks, and danger marks a destructive one. An item
 // with href is a menuitem link instead, { separator: true } a line between
-// items, and a disabled item never runs. A press on an item closes the menu,
-// then runs it. onMenu hears it open and close. open draws it already open,
+// items, and a disabled item never runs. An item's detail is a muted line
+// under its label (kit-row-detail), and a menu holding any caps its width so
+// the lines wrap. { heading: '…' } is a muted label over the items after it
+// (kit-row-head): not a menuitem, never focused, and a press on it leaves the
+// menu open. A press on an item closes the menu, then runs it. onMenu hears it open and close. open draws it already open,
 // as the one open menu on the page, for a caller that redraws its rows: it
 // neither scrolls nor takes focus, and onMenu does not hear that opening (the
 // caller asked for it), only the closing; the menu it replaces closes without
@@ -167,9 +170,9 @@ export function rowMenu({ label, items, onMenu, open = false, buttonClass = 'kit
     pop.scrollIntoView({ block: 'nearest' });
   });
   // A press on an item closes the menu, then does what the item does; a press
-  // on a disabled one leaves it open.
+  // on a disabled one or a heading leaves it open.
   pop.addEventListener('click', e => {
-    if (!e.target.closest?.(':disabled')) close();
+    if (!e.target.closest?.(':disabled, .kit-row-head')) close();
   }, true);
   if (open) show(true);
   return wrap;
@@ -177,8 +180,10 @@ export function rowMenu({ label, items, onMenu, open = false, buttonClass = 'kit
 
 function menuItem(it) {
   if (it.separator) return h('hr', { role: 'separator' });
+  if (it.heading !== undefined) return h('div', { class: 'kit-row-head', role: 'presentation' }, it.heading);
   const hooks = { role: 'menuitem', class: it.danger ? 'danger' : undefined, 'data-action': it.action, 'data-walk': it.walk };
-  if (it.href !== undefined) return h('a', { ...hooks, href: it.href, onclick: () => it.run?.() }, it.label);
+  const body = [it.label, it.detail ? h('span', { class: 'kit-row-detail' }, it.detail) : null];
+  if (it.href !== undefined) return h('a', { ...hooks, href: it.href, onclick: () => it.run?.() }, body);
   // A script's click reaches a disabled button's listener too: it still never runs.
-  return h('button', { ...hooks, type: 'button', disabled: it.disabled || undefined, onclick: e => e.currentTarget.disabled || it.run() }, it.label);
+  return h('button', { ...hooks, type: 'button', disabled: it.disabled || undefined, onclick: e => e.currentTarget.disabled || it.run() }, body);
 }

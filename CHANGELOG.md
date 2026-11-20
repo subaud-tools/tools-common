@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.106.0
+
+### Added
+- kit: `rowMenu` items may carry a `detail`, a muted line under the label (`<span class="kit-row-detail">`, drawn like `pickField`'s choice detail), on buttons and links alike; a menu holding any caps its width at `min(340px, 100vw - 16px)` so the lines wrap on a phone. `{ heading: '...' }` is a heading over the items after it: a `<div class="kit-row-head" role="presentation">` in a small muted mono label, not a menuitem and never focused, and a press on it leaves the menu open. An item with no `detail` draws as before. `kit.d.ts` adds `detail?` to `RowMenuButton` and `RowMenuLink` and `RowMenuHeading` to the `RowMenuItem` union.
+
 ## 0.105.0
 
 ### Added
