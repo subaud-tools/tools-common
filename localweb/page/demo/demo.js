@@ -1,5 +1,5 @@
 import { demoRecord, DEMO } from './record.js';
-import { h, bar, band, cardLine, textField, confirmBox, emptyCard, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, narrowMode, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, sortedList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
+import { h, bar, band, cardLine, textField, pickField, chipPick, confirmBox, emptyCard, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, narrowMode, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, sortedList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
 
 const MARK = `<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14161d"/><path d="M13 22H28M13 32H26M13 42H28" stroke="#9aa0ab" stroke-width="3.6" stroke-linecap="round"/><path d="M13 22H28" stroke="#d98f66" stroke-width="3.6" stroke-linecap="round"/><path d="M33 17V47" stroke="#d98f66" stroke-width="2.4"/><rect x="38" y="18" width="14" height="28" rx="3" fill="none" stroke="#d98f66" stroke-width="2.4"/></svg>`;
 const mark = () => {
@@ -407,6 +407,36 @@ function sendPage(long) {
   return f;
 }
 
+// The dropdown with a more line and the chip groups (pickField's more and
+// labelHidden, chipPick one-of, many-of and with a remove press), each redrawn
+// from the state its press changes, as a tool's page does.
+function chipsDemo() {
+  const body = h('div');
+  let sidebar = 'on';
+  let short = ['fable', 'opus', 'sonnet', 'claude-opus-4-8'];
+  let pins = ['claude-opus-4-8', 'claude-sonnet-4-6'];
+  const flip = (l, v) => (l.includes(v) ? l.filter(x => x !== v) : [...l, v]);
+  const models = n => n.map(v => ({ value: v, label: v }));
+  const model = pickField({
+    label: 'Model', value: 'opus',
+    choices: [{ value: '', label: "The agent's own default", detail: 'names no model', blank: true }, ...models(['fable', 'opus', 'sonnet'])],
+    more: { label: 'All models…', choices: models(['haiku', 'claude-fable-5-1', 'claude-opus-5', 'claude-opus-4-8', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5']) },
+  });
+  const cell = pickField({ label: 'Model for bettor-help', labelHidden: true, value: 'sonnet', choices: [{ value: '', label: 'Default', blank: true }, ...models(['opus', 'sonnet'])] });
+  const draw = () => body.replaceChildren(
+    model.el,
+    h('div', { class: 'kit-field' }, h('div', { class: 'kit-field-hint', style: 'margin:0 0 4px' }, 'A dropdown whose label is not drawn (a table cell names it):'), cell.el),
+    chipPick({ label: 'Sidebar', chips: [{ value: 'on', label: 'on' }, { value: 'off', label: 'off' }], chosen: [sidebar], onToggle: v => { sidebar = v; draw(); } }),
+    chipPick({
+      label: 'Short list', many: true, chosen: short,
+      chips: [...models(['fable', 'opus', 'sonnet', 'haiku']), ...pins.map(v => ({ value: v, label: `${v} · pinned`, remove: `Unpin ${v}` }))],
+      onToggle: v => { short = flip(short, v); draw(); },
+      onRemove: v => { pins = pins.filter(x => x !== v); short = short.filter(x => x !== v); draw(); },
+    }));
+  draw();
+  return card({ head: 'New sessions', body: [body] });
+}
+
 // ?view=page: a page in the family's shape (billet's), the band under the bar,
 // then the step list down the left and the cards.
 function shapePage() {
@@ -448,6 +478,7 @@ function shapePage() {
     card({ head: 'Repos', body: [
       textField({ label: 'Add a repo', placeholder: 'owner/name', mono: true, hint: 'Everyone in the workspace gets it.' }).el,
     ] }),
+    chipsDemo(),
     emptyCard({ text: 'No workspaces yet. A workspace is a machine of your own.', action: { label: 'New workspace', run() {} } }));
   return [top, f];
 }

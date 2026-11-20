@@ -397,13 +397,40 @@ export interface PickField {
   set(value: string): void;
 }
 
+/** The last line of a pickField's menu, and the choices it opens in place. */
+export interface PickMore {
+  /** The line's words (All models…). */
+  label: string;
+  /** The choices that replace the line when it is pressed, in order after choices. With none, no line is drawn. A value should be in choices or here, not both. */
+  choices: PickChoice[];
+}
+
 /**
  * The kit's dropdown: a label over a button drawn as kit-input with a chevron, naming the current choice, that opens the kit's menu surface (kit-row-pop) listing each choice with its muted detail line and the current one in the soft signal fill.
  * The menu hangs 4px below the button on its left edge, or its right edge when the left would run past the nearest .kit-card or .kit-float (a sheet) or the window (when neither fits, on its left edge with its lines wrapped to the room there), and is never narrower than the button. It opens above the button when there is more room above than below, and is capped to the room it has, scrolling inside with the focused choice kept in view. One pop-out is open on the page at a time (rowMenu's too).
  * Enter, Space or an arrow opens it on the current choice, arrows move, Enter, Space or a press picks, Esc closes and returns the focus to the button; a press outside closes it.
  * value starts as the current choice (the first choice when left out); onPick hears a value that differs from the current one.
+ * more ends the menu with one line reading more.label (button.kit-pick-opt.kit-pick-more, under an hr): the arrows reach it like a choice, and a press, Enter or Space on it picks nothing and leaves the menu open, with the line and its rule hidden, more.choices shown after choices, the menu placed again for its new height and the focus on the first of more.choices. The menu opens collapsed every time, unless the current value is only in more.choices (and not in choices): then it opens on the longer list, on the current choice, so the current choice is always in the menu. value and set(value) take a value from more.choices, and the button then reads that choice's label. With more.choices empty, no line is drawn.
+ * labelHidden keeps the label in the page for a screen reader (label.kit-field-label.kit-label-hidden, still naming the button) and does not draw it: for a grid or a table cell that already names the dropdown.
  */
-export function pickField(o: { label: string; choices: PickChoice[]; value?: string; id?: string; onPick?(value: string): void }): PickField;
+export function pickField(o: { label: string; choices: PickChoice[]; value?: string; id?: string; onPick?(value: string): void; more?: PickMore; labelHidden?: boolean }): PickField;
+
+/** One chip of a chipPick. */
+export interface PickChip {
+  value: string;
+  label: string;
+  /** Gives the chip a ✕ button beside it, with this as its accessible name (Unpin claude-opus-4-8); a press calls onRemove. */
+  remove?: string;
+}
+
+/**
+ * A group of chips to choose from (div.kit-chip-pick, role group, named by its label): span.kit-field-label reading label, then div.kit-chip-set holding one button.kit-chip per chip with data-value, those whose value is in chosen on with aria-pressed="true".
+ * One-of (the default): a press on the chip that is on does nothing, a press on another calls onToggle with its value. many: every press calls onToggle with the chip's value, on or off.
+ * A chip with remove is drawn in span.kit-chip-rm with button.kit-chip-x (✕) after it: a sibling of the chip's button, never inside it, named by remove, whose press calls onRemove with the chip's value and not onToggle.
+ * The caller keeps the state and redraws, as with sortSwitch. When the press had the focus and a chipPick of the same label is drawn during onToggle or onRemove, the redrawn chip of that value gets the focus back; after a remove, the ✕ that took the removed one's place, else the last ✕. A redraw after the call returns (after a save, say) moves no focus.
+ * labelHidden keeps the label in the page for a screen reader (kit-label-hidden) and does not draw it.
+ */
+export function chipPick(o: { label: string; chips: PickChip[]; chosen: string[]; many?: boolean; labelHidden?: boolean; onToggle(value: string): void; onRemove?(value: string): void }): HTMLElement;
 
 /**
  * The open and close of a button's pop-out, as rowMenu and pickField use it: show opens pop (closing whichever pop-out was open on the page), and a press outside wrap or Esc closes it. onToggle hears it open and close unless the call was quiet. It listens on the document wrap lives in.

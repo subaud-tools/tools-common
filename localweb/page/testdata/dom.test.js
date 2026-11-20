@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture, blurEl } from './harness.js';
-import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, textField, confirmBox, emptyCard, keyedRows, pickField } from '/_kit/dom.js';
+import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, textField, confirmBox, emptyCard, keyedRows, pickField, chipPick } from '/_kit/dom.js';
 import { createKeys } from '/_kit/keys.js';
 import { sheet } from '/_kit/sheet.js';
 import { fakeFetch, fakeTimers, flush } from './fakes.js';
@@ -1193,4 +1193,212 @@ test('dom: pickField removed while open lets the next Escape through', () => {
     key(document.body, 'Escape');
     eq(heard, false, 'and the next one too');
   } finally { document.removeEventListener('keydown', listen); }
+});
+
+// A model dropdown: the short list, then the rest behind All models…
+const SHORT = [{ value: '', label: "The agent's own default", blank: true }, { value: 'fable', label: 'fable' }, { value: 'opus', label: 'opus' }];
+const REST = [{ value: 'sonnet', label: 'sonnet' }, { value: 'haiku', label: 'haiku' }];
+const moreParts = p => ({
+  ...pickParts(p),
+  more: p.el.querySelector('.kit-pick-more'),
+  shown: [...p.el.querySelectorAll('.kit-pick-opt')].filter(b => !b.hidden).map(b => b.textContent),
+});
+
+test('dom: pickField more: a press on the last line keeps the menu open, adds the choices and focuses the first', () => {
+  const got = [];
+  const p = pickField({ label: 'Model', choices: SHORT, value: 'fable', more: { label: 'All models…', choices: REST }, onPick: v => got.push(v) });
+  fixture().append(p.el);
+  const { btn, pop, more } = moreParts(p);
+  btn.click();
+  assert(more && !more.hidden, 'the last line is drawn');
+  eq(moreParts(p).shown, ["The agent's own default", 'fable', 'opus', 'All models…']);
+  const rule = more.previousElementSibling;
+  assert(rule.tagName === 'HR' && !rule.hidden, 'set off by a rule');
+  more.click();
+  assert(!pop.hidden, 'still open');
+  eq([got, p.value], [[], 'fable'], 'nothing picked');
+  eq(moreParts(p).shown, ["The agent's own default", 'fable', 'opus', 'sonnet', 'haiku'], 'the line is replaced by the rest');
+  assert(rule.hidden, 'the rule goes with the line');
+  eq(document.activeElement.textContent, 'sonnet', 'focus on the first added choice');
+  key(document.activeElement, 'ArrowDown');
+  key(document.activeElement, 'Enter');
+  eq([got, p.value, btn.querySelector('.kit-pick-label').textContent, pop.hidden], [['haiku'], 'haiku', 'haiku', true]);
+});
+
+test('dom: pickField more: arrows reach the last line like a choice, and Enter or Space opens the rest', () => {
+  for (const k of ['Enter', ' ']) {
+    const got = [];
+    const p = pickField({ label: 'Model', choices: SHORT, value: 'opus', more: { label: 'All models…', choices: REST }, onPick: v => got.push(v) });
+    fixture().append(p.el);
+    const { btn, pop, more } = moreParts(p);
+    key(btn, 'Enter');
+    key(document.activeElement, 'ArrowDown');
+    assert(document.activeElement === more, 'one down from the last choice: the line');
+    key(document.activeElement, 'ArrowDown');
+    eq(document.activeElement.textContent, "The agent's own default", 'and round to the first');
+    key(document.activeElement, 'ArrowUp');
+    assert(document.activeElement === more, 'up from the first: the line');
+    key(more, k);
+    assert(!pop.hidden, 'still open');
+    eq([got, document.activeElement.textContent], [[], 'sonnet']);
+    key(document.activeElement, 'ArrowUp');
+    eq(document.activeElement.textContent, 'opus', 'the rest follow the short list');
+    key(document.activeElement, 'Escape');
+  }
+});
+
+test('dom: pickField more: a value from more.choices reads on the button, at the start and by set', () => {
+  const p = pickField({ label: 'Model', choices: SHORT, value: 'haiku', more: { label: 'All models…', choices: REST } });
+  fixture().append(p.el);
+  const { btn } = moreParts(p);
+  eq([p.value, btn.querySelector('.kit-pick-label').textContent], ['haiku', 'haiku']);
+  p.set('sonnet');
+  eq([p.value, btn.querySelector('.kit-pick-label').textContent], ['sonnet', 'sonnet']);
+  eq([...p.el.querySelectorAll('.kit-pick-opt[aria-selected="true"]')].map(b => b.textContent), ['sonnet']);
+});
+
+test('dom: pickField more: the menu is collapsed again when reopened', () => {
+  const p = pickField({ label: 'Model', choices: SHORT, value: 'fable', more: { label: 'All models…', choices: REST } });
+  fixture().append(p.el);
+  const { btn, more } = moreParts(p);
+  btn.click();
+  more.click();
+  key(document.activeElement, 'Escape');
+  btn.click();
+  eq(moreParts(p).shown, ["The agent's own default", 'fable', 'opus', 'All models…']);
+  eq(document.activeElement.textContent, 'fable', 'open on the current choice');
+});
+
+test('dom: pickField more: with the current value only in more.choices the menu opens on the longer list', () => {
+  const p = pickField({ label: 'Model', choices: SHORT, value: 'haiku', more: { label: 'All models…', choices: REST } });
+  fixture().append(p.el);
+  const { btn } = moreParts(p);
+  btn.click();
+  eq(moreParts(p).shown, ["The agent's own default", 'fable', 'opus', 'sonnet', 'haiku']);
+  eq(document.activeElement.textContent, 'haiku', 'open on the current choice');
+  key(document.activeElement, 'Escape');
+  p.set('opus');
+  btn.click();
+  eq(moreParts(p).shown, ["The agent's own default", 'fable', 'opus', 'All models…'], 'and collapsed once the value is in the short list');
+});
+
+test('dom: pickField more: with no more.choices no line is drawn', () => {
+  const p = pickField({ label: 'Model', choices: SHORT, value: 'fable', more: { label: 'All models…', choices: [] } });
+  fixture().append(p.el);
+  const { btn, pop } = moreParts(p);
+  btn.click();
+  eq([...pop.children].map(c => c.textContent), ["The agent's own default", 'fable', 'opus']);
+  key(document.activeElement, 'ArrowDown');
+  key(document.activeElement, 'ArrowDown');
+  eq(document.activeElement.textContent, "The agent's own default", 'arrows go round the choices only');
+});
+
+// Not drawn, and still there for a screen reader: in the page, taking no room.
+const undrawn = el => {
+  const r = el.getBoundingClientRect(), s = getComputedStyle(el);
+  return s.display !== 'none' && s.visibility !== 'hidden' && s.position === 'absolute' && r.width <= 1 && r.height <= 1;
+};
+
+test('dom: pickField labelHidden keeps the label for a screen reader and does not draw it', () => {
+  const p = pickField({ label: 'Model', choices: SHORT, value: 'fable', labelHidden: true });
+  const q = pickField({ label: 'Model', choices: SHORT, value: 'fable' });
+  fixture().append(p.el, q.el);
+  const lab = p.el.querySelector('label');
+  eq([lab.textContent, lab.htmlFor === p.button.id], ['Model', true], 'the label still names the button');
+  assert(undrawn(lab), 'not drawn');
+  assert(!undrawn(q.el.querySelector('label')), 'drawn without the option');
+  eq(p.el.getBoundingClientRect().height, p.button.getBoundingClientRect().height, 'the field is as tall as its button');
+});
+
+const SIDES = [{ value: 'on', label: 'on' }, { value: 'off', label: 'off' }];
+const chipParts = el => ({ chips: [...el.querySelectorAll('button.kit-chip')], xs: [...el.querySelectorAll('button.kit-chip-x')] });
+
+test('dom: chipPick is a named group of kit-chip buttons, the chosen ones pressed', () => {
+  const el = chipPick({ label: 'Sidebar', chips: SIDES, chosen: ['off'], onToggle() {} });
+  const hid = chipPick({ label: 'Open in', chips: SIDES, chosen: ['on'], labelHidden: true, onToggle() {} });
+  fixture().append(el, hid);
+  eq(el.getAttribute('role'), 'group');
+  const lab = document.getElementById(el.getAttribute('aria-labelledby'));
+  assert(lab && el.contains(lab), 'named by its label');
+  eq([lab.textContent, lab.classList.contains('kit-field-label'), undrawn(lab)], ['Sidebar', true, false]);
+  const { chips } = chipParts(el);
+  eq(chips.map(c => [c.tagName, c.type, c.textContent, c.dataset.value, c.getAttribute('aria-pressed'), c.classList.contains('on')]),
+    [['BUTTON', 'button', 'on', 'on', 'false', false], ['BUTTON', 'button', 'off', 'off', 'true', true]]);
+  const hl = document.getElementById(hid.getAttribute('aria-labelledby'));
+  eq([hl.textContent, undrawn(hl)], ['Open in', true], 'labelHidden: there and not drawn');
+});
+
+test('dom: chipPick one-of: a press on the chip that is on calls nothing, a press on another calls onToggle', () => {
+  const got = [];
+  const el = chipPick({ label: 'Sidebar', chips: SIDES, chosen: ['off'], onToggle: v => got.push(v) });
+  fixture().append(el);
+  const { chips } = chipParts(el);
+  chips[1].click();
+  eq(got, [], 'the chip that is on');
+  chips[0].click();
+  eq(got, ['on']);
+  eq(chips.map(c => c.getAttribute('aria-pressed')), ['false', 'true'], 'the caller keeps the state');
+});
+
+test('dom: chipPick many-of: every press calls onToggle with the value', () => {
+  const got = [];
+  const el = chipPick({ label: 'Short list', many: true, chips: [{ value: 'fable', label: 'fable' }, { value: 'opus', label: 'opus' }, { value: 'haiku', label: 'haiku' }], chosen: ['fable', 'opus'], onToggle: v => got.push(v) });
+  fixture().append(el);
+  const { chips } = chipParts(el);
+  eq(chips.map(c => c.getAttribute('aria-pressed')), ['true', 'true', 'false']);
+  chips[0].click();
+  chips[2].click();
+  eq(got, ['fable', 'haiku']);
+});
+
+test('dom: chipPick remove: ✕ is a sibling button named by remove that calls onRemove and not onToggle', () => {
+  const got = [];
+  const el = chipPick({
+    label: 'Short list', many: true, chosen: ['opus-4-8'],
+    chips: [{ value: 'opus', label: 'opus' }, { value: 'opus-4-8', label: 'claude-opus-4-8 · pinned', remove: 'Unpin claude-opus-4-8' }],
+    onToggle: v => got.push(['toggle', v]), onRemove: v => got.push(['remove', v]),
+  });
+  fixture().append(el);
+  const { chips, xs } = chipParts(el);
+  eq([chips.length, xs.length], [2, 1], 'only the chip with remove gets a ✕');
+  const x = xs[0];
+  eq([x.tagName, x.type, x.getAttribute('aria-label'), x.textContent], ['BUTTON', 'button', 'Unpin claude-opus-4-8', '✕']);
+  assert(x.parentElement === chips[1].parentElement && x.previousElementSibling === chips[1], 'beside the chip, not in it');
+  eq(chips[1].textContent, 'claude-opus-4-8 · pinned');
+  x.click();
+  eq(got, [['remove', 'opus-4-8']]);
+  chips[1].click();
+  eq(got, [['remove', 'opus-4-8'], ['toggle', 'opus-4-8']]);
+});
+
+test('dom: chipPick redrawn by its press gives the focus back to the chip pressed', () => {
+  const fx = fixture();
+  let chosen = ['fable'];
+  let pins = [{ value: 'a', label: 'a', remove: 'Unpin a' }, { value: 'b', label: 'b', remove: 'Unpin b' }, { value: 'c', label: 'c', remove: 'Unpin c' }];
+  const draw = () => fx.replaceChildren(
+    chipPick({ label: 'Sidebar', chips: SIDES, chosen: ['on'], onToggle() {} }),
+    chipPick({
+      label: 'Short list', many: true, chosen, chips: [{ value: 'fable', label: 'fable' }, { value: 'on', label: 'on' }, ...pins],
+      onToggle: v => { chosen = chosen.includes(v) ? chosen.filter(x => x !== v) : [...chosen, v]; draw(); },
+      onRemove: v => { pins = pins.filter(p => p.value !== v); draw(); },
+    }));
+  draw();
+  const group = () => fx.children[1];
+  let c = chipParts(group()).chips[1];
+  c.focus();
+  c.click();
+  let now = chipParts(group()).chips[1];
+  assert(now !== c && document.activeElement === now, 'the redrawn chip of that group has the focus');
+  eq(now.getAttribute('aria-pressed'), 'true');
+  c = chipParts(group()).chips[0];
+  c.click();
+  assert(!fx.contains(document.activeElement) || document.activeElement === document.body, 'a press without the focus moves none in');
+  let x = chipParts(group()).xs[1];
+  x.focus();
+  x.click();
+  eq(chipParts(group()).xs.map(b => b.getAttribute('aria-label')), ['Unpin a', 'Unpin c']);
+  eq(document.activeElement.getAttribute('aria-label'), 'Unpin c', 'after a remove: the ✕ that took its place');
+  x = chipParts(group()).xs[1];
+  x.click();
+  eq(document.activeElement.getAttribute('aria-label'), 'Unpin a', 'the last one removed: the ✕ before it');
 });
