@@ -497,6 +497,187 @@ export function textField(o) {
   return { el, input };
 }
 
+// The one pop-out open on the page (a row's ⋯ menu, a dropdown): opening
+// another closes it.
+let popOpen = null;
+
+// popOut is the open and close of a button's pop-out, shared by rowMenu and
+// pickField: show opens pop and closes whichever was open; a press outside
+// wrap, or Esc, closes it. onToggle hears it open and close unless the call
+// was quiet. It listens on the document wrap lives in. A pop with the popover
+// attribute shows in the top layer, over any card or sheet that would clip it.
+export function popOut({ wrap, btn, pop, onToggle }) {
+  let doc = null;
+  const outside = e => {
+    if (!wrap.contains(e.target)) close();
+  };
+  const esc = e => {
+    if (e.key === 'Escape') close();
+  };
+  function close(quiet) {
+    if (pop.hidden) return;
+    pop.hidden = true;
+    // A pop whose document went away (a removed frame) refuses to hide; it is
+    // gone with it.
+    try {
+      if (pop.matches(':popover-open')) pop.hidePopover();
+    } catch { /* its document is gone */ }
+    btn.setAttribute('aria-expanded', 'false');
+    doc?.removeEventListener('click', outside, true);
+    doc?.removeEventListener('keydown', esc);
+    if (popOpen === close) popOpen = null;
+    if (!quiet) onToggle?.(false);
+  }
+  function show(quiet) {
+    popOpen?.(quiet);
+    doc = wrap.ownerDocument;
+    pop.hidden = false;
+    if (pop.hasAttribute('popover') && !pop.matches(':popover-open')) pop.showPopover();
+    btn.setAttribute('aria-expanded', 'true');
+    doc.addEventListener('click', outside, true);
+    doc.addEventListener('keydown', esc);
+    popOpen = close;
+    if (!quiet) onToggle?.(true);
+  }
+  return { show, close, get open() { return !pop.hidden; } };
+}
+
+// pickField is the kit's dropdown: a label over a button drawn as kit-input
+// with a chevron, naming the current choice, that opens the kit's menu surface
+// (kit-row-pop) listing each choice ({ value, label, detail?, blank? }) with
+// its muted detail line and the current one in the soft signal fill. A blank
+// choice (one that stands for none picked yet) reads muted on the button. The
+// menu hangs 4px below the button on its left edge, or its right edge when the
+// left would run past the nearest card, sheet or the window (neither fitting, the
+// left edge with its lines wrapped), and is never narrower than the button.
+// Enter, Space or an arrow opens it on the current choice, arrows move, Enter,
+// Space or a press picks, Esc closes and gives the button the focus back. onPick hears a value that differs from the current one. It
+// returns { el, button, value, set(value) }; set picks without onPick.
+export function pickField(o) {
+  let value = o.value ?? o.choices[0]?.value;
+  const name = h('span', { class: 'kit-pick-label' });
+  const btn = h('button', {
+    class: 'kit-input kit-pick-btn', type: 'button', id: o.id || `kit-field-${++fieldIds}`,
+    'aria-haspopup': 'listbox', 'aria-expanded': 'false',
+  }, name);
+  const opts = o.choices.map(c => h('button', {
+    class: 'kit-pick-opt', type: 'button', role: 'option', dataset: { value: c.value },
+    onclick: () => pick(c.value),
+  }, h('span', { class: 'kit-pick-name' }, c.label), c.detail ? h('span', { class: 'kit-pick-detail' }, c.detail) : null));
+  const pop = h('div', { class: 'kit-row-pop kit-pick-pop', role: 'listbox', 'aria-labelledby': btn.id, popover: 'manual' }, opts);
+  pop.hidden = true;
+  const box = h('div', { class: 'kit-pick' }, btn, pop);
+  const el = h('div', { class: 'kit-field' }, h('label', { class: 'kit-field-label', for: btn.id }, o.label), box);
+  const p = popOut({ wrap: box, btn, pop, onToggle: on => on || closed() });
+  const at = () => Math.max(0, o.choices.findIndex(c => c.value === value));
+
+  function set(v) {
+    value = v;
+    const c = o.choices.find(x => x.value === v);
+    name.textContent = c ? c.label : '';
+    btn.classList.toggle('blank', !!c?.blank);
+    opts.forEach((b, i) => {
+      const on = o.choices[i].value === v;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+  }
+  // The menu sits in the top layer, placed from the button: 4px below it, on
+  // its left edge when it fits from there within the nearest card or sheet
+  // and the window, else on its right edge when it fits from that, else on the left
+  // edge wrapped to the room it has; never narrower than the button.
+  function place(e) {
+    if (!p.open) return closed();
+    if (e?.target === pop) return; // the menu's own scroll
+    const b = btn.getBoundingClientRect();
+    const c = btn.closest('.kit-card, .kit-float')?.getBoundingClientRect();
+    const right = Math.min(box.ownerDocument.documentElement.clientWidth, c ? c.right : Infinity) - b.left;
+    const left = b.right - Math.max(0, c ? c.left : 0);
+    Object.assign(pop.style, { top: `${b.bottom + 4}px`, left: `${b.left}px`, minWidth: `${b.width}px`, maxWidth: '', maxHeight: '' });
+    const w = pop.offsetWidth;
+    if (w > right && w <= left) pop.style.left = `${b.right - w}px`;
+    else if (w > right) pop.style.maxWidth = `${Math.max(right, b.width)}px`;
+    // Below the button when it fits there or there is more room below than
+    // above; else above it. Either way capped to the room, scrolling inside.
+    const winH = box.ownerDocument.defaultView.innerHeight;
+    const below = winH - b.bottom - 4 - 8, above = b.top - 4 - 8;
+    const tall = pop.offsetHeight;
+    if (tall > below && above > below) {
+      const ht = Math.min(tall, above);
+      Object.assign(pop.style, { top: `${b.top - 4 - ht}px`, maxHeight: `${ht}px` });
+    } else {
+      pop.style.maxHeight = `${Math.max(0, below)}px`;
+    }
+  }
+  // An option given the focus is scrolled into view inside the menu.
+  const show = opt => {
+    opt?.focus({ preventScroll: true });
+    opt?.scrollIntoView({ block: 'nearest' });
+  };
+  // Esc is the menu's while it is open: taken at the window, before a sheet's
+  // own Esc would close the sheet.
+  const esc = e => {
+    if (!p.open) return closed();
+    // A field taken off the page while open: close quietly and let the key by.
+    if (!pop.isConnected) {
+      p.close(true);
+      return closed();
+    }
+    if (e.key !== 'Escape' || e.isComposing) return;
+    e.preventDefault();
+    e.stopPropagation();
+    close();
+  };
+  let win = null;
+  function open() {
+    p.show();
+    place();
+    win = box.ownerDocument.defaultView;
+    win.addEventListener('keydown', esc, true);
+    win.addEventListener('scroll', place, true);
+    win.addEventListener('resize', place);
+    show(opts[at()]);
+  }
+  function closed() {
+    win?.removeEventListener('keydown', esc, true);
+    win?.removeEventListener('scroll', place, true);
+    win?.removeEventListener('resize', place);
+    win = null;
+  }
+  function close() {
+    p.close();
+    btn.focus();
+  }
+  function pick(v) {
+    const changed = v !== value;
+    set(v);
+    close();
+    if (changed) o.onPick?.(v);
+  }
+  btn.addEventListener('click', () => (p.open ? p.close() : open()));
+  btn.addEventListener('keydown', e => {
+    if (!['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) return;
+    e.preventDefault();
+    if (p.open) p.close();
+    else open();
+  });
+  pop.addEventListener('keydown', e => {
+    const i = opts.indexOf(e.target);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const n = opts.length;
+      show(opts[((i < 0 ? at() : i) + (e.key === 'ArrowDown' ? 1 : n - 1)) % n]);
+    } else if ((e.key === 'Enter' || e.key === ' ') && i >= 0) {
+      e.preventDefault();
+      pick(o.choices[i].value);
+    } else if (e.key === 'Tab') {
+      p.close();
+    }
+  });
+  set(value);
+  return { el, button: btn, get value() { return value; }, set };
+}
+
 // confirmBox is a tinted box inside a card that asks before something happens:
 // its words, then a row of buttons. tone signal (the default) or danger.
 export function confirmBox(o) {

@@ -396,6 +396,26 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-input:focus-visible { outline: 1px solid var(--kit-signal); outline-offset: 0; }
 .kit-field-hint { font-size: 13px; color: var(--kit-muted); margin: 6px 0 0; }
 
+/* the kit's dropdown (dom.js pickField): a kit-input button with a chevron
+   that opens the row menu's surface in the top layer, placed by pickField
+   below the button and never narrower than it; each choice with a muted
+   line, the current one in the soft signal fill. A blank choice reads muted. */
+.kit-pick { position: relative; }
+.kit-pick-btn {
+  display: flex; align-items: center; gap: 8px; text-align: left; cursor: pointer; min-width: 0;
+  padding-right: 28px; background: var(--kit-bg) no-repeat right 10px center / 10px 6px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.5'/%3E%3C/svg%3E");
+}
+.kit-pick-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kit-pick-btn.blank .kit-pick-label { color: var(--kit-muted); }
+.kit-pick-pop.kit-row-pop {
+  position: fixed; inset: auto; margin: 0; overflow: hidden auto; overscroll-behavior: contain; color: var(--kit-fg);
+  width: max-content; max-width: min(340px, calc(100vw - 16px)); box-sizing: border-box;
+}
+.kit-pick-pop .kit-pick-opt.on { background: var(--kit-signal-soft); }
+.kit-pick-name { display: block; }
+.kit-pick-detail { display: block; margin-top: 2px; font-size: 12px; color: var(--kit-muted); white-space: normal; }
+
 /* a confirm box inside a card (dom.js confirmBox): a signal or danger tint */
 .kit-confirm { margin-top: 10px; padding: 12px 14px; border-radius: 6px; font-size: 14.5px; }
 .kit-confirm.signal { background: var(--kit-signal-soft); }

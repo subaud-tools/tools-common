@@ -376,6 +376,40 @@ export function textField(o: {
   onInput?(value: string): void;
 }): { el: HTMLElement; input: HTMLInputElement };
 
+/** One choice of a pickField. */
+export interface PickChoice {
+  value: string;
+  label: string;
+  /** A muted second line under the label in the menu. */
+  detail?: string;
+  /** It stands for nothing picked yet (Agent picks): the button reads muted while it is the current choice. */
+  blank?: boolean;
+}
+
+export interface PickField {
+  /** The .kit-field: the label over the dropdown. */
+  el: HTMLElement;
+  /** The kit-input button that opens the menu. */
+  button: HTMLButtonElement;
+  /** The current choice's value. */
+  readonly value: string;
+  /** Makes value the current choice, without calling onPick. */
+  set(value: string): void;
+}
+
+/**
+ * The kit's dropdown: a label over a button drawn as kit-input with a chevron, naming the current choice, that opens the kit's menu surface (kit-row-pop) listing each choice with its muted detail line and the current one in the soft signal fill.
+ * The menu hangs 4px below the button on its left edge, or its right edge when the left would run past the nearest .kit-card or .kit-float (a sheet) or the window (when neither fits, on its left edge with its lines wrapped to the room there), and is never narrower than the button. It opens above the button when there is more room above than below, and is capped to the room it has, scrolling inside with the focused choice kept in view. One pop-out is open on the page at a time (rowMenu's too).
+ * Enter, Space or an arrow opens it on the current choice, arrows move, Enter, Space or a press picks, Esc closes and returns the focus to the button; a press outside closes it.
+ * value starts as the current choice (the first choice when left out); onPick hears a value that differs from the current one.
+ */
+export function pickField(o: { label: string; choices: PickChoice[]; value?: string; id?: string; onPick?(value: string): void }): PickField;
+
+/**
+ * The open and close of a button's pop-out, as rowMenu and pickField use it: show opens pop (closing whichever pop-out was open on the page), and a press outside wrap or Esc closes it. onToggle hears it open and close unless the call was quiet. It listens on the document wrap lives in.
+ */
+export function popOut(o: { wrap: HTMLElement; btn: HTMLElement; pop: HTMLElement; onToggle?(open: boolean): void }): { show(quiet?: boolean): void; close(quiet?: boolean): void; readonly open: boolean };
+
 /** A tinted box inside a card that asks before something happens: its words, then a row of buttons (none, no row). tone: signal (the default) or danger. */
 export function confirmBox(o: { tone?: 'signal' | 'danger'; body: Node | string | Array<Node | string>; buttons?: Button[] }): HTMLElement;
 

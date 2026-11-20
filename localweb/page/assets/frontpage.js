@@ -1,7 +1,7 @@
 // frontpage.js: a front page's list, moved from diazo's. The parts take plain
 // values: a tool works out its own rows, counts and groups, keeps what is
 // chosen and redraws on a press.
-import { h } from './dom.js';
+import { h, popOut } from './dom.js';
 import { remembered } from './remembered.js';
 
 // filterRow is a section of the left column: All with the total, then one row
@@ -131,9 +131,6 @@ export function groupList({ groups, folded, onFold }) {
   return h('div', { class: 'kit-groups' }, groups.map(g => group(g, folded.includes(g.key), onFold)));
 }
 
-// The one row menu open on the page: opening another closes it.
-let menuOpen = null;
-
 // rowMenu is a row's ⋯ button and its menu, as diazo's front page rows have:
 // a press opens it, and a press on an item, outside it or Esc closes it. Each
 // item is a menuitem button: action and walk become data-action and data-walk,
@@ -158,36 +155,13 @@ export function rowMenu({ label, items, onMenu, open = false, buttonClass = 'kit
   const pop = h('div', { class: 'kit-row-pop', role: 'menu' }, items.map(menuItem));
   pop.hidden = true;
   const wrap = h('div', { class: 'kit-row-menu' }, btn, pop);
-  const outside = e => {
-    if (!wrap.contains(e.target)) close();
-  };
-  const esc = e => {
-    if (e.key === 'Escape') close();
-  };
-  function close(quiet) {
-    if (pop.hidden) return;
-    pop.hidden = true;
-    btn.setAttribute('aria-expanded', 'false');
-    document.removeEventListener('click', outside, true);
-    document.removeEventListener('keydown', esc);
-    if (menuOpen === close) menuOpen = null;
-    if (!quiet) onMenu?.(false);
-  }
-  function show(quiet) {
-    menuOpen?.(quiet);
-    pop.hidden = false;
-    btn.setAttribute('aria-expanded', 'true');
-    document.addEventListener('click', outside, true);
-    document.addEventListener('keydown', esc);
-    menuOpen = close;
-  }
+  const { show, close } = popOut({ wrap, btn, pop, onToggle: onMenu });
   btn.addEventListener('click', () => {
     if (!pop.hidden) {
       close();
       return;
     }
     show();
-    onMenu?.(true);
     // ⋯ sits at a row's foot on a phone: a menu opening past the window's
     // edge scrolls into it.
     pop.scrollIntoView({ block: 'nearest' });
