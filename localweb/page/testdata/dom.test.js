@@ -1128,3 +1128,69 @@ test('dom: pickField in a sheet: the menu shows whole over the sheet, and Esc cl
     assert(document.activeElement === btn, 'focus back on the button');
   } finally { sh.close(); }
 });
+
+const MANY = Array.from({ length: 14 }, (_, i) => ({ value: `v${i}`, label: `Choice ${i}`, detail: 'A muted line under it.' }));
+async function shortWindow(top) {
+  const win = document.createElement('iframe');
+  win.style.cssText = 'width:400px; height:300px; border:0; display:block';
+  win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{margin:0}</style><body>';
+  const loaded = new Promise(r => win.addEventListener('load', r, { once: true }));
+  fixture().append(win);
+  await loaded;
+  await new Promise(r => setTimeout(r, 50));
+  const p = pickField({ label: 'Many', choices: MANY, value: 'v0' });
+  win.contentDocument.body.append(h('div', { style: `position:absolute;top:${top}px;left:16px;width:200px` }, p.el));
+  return { win, p };
+}
+
+test('dom: pickField with little room below caps the menu to the window and scrolls it, keeping the focus in view', async () => {
+  const { win, p } = await shortWindow(10);
+  const { btn, pop, opts } = pickParts(p);
+  key(btn, 'Enter');
+  const b = btn.getBoundingClientRect(), m = pop.getBoundingClientRect();
+  eq(Math.round(m.top - b.bottom), 4, 'below the button');
+  assert(m.bottom <= win.contentWindow.innerHeight - 8 + 0.5, `inside the window (${m.bottom})`);
+  assert(pop.scrollHeight > pop.clientHeight, 'it scrolls');
+  key(win.contentDocument.activeElement, 'ArrowUp');
+  const last = opts[opts.length - 1];
+  assert(win.contentDocument.activeElement === last, 'up from the first: the last');
+  const l = last.getBoundingClientRect(), m2 = pop.getBoundingClientRect();
+  assert(l.top >= m2.top - 0.5 && l.bottom <= m2.bottom + 0.5, `the focused choice is in view (${l.top}-${l.bottom} in ${m2.top}-${m2.bottom})`);
+  pop.scrollTop = 40;
+  const was = pop.scrollTop;
+  pop.dispatchEvent(new Event('scroll'));
+  eq(pop.scrollTop, was, 'scrolling the menu keeps its place');
+  key(last, 'Escape');
+  fixture().replaceChildren();
+});
+
+test('dom: pickField near the window\'s foot opens its menu above the button', async () => {
+  const { win, p } = await shortWindow(230);
+  const { btn, pop } = pickParts(p);
+  key(btn, 'Enter');
+  const b = btn.getBoundingClientRect(), m = pop.getBoundingClientRect();
+  eq(Math.round(b.top - m.bottom), 4, '4px above');
+  assert(m.top >= 8 - 0.5, `inside the window (${m.top})`);
+  assert(m.bottom <= win.contentWindow.innerHeight, 'not below');
+  key(win.contentDocument.activeElement, 'Escape');
+  fixture().replaceChildren();
+});
+
+test('dom: pickField removed while open lets the next Escape through', () => {
+  const p = pickField({ label: 'Kind', choices: KINDS, value: '' });
+  fixture().append(p.el);
+  const { btn, pop } = pickParts(p);
+  key(btn, 'Enter');
+  assert(!pop.hidden, 'open');
+  p.el.remove();
+  let heard = null;
+  const listen = e => { heard = e.defaultPrevented; };
+  document.addEventListener('keydown', listen);
+  try {
+    key(document.body, 'Escape');
+    eq(heard, false, 'the Escape reached the page, not prevented');
+    heard = null;
+    key(document.body, 'Escape');
+    eq(heard, false, 'and the next one too');
+  } finally { document.removeEventListener('keydown', listen); }
+});

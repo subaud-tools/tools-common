@@ -586,21 +586,43 @@ export function pickField(o) {
   // its left edge when it fits from there within the nearest card or sheet
   // and the window, else on its right edge when it fits from that, else on the left
   // edge wrapped to the room it has; never narrower than the button.
-  function place() {
+  function place(e) {
     if (!p.open) return closed();
+    if (e?.target === pop) return; // the menu's own scroll
     const b = btn.getBoundingClientRect();
     const c = btn.closest('.kit-card, .kit-float')?.getBoundingClientRect();
     const right = Math.min(box.ownerDocument.documentElement.clientWidth, c ? c.right : Infinity) - b.left;
     const left = b.right - Math.max(0, c ? c.left : 0);
-    Object.assign(pop.style, { top: `${b.bottom + 4}px`, left: `${b.left}px`, minWidth: `${b.width}px`, maxWidth: '' });
+    Object.assign(pop.style, { top: `${b.bottom + 4}px`, left: `${b.left}px`, minWidth: `${b.width}px`, maxWidth: '', maxHeight: '' });
     const w = pop.offsetWidth;
     if (w > right && w <= left) pop.style.left = `${b.right - w}px`;
     else if (w > right) pop.style.maxWidth = `${Math.max(right, b.width)}px`;
+    // Below the button when it fits there or there is more room below than
+    // above; else above it. Either way capped to the room, scrolling inside.
+    const winH = box.ownerDocument.defaultView.innerHeight;
+    const below = winH - b.bottom - 4 - 8, above = b.top - 4 - 8;
+    const tall = pop.offsetHeight;
+    if (tall > below && above > below) {
+      const ht = Math.min(tall, above);
+      Object.assign(pop.style, { top: `${b.top - 4 - ht}px`, maxHeight: `${ht}px` });
+    } else {
+      pop.style.maxHeight = `${Math.max(0, below)}px`;
+    }
   }
+  // An option given the focus is scrolled into view inside the menu.
+  const show = opt => {
+    opt?.focus({ preventScroll: true });
+    opt?.scrollIntoView({ block: 'nearest' });
+  };
   // Esc is the menu's while it is open: taken at the window, before a sheet's
   // own Esc would close the sheet.
   const esc = e => {
     if (!p.open) return closed();
+    // A field taken off the page while open: close quietly and let the key by.
+    if (!pop.isConnected) {
+      p.close(true);
+      return closed();
+    }
     if (e.key !== 'Escape' || e.isComposing) return;
     e.preventDefault();
     e.stopPropagation();
@@ -614,7 +636,7 @@ export function pickField(o) {
     win.addEventListener('keydown', esc, true);
     win.addEventListener('scroll', place, true);
     win.addEventListener('resize', place);
-    opts[at()]?.focus();
+    show(opts[at()]);
   }
   function closed() {
     win?.removeEventListener('keydown', esc, true);
@@ -644,7 +666,7 @@ export function pickField(o) {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const n = opts.length;
-      opts[((i < 0 ? at() : i) + (e.key === 'ArrowDown' ? 1 : n - 1)) % n].focus();
+      show(opts[((i < 0 ? at() : i) + (e.key === 'ArrowDown' ? 1 : n - 1)) % n]);
     } else if ((e.key === 'Enter' || e.key === ' ') && i >= 0) {
       e.preventDefault();
       pick(o.choices[i].value);

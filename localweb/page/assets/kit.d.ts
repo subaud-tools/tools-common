@@ -399,7 +399,7 @@ export interface PickField {
 
 /**
  * The kit's dropdown: a label over a button drawn as kit-input with a chevron, naming the current choice, that opens the kit's menu surface (kit-row-pop) listing each choice with its muted detail line and the current one in the soft signal fill.
- * The menu hangs 4px below the button on its left edge, or its right edge when the left would run past the nearest .kit-card or .kit-float (a sheet) or the window (when neither fits, on its left edge with its lines wrapped to the room there), and is never narrower than the button. One pop-out is open on the page at a time (rowMenu's too).
+ * The menu hangs 4px below the button on its left edge, or its right edge when the left would run past the nearest .kit-card or .kit-float (a sheet) or the window (when neither fits, on its left edge with its lines wrapped to the room there), and is never narrower than the button. It opens above the button when there is more room above than below, and is capped to the room it has, scrolling inside with the focused choice kept in view. One pop-out is open on the page at a time (rowMenu's too).
  * Enter, Space or an arrow opens it on the current choice, arrows move, Enter, Space or a press picks, Esc closes and returns the focus to the button; a press outside closes it.
  * value starts as the current choice (the first choice when left out); onPick hears a value that differs from the current one.
  */

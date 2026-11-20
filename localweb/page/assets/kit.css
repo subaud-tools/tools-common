@@ -409,7 +409,7 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-pick-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kit-pick-btn.blank .kit-pick-label { color: var(--kit-muted); }
 .kit-pick-pop.kit-row-pop {
-  position: fixed; inset: auto; margin: 0; overflow: visible; color: var(--kit-fg);
+  position: fixed; inset: auto; margin: 0; overflow: hidden auto; overscroll-behavior: contain; color: var(--kit-fg);
   width: max-content; max-width: min(340px, calc(100vw - 16px)); box-sizing: border-box;
 }
 .kit-pick-pop .kit-pick-opt.on { background: var(--kit-signal-soft); }
