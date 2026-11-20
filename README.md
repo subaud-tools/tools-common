@@ -281,7 +281,7 @@ for visual review.
 
 The words a person reads about the family live once, in `guide/`, and every
 binary built on tools-common embeds them. A person starts as
-[subaud.tools/start](https://subaud.tools/start/) says: after buying and
+[subaud.tools](https://subaud.tools/) says: after buying and
 setting up a machine, they say "Get me started with subaud." in the proj
 session their agent opens, and the walks below run. After that, the Guide
 button on any tool's page says when to reach for each tool and what to ask.
