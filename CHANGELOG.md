@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.107.0
+
+### Changed
+- guide: a core tool lists at least 2 asks, with no maximum (it was 2 to 4); the page's render tests still catch an ask list that overflows at desktop or phone width.
+- guide: diazo's section names its three kinds: a feature (what should we build?), an investigation (why does this happen?) and a system design (what could this be?), with an ask for each, how to pick the kind or let the agent, and a When to skip line that no longer says diazo isn't for exploring an idea.
+
 ## 0.106.0
 
 ### Added

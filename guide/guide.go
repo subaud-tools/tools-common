@@ -386,8 +386,8 @@ func parseTool(file, text string) (Tool, []error) {
 	}
 	t.Asks = front["asks"]
 	if t.Core {
-		if len(t.Asks) < 2 || len(t.Asks) > 4 {
-			bad("a core tool has 2 to 4 asks, not %d", len(t.Asks))
+		if len(t.Asks) < 2 {
+			bad("a core tool has at least 2 asks, not %d", len(t.Asks))
 		}
 	} else if len(t.Asks) < 1 {
 		bad("needs at least one of asks")
