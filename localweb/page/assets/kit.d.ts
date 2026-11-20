@@ -956,6 +956,8 @@ export function groupList(o: { groups: ListGroup[]; folded: string[]; onFold(key
 /** An item of a row's menu that runs: a menuitem button. action and walk become data-action and data-walk, so a caller keeps its hooks; danger reads it in the danger colour; disabled greys it out and it never runs. */
 export interface RowMenuButton {
   label: string;
+  /** A muted line under the label (.kit-row-detail); a menu holding any caps its width so the lines wrap. */
+  detail?: string;
   /** Runs once the menu has closed. */
   run(): void;
   danger?: boolean;
@@ -968,6 +970,8 @@ export interface RowMenuButton {
 export interface RowMenuLink {
   label: string;
   href: string;
+  /** A muted line under the label (.kit-row-detail), as on a button. */
+  detail?: string;
   run?(): void;
   danger?: boolean;
   action?: string;
@@ -979,10 +983,15 @@ export interface RowMenuSeparator {
   separator: true;
 }
 
-/** An item of a row's menu: a button, a link or a separator. */
-export type RowMenuItem = RowMenuButton | RowMenuLink | RowMenuSeparator;
+/** A heading over the row menu's items after it (<div class="kit-row-head" role="presentation">): a small muted label, not a menuitem, never focused; a press on it leaves the menu open. */
+export interface RowMenuHeading {
+  heading: string;
+}
 
-/** A row's ⋯ button and its menu (.kit-row-menu): a press opens it, and a press on an item, outside it or Esc closes it. One is open on the page at a time: opening another closes it. label is the button's aria-label; onMenu hears it open and close. open draws it already open, as the one open menu on the page (closing any other), without scrolling it into view or taking focus, for a caller that redraws its rows and keeps which menu is open from onMenu; onMenu does not hear that opening, only the closing. buttonClass replaces kit-row-more on the ⋯ button (kit-ctl for a header's bordered look). */
+/** An item of a row's menu: a button, a link, a separator or a heading. */
+export type RowMenuItem = RowMenuButton | RowMenuLink | RowMenuSeparator | RowMenuHeading;
+
+/** A row's ⋯ button and its menu (.kit-row-menu): a press opens it, and a press on an item, outside it or Esc closes it; a press on a disabled item or a heading leaves it open. An item's detail is a muted line under its label, and a menu holding any caps its width (min(340px, 100vw - 16px)) so the lines wrap. One is open on the page at a time: opening another closes it. label is the button's aria-label; onMenu hears it open and close. open draws it already open, as the one open menu on the page (closing any other), without scrolling it into view or taking focus, for a caller that redraws its rows and keeps which menu is open from onMenu; onMenu does not hear that opening, only the closing. buttonClass replaces kit-row-more on the ⋯ button (kit-ctl for a header's bordered look). */
 export function rowMenu(o: { label: string; items: RowMenuItem[]; onMenu?(open: boolean): void; open?: boolean; buttonClass?: string }): HTMLElement;
 
 // ---- needs.js

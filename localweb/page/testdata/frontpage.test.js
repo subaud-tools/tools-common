@@ -343,6 +343,70 @@ test('rowMenu: buttonClass replaces the ⋯ button\'s class', () => {
   eq(el.querySelector('.kit-row-more'), null);
 });
 
+const mutedOf = el => {
+  const fx = document.createElement('span');
+  fx.style.color = 'var(--kit-muted)';
+  el.append(fx);
+  return getComputedStyle(fx).color;
+};
+
+test('rowMenu: an item with detail shows its label and the muted detail line, and a press still runs it', () => {
+  const got = [];
+  const line = 'Save it as an idea for later, to come back to once the work it waits on has landed.';
+  const el = rowMenu({ label: 'More', items: [{ label: 'Move to planned', detail: line, run: () => got.push('planned'), action: 'planned' }] });
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  btn.click();
+  const item = pop.querySelector('button');
+  eq([item.getAttribute('role'), item.dataset.action, item.firstChild.textContent, item.querySelector('.kit-row-detail').textContent], ['menuitem', 'planned', 'Move to planned', line]);
+  const d = getComputedStyle(item.querySelector('.kit-row-detail'));
+  eq([d.display, d.fontSize, d.color, d.whiteSpace], ['block', '12px', mutedOf(el), 'normal']);
+  eq(pop.getBoundingClientRect().width, 340, 'a menu with details takes its lines\' width, capped');
+  assert(item.querySelector('.kit-row-detail').getBoundingClientRect().height > 20, 'the detail wraps');
+  item.querySelector('.kit-row-detail').click();
+  assert(pop.hidden, 'closed');
+  eq(got, ['planned']);
+});
+
+test('rowMenu: a link item with detail shows its label and the detail line, and a press still runs it', () => {
+  const got = [];
+  const el = rowMenu({ label: 'More', items: [{ label: 'Record', href: '#r', detail: 'Open its record.', run: () => got.push('record') }] });
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  btn.click();
+  const a = pop.querySelector('a');
+  eq([a.getAttribute('role'), a.firstChild.textContent, a.querySelector('.kit-row-detail').textContent], ['menuitem', 'Record', 'Open its record.']);
+  a.click();
+  assert(pop.hidden, 'closed');
+  eq(got, ['record']);
+});
+
+test('rowMenu: a heading is a muted label, not a menuitem, never focused, and a press on it leaves the menu open', () => {
+  const got = [];
+  const el = rowMenu({ label: 'More', items: [{ heading: 'Start fresh as' }, { label: 'System', run: () => got.push('system') }] });
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  btn.click();
+  const head = pop.querySelector('.kit-row-head');
+  eq([head.tagName, head.getAttribute('role'), head.textContent, head.tabIndex], ['DIV', 'presentation', 'Start fresh as', -1]);
+  eq([...pop.querySelectorAll('[role="menuitem"]')].map(m => m.textContent), ['System']);
+  head.focus();
+  assert(document.activeElement !== head, 'not focusable');
+  const s = getComputedStyle(head), b = getComputedStyle(pop.querySelector('button'));
+  eq([s.color, s.paddingLeft], [mutedOf(el), b.paddingLeft]);
+  head.click();
+  assert(!pop.hidden, 'still open');
+  eq(got, []);
+  btn.click();
+});
+
+test('rowMenu: an item with no detail draws exactly as before', () => {
+  const el = rowMenu({ label: 'More', items: [{ label: 'Rename', run() {} }, { label: 'Record', href: '#r' }] });
+  const { pop } = parts(el);
+  eq([...pop.children].map(c => c.innerHTML), ['Rename', 'Record']);
+  eq(pop.querySelector('.kit-row-detail'), null);
+});
+
 const orders = [{ value: 'needs', label: 'needs you' }, { value: 'recent', label: 'recent' }, { value: 'name', label: 'name' }];
 const chipsOf = el => [...el.querySelectorAll('button.kit-chip')].map(b => [b.dataset.value, b.textContent, b.classList.contains('on'), b.getAttribute('aria-pressed')]);
 
