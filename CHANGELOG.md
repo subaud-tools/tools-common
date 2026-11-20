@@ -4,6 +4,15 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.104.0
+
+### Added
+- kit: `pickField({ label, choices, value?, id?, onPick? })`, the kit's dropdown: a label over a button drawn as `kit-input` with a chevron, naming the current choice, that opens the row menu's surface (`kit-row-pop`) listing each choice (`{ value, label, detail?, blank? }`) with its muted detail line and the current one in the soft signal fill; a `blank` choice (one that stands for nothing picked yet) reads muted on the button. The menu shows in the top layer, so no card or sheet clips it: 4px below the button on its left edge, or its right edge when the left would run past the nearest card, sheet or window, never narrower than the button. Enter, Space or an arrow opens it on the current choice, arrows move, Enter, Space or a press picks, Esc closes it (and not the sheet it is in) and returns the focus to the button; a press outside closes it. `onPick` hears a changed value; it returns `{ el, button, value, set(value) }`.
+- kit: `popOut({ wrap, btn, pop, onToggle? })`, the open and close of a button's pop-out that `rowMenu` and `pickField` share: one pop-out open on the page at a time, closed by a press outside or Esc; a `pop` with the `popover` attribute shows in the top layer.
+
+### Changed
+- kit: `rowMenu` opens and closes through `popOut`; what it does is unchanged, and opening a `pickField` closes an open row menu (and the other way round).
+
 ## 0.103.1
 
 ### Fixed

@@ -1,6 +1,7 @@
 import { test, eq, assert, fixture, blurEl } from './harness.js';
-import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, textField, confirmBox, emptyCard, keyedRows } from '/_kit/dom.js';
+import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, textField, confirmBox, emptyCard, keyedRows, pickField } from '/_kit/dom.js';
 import { createKeys } from '/_kit/keys.js';
+import { sheet } from '/_kit/sheet.js';
 import { fakeFetch, fakeTimers, flush } from './fakes.js';
 import { initTheme } from '/_kit/theme.js';
 
@@ -978,4 +979,152 @@ test('dom: keyedRows with no update draws a changed row anew in its place', () =
   rows.set([{ id: 'a', state: 'x' }, { id: 'b', state: 'z' }]);
   assert(box.children[0] === a && box.children[1] !== b, 'only b redrawn');
   eq([...box.children].map(e => e.textContent), ['x', 'z']);
+});
+
+const KINDS = [
+  { value: '', label: 'Agent picks', detail: "From your opening; change it on the plan's page.", blank: true },
+  { value: 'feature', label: 'Feature', detail: 'Build or change something, with decisions, a spec and plans.' },
+  { value: 'investigation', label: 'Investigation', detail: 'Find out why something is broken before fixing it.' },
+  { value: 'system', label: 'System', detail: 'Design a system of several parts, each planned on its own.' },
+];
+const key = (el, k) => el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+const pickParts = p => ({ btn: p.el.querySelector('.kit-pick-btn'), pop: p.el.querySelector('.kit-row-pop'), opts: [...p.el.querySelectorAll('[role="option"]')] });
+
+test('dom: pickField is a labelled kit-input button naming the choice, its menu hidden', () => {
+  const p = pickField({ label: 'Kind', choices: KINDS, value: '' });
+  fixture().append(p.el);
+  const { btn, pop, opts } = pickParts(p);
+  assert(p.el.classList.contains('kit-field'), 'a kit-field');
+  const lab = p.el.querySelector('.kit-field-label');
+  eq([lab.textContent, lab.htmlFor === btn.id, btn.id !== ''], ['Kind', true, true]);
+  assert(btn.classList.contains('kit-input'), 'drawn as kit-input');
+  eq([btn.tagName, btn.type, btn.getAttribute('aria-haspopup'), btn.getAttribute('aria-expanded')], ['BUTTON', 'button', 'listbox', 'false']);
+  eq(btn.querySelector('.kit-pick-label').textContent, 'Agent picks');
+  assert(btn.classList.contains('blank'), 'a blank choice reads muted');
+  assert(pop.hidden && pop.getAttribute('role') === 'listbox', 'listbox hidden');
+  eq(opts.map(o => [o.querySelector('.kit-pick-name').textContent, o.querySelector('.kit-pick-detail').textContent.slice(0, 10)]),
+    [['Agent picks', 'From your '], ['Feature', 'Build or c'], ['Investigation', 'Find out w'], ['System', 'Design a s']]);
+  eq(opts.map(o => o.classList.contains('on')), [true, false, false, false]);
+  eq(getComputedStyle(opts[0]).backgroundColor !== getComputedStyle(opts[1]).backgroundColor, true, 'the current choice has the soft fill');
+  eq(p.value, '');
+});
+
+test('dom: pickField from the keyboard: Enter opens, arrows move, Enter picks', () => {
+  const got = [];
+  const p = pickField({ label: 'Kind', choices: KINDS, value: '', onPick: v => got.push(v) });
+  fixture().append(p.el);
+  const { btn, pop, opts } = pickParts(p);
+  btn.focus();
+  key(btn, 'Enter');
+  assert(!pop.hidden, 'open');
+  eq(btn.getAttribute('aria-expanded'), 'true');
+  assert(document.activeElement === opts[0], 'the current choice has the focus');
+  key(document.activeElement, 'ArrowDown');
+  key(document.activeElement, 'ArrowDown');
+  assert(document.activeElement === opts[2], 'two down: Investigation');
+  key(document.activeElement, 'ArrowUp');
+  key(document.activeElement, 'ArrowDown');
+  key(document.activeElement, 'Enter');
+  eq(got, ['investigation']);
+  eq([p.value, btn.querySelector('.kit-pick-label').textContent, btn.classList.contains('blank')], ['investigation', 'Investigation', false]);
+  assert(pop.hidden, 'closed');
+  assert(document.activeElement === btn, 'focus back on the button');
+  key(btn, ' ');
+  assert(!pop.hidden && document.activeElement === opts[2], 'Space opens on the current choice');
+  key(document.activeElement, 'Escape');
+  assert(pop.hidden && document.activeElement === btn, 'Escape closes and returns focus');
+  eq(got, ['investigation'], 'Escape picks nothing');
+});
+
+test('dom: pickField by pointer: a press opens, a choice picks, outside closes; set picks quietly', () => {
+  const got = [];
+  const p = pickField({ label: 'Kind', choices: KINDS, value: 'feature', onPick: v => got.push(v) });
+  const fx = fixture();
+  const away = h('p', null, 'away');
+  fx.append(p.el, away);
+  const { btn, pop, opts } = pickParts(p);
+  btn.click();
+  assert(!pop.hidden, 'open');
+  away.click();
+  assert(pop.hidden, 'a press outside closes');
+  btn.click();
+  opts[3].click();
+  eq([got, p.value, pop.hidden], [['system'], 'system', true]);
+  p.set('feature');
+  eq([got, p.value, btn.querySelector('.kit-pick-label').textContent], [['system'], 'feature', 'Feature']);
+  eq(opts.map(o => o.getAttribute('aria-selected')), ['false', 'true', 'false', 'false']);
+});
+
+// A New plan-like card of three fields across, in a window w wide.
+async function pickWindow(w) {
+  const win = document.createElement('iframe');
+  win.style.cssText = `width:${w}px; height:700px; border:0; display:block`;
+  win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{margin:0}'
+    + '.f{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.f>*{min-width:0;margin-top:0}'
+    + '@media (max-width:600px){.f{grid-template-columns:1fr}}</style><body>';
+  const loaded = new Promise(r => win.addEventListener('load', r, { once: true }));
+  fixture().append(win);
+  await loaded;
+  await new Promise(r => setTimeout(r, 50));
+  const doc = win.contentDocument;
+  const fields = [pickField({ label: 'Project', choices: [{ value: 'a', label: 'tools-workspace' }], value: 'a' }),
+    pickField({ label: 'Session', choices: [{ value: 'pi', label: 'pi' }], value: 'pi' }),
+    pickField({ label: 'Kind', choices: KINDS, value: '' })];
+  const card = h('div', { class: 'kit-card', style: 'max-width:640px;margin:16px;padding:16px' }, h('div', { class: 'f' }, fields.map(f => f.el)));
+  doc.body.append(card);
+  return { win, doc, card, fields };
+}
+
+const edges = (p) => {
+  const { btn, pop } = pickParts(p);
+  btn.click();
+  const b = btn.getBoundingClientRect(), m = pop.getBoundingClientRect();
+  return { b, m, round: [Math.round(b.left), Math.round(b.right), Math.round(m.left), Math.round(m.right)] };
+};
+
+test('dom: pickField at 1280px: the menu hangs 4px below, on the left edge, or the right edge near the card\'s', async () => {
+  const { card, fields } = await pickWindow(1280);
+  const first = edges(fields[0]);
+  eq(Math.round(first.m.top - first.b.bottom), 4, '4px below');
+  eq(first.round[2], first.round[0], 'the first field\'s menu lines up with its left edge');
+  assert(first.m.width >= first.b.width - 0.5, 'never narrower than the button');
+  const kind = edges(fields[2]);
+  eq(kind.round[3], kind.round[1], 'the last field\'s menu lines up with its right edge');
+  assert(kind.m.right <= card.getBoundingClientRect().right + 0.5, 'inside the card');
+  assert(kind.m.width >= kind.b.width - 0.5, 'never narrower than the button');
+  eq(fields.map(f => pickParts(f).pop.hidden), [true, true, false], 'one open at a time');
+  fixture().replaceChildren();
+});
+
+test('dom: pickField at 390px: the fields stack and the menu lines up with the button', async () => {
+  const { doc, card, fields } = await pickWindow(390);
+  const kind = edges(fields[2]);
+  eq(kind.round[2], kind.round[0], 'left edge');
+  assert(kind.m.right <= card.getBoundingClientRect().right + 0.5, 'inside the card');
+  assert(kind.m.width >= kind.b.width - 0.5, 'never narrower than the button');
+  assert(kind.m.right <= doc.documentElement.clientWidth + 0.5, 'inside the window');
+  eq(Math.round(kind.m.top - kind.b.bottom), 4, '4px below');
+  key(pickParts(fields[2]).btn, 'Escape');
+  fixture().replaceChildren();
+});
+
+test('dom: pickField in a sheet: the menu shows whole over the sheet, and Esc closes the menu, not the sheet', () => {
+  let closed = 0;
+  const p = pickField({ label: 'Kind', choices: KINDS, value: '' });
+  const sh = sheet({ title: 'New plan', body: h('div', { style: 'display:flex;justify-content:center' }, h('div', { style: 'width:150px' }, p.el)), onClose: () => closed++ });
+  try {
+    const { btn, pop, opts } = pickParts(p);
+    btn.focus();
+    key(btn, 'Enter');
+    const last = opts[opts.length - 1].getBoundingClientRect();
+    const at = document.elementFromPoint(last.left + 4, last.bottom - 4);
+    assert(opts[opts.length - 1].contains(at), `the last choice is on top, not clipped by the sheet (${at && at.className})`);
+    const b = btn.getBoundingClientRect(), m = pop.getBoundingClientRect(), r = sh.el.getBoundingClientRect();
+    assert(m.right <= r.right + 0.5, `the menu stays inside the sheet (${m.right} > ${r.right})`);
+    assert(Math.round(m.left) === Math.round(b.left) || Math.round(m.right) === Math.round(b.right), 'on an edge of the button');
+    key(document.activeElement, 'Escape');
+    assert(pop.hidden, 'the menu closed');
+    eq(closed, 0, 'the sheet stays open');
+    assert(document.activeElement === btn, 'focus back on the button');
+  } finally { sh.close(); }
 });
