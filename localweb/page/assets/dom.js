@@ -553,34 +553,66 @@ export function popOut({ wrap, btn, pop, onToggle }) {
 // Enter, Space or an arrow opens it on the current choice, arrows move, Enter,
 // Space or a press picks, Esc closes and gives the button the focus back. onPick hears a value that differs from the current one. It
 // returns { el, button, value, set(value) }; set picks without onPick.
+// more ({ label, choices }) ends the menu with one line reading label, set off
+// by a rule: a press, Enter or Space on it picks nothing and leaves the menu
+// open, with the line replaced by more.choices and the focus on the first of
+// them. The menu opens collapsed every time, unless the current value is only
+// in more.choices: then it opens on the longer list, so the current choice is
+// always in the menu. labelHidden keeps the label for a screen reader and
+// does not draw it (a grid or a table cell that already names the dropdown).
 export function pickField(o) {
+  const rest = o.more?.choices || [];
+  const all = [...o.choices, ...rest];
   let value = o.value ?? o.choices[0]?.value;
   const name = h('span', { class: 'kit-pick-label' });
   const btn = h('button', {
     class: 'kit-input kit-pick-btn', type: 'button', id: o.id || `kit-field-${++fieldIds}`,
     'aria-haspopup': 'listbox', 'aria-expanded': 'false',
   }, name);
-  const opts = o.choices.map(c => h('button', {
+  const opts = all.map(c => h('button', {
     class: 'kit-pick-opt', type: 'button', role: 'option', dataset: { value: c.value },
     onclick: () => pick(c.value),
   }, h('span', { class: 'kit-pick-name' }, c.label), c.detail ? h('span', { class: 'kit-pick-detail' }, c.detail) : null));
-  const pop = h('div', { class: 'kit-row-pop kit-pick-pop', role: 'listbox', 'aria-labelledby': btn.id, popover: 'manual' }, opts);
+  // The line that opens the rest, and the rule over it: kept in the menu and
+  // hidden once pressed, so the press's target stays in the page.
+  const moreLine = rest.length
+    ? h('button', { class: 'kit-pick-opt kit-pick-more', type: 'button', role: 'option', 'aria-selected': 'false', onclick: () => expand() }, o.more.label)
+    : null;
+  const rule = moreLine ? h('hr', { role: 'presentation' }) : null;
+  const pop = h('div', { class: 'kit-row-pop kit-pick-pop', role: 'listbox', 'aria-labelledby': btn.id, popover: 'manual' }, opts, rule, moreLine);
   pop.hidden = true;
   const box = h('div', { class: 'kit-pick' }, btn, pop);
-  const el = h('div', { class: 'kit-field' }, h('label', { class: 'kit-field-label', for: btn.id }, o.label), box);
+  const el = h('div', { class: 'kit-field' }, h('label', { class: 'kit-field-label' + (o.labelHidden ? ' kit-label-hidden' : ''), for: btn.id }, o.label), box);
   const p = popOut({ wrap: box, btn, pop, onToggle: on => on || closed() });
-  const at = () => Math.max(0, o.choices.findIndex(c => c.value === value));
+  // Whether the rest shows: the lines the arrows walk are the choices shown,
+  // then the more line while it is there.
+  let wide = false;
+  const walk = () => (moreLine && !wide ? [...opts.slice(0, o.choices.length), moreLine] : opts);
+  const onlyInRest = () => !o.choices.some(c => c.value === value) && rest.some(c => c.value === value);
+  function widen(on) {
+    wide = on;
+    if (!moreLine) return;
+    opts.slice(o.choices.length).forEach(b => { b.hidden = !on; });
+    moreLine.hidden = rule.hidden = on;
+  }
+  function expand() {
+    widen(true);
+    place();
+    show(opts[o.choices.length]);
+  }
+  const at = () => Math.max(0, all.findIndex(c => c.value === value));
 
   function set(v) {
     value = v;
-    const c = o.choices.find(x => x.value === v);
+    const c = all.find(x => x.value === v);
     name.textContent = c ? c.label : '';
     btn.classList.toggle('blank', !!c?.blank);
     opts.forEach((b, i) => {
-      const on = o.choices[i].value === v;
+      const on = all[i].value === v;
       b.classList.toggle('on', on);
       b.setAttribute('aria-selected', String(on));
     });
+    if (p.open && !wide && onlyInRest()) widen(true);
   }
   // The menu sits in the top layer, placed from the button: 4px below it, on
   // its left edge when it fits from there within the nearest card or sheet
@@ -630,6 +662,7 @@ export function pickField(o) {
   };
   let win = null;
   function open() {
+    widen(onlyInRest());
     p.show();
     place();
     win = box.ownerDocument.defaultView;
@@ -662,20 +695,78 @@ export function pickField(o) {
     else open();
   });
   pop.addEventListener('keydown', e => {
-    const i = opts.indexOf(e.target);
+    const lines = walk();
+    const i = lines.indexOf(e.target);
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      const n = opts.length;
-      show(opts[((i < 0 ? at() : i) + (e.key === 'ArrowDown' ? 1 : n - 1)) % n]);
+      const n = lines.length;
+      show(lines[((i < 0 ? Math.max(0, lines.indexOf(opts[at()])) : i) + (e.key === 'ArrowDown' ? 1 : n - 1)) % n]);
     } else if ((e.key === 'Enter' || e.key === ' ') && i >= 0) {
       e.preventDefault();
-      pick(o.choices[i].value);
+      if (lines[i] === moreLine) expand();
+      else pick(all[opts.indexOf(lines[i])].value);
     } else if (e.key === 'Tab') {
       p.close();
     }
   });
+  widen(false);
   set(value);
   return { el, button: btn, get value() { return value; }, set };
+}
+
+// The chip press being handled: a chipPick of the same label drawn during it
+// is the redraw, and takes the focus back.
+let chipPress = null;
+
+// chipPick is a group of chips to choose from, named by its label: one
+// button.kit-chip per chip ({ value, label, remove? }), those in chosen on
+// with aria-pressed. One-of (the default): a press on the chip that is on
+// does nothing, a press on another calls onToggle(value). many: every press
+// calls onToggle(value). A chip with remove gets a ✕ button beside it (a
+// sibling, named by remove) that calls onRemove(value). The caller keeps the
+// state and redraws, as with sortSwitch; when the press had the focus and the
+// group is redrawn during it, the chip pressed gets the focus back (after a
+// remove, the ✕ that took its place, else the one before it). labelHidden
+// keeps the label for a screen reader and does not draw it.
+export function chipPick(o) {
+  const chosen = new Set(o.chosen || []);
+  const id = `kit-chips-${++fieldIds}`;
+  const chips = [], xs = [];
+  const set = h('div', { class: 'kit-chip-set' }, o.chips.map(c => {
+    const on = chosen.has(c.value);
+    const chip = h('button', {
+      class: 'kit-chip' + (on ? ' on' : ''), type: 'button', dataset: { value: c.value }, 'aria-pressed': String(on),
+      onclick: () => {
+        if (o.many || !on) press(chip, { label: o.label, value: c.value }, () => o.onToggle(c.value));
+      },
+    }, c.label);
+    chips.push(chip);
+    if (!c.remove) return chip;
+    const x = h('button', {
+      class: 'kit-chip-x', type: 'button', 'aria-label': c.remove, title: c.remove,
+      onclick: () => press(x, { label: o.label, x: xs.indexOf(x) }, () => o.onRemove?.(c.value)),
+    }, '✕');
+    xs.push(x);
+    return h('span', { class: 'kit-chip-rm' + (on ? ' on' : '') }, chip, x);
+  }));
+  const el = h('div', { class: 'kit-chip-pick', role: 'group', 'aria-labelledby': id },
+    h('span', { class: 'kit-field-label' + (o.labelHidden ? ' kit-label-hidden' : ''), id }, o.label), set);
+  if (chipPress && !chipPress.made && chipPress.label === o.label) {
+    chipPress.made = chipPress.x === undefined
+      ? chips[o.chips.findIndex(c => c.value === chipPress.value)]
+      : xs[Math.min(chipPress.x, xs.length - 1)];
+  }
+  function press(from, what, run) {
+    const had = from.ownerDocument.activeElement === from;
+    const p = chipPress = { ...what, made: null };
+    try {
+      run();
+    } finally {
+      chipPress = null;
+    }
+    if (had && p.made?.isConnected) p.made.focus();
+  }
+  return el;
 }
 
 // confirmBox is a tinted box inside a card that asks before something happens:

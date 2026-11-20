@@ -415,6 +415,27 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-pick-pop .kit-pick-opt.on { background: var(--kit-signal-soft); }
 .kit-pick-name { display: block; }
 .kit-pick-detail { display: block; margin-top: 2px; font-size: 12px; color: var(--kit-muted); white-space: normal; }
+/* pickField's more line and the choices behind it: whichever is not showing */
+.kit-pick-pop > [hidden] { display: none; }
+/* a label kept for a screen reader and not drawn (pickField and chipPick's
+   labelHidden): in the page, taking no room */
+.kit-label-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+/* a group of chips to choose from (dom.js chipPick): its label, then the chips
+   on one wrapping line. A chip with a remove press is joined to its ✕. */
+.kit-chip-pick { margin-top: 10px; min-width: 0; }
+.kit-chip-pick:first-child { margin-top: 0; }
+.kit-chip-set { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.kit-chip-rm { display: inline-flex; align-items: stretch; min-width: 0; }
+.kit-chip-rm .kit-chip { border-right: 0; border-radius: 6px 0 0 6px; padding-right: 5px; }
+.kit-chip-x {
+  font: 11px var(--kit-mono); color: var(--kit-muted); background: transparent; cursor: pointer;
+  border: 1px solid var(--kit-line); border-left: 0; border-radius: 0 6px 6px 0; padding: 0 8px 0 5px;
+}
+.kit-chip-rm.on .kit-chip-x { background: var(--kit-signal-soft); border-color: transparent; }
+.kit-chip-x:hover { color: var(--kit-fg); }
 
 /* a confirm box inside a card (dom.js confirmBox): a signal or danger tint */
 .kit-confirm { margin-top: 10px; padding: 12px 14px; border-radius: 6px; font-size: 14.5px; }

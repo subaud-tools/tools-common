@@ -4,6 +4,13 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.108.0
+
+### Added
+- kit: `chipPick({ label, chips, chosen, many?, labelHidden?, onToggle, onRemove? })`, a group of chips to choose from, named by its label (`div.kit-chip-pick`, role group): one `button.kit-chip` per chip (`{ value, label, remove? }`), those in `chosen` on with `aria-pressed`. One-of (the default): a press on the chip that is on does nothing, a press on another calls `onToggle(value)`. `many`: every press calls `onToggle(value)`. A chip with `remove` gets a ✕ button beside it (`button.kit-chip-x`, a sibling of the chip's button, named by `remove`) that calls `onRemove(value)`. The caller keeps the state and redraws; when the press had the focus and the group is redrawn during it, the chip pressed gets the focus back. It returns the element.
+- kit: `pickField` takes `more: { label, choices }`: the menu ends with one line reading the label, under a rule, that the arrows reach like a choice. A press, Enter or Space on it picks nothing and leaves the menu open: the line is replaced by `more.choices`, the menu is placed again and the focus goes to the first of them. The menu opens collapsed every time, unless the current value is only in `more.choices`, when it opens on the longer list so the current choice is in the menu. `value` and `set(value)` take a value from `more.choices`. With `more.choices` empty no line is drawn.
+- kit: `pickField` and `chipPick` take `labelHidden`: the label stays in the page for a screen reader (`kit-label-hidden`) and is not drawn, for a grid or a table cell that already names the control.
+
 ## 0.107.0
 
 ### Changed
