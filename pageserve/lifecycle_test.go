@@ -73,12 +73,12 @@ func TestStartRunsServeInItsOwnSession(t *testing.T) {
 			_ = pr.Kill()
 		}
 	}()
-	sid, err := syscall.Getsid(e.PID)
+	sid, err := getsid(e.PID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if sid != e.PID {
-		mine, _ := syscall.Getsid(0)
+		mine, _ := getsid(0)
 		t.Errorf("serve (pid %d) is in session %d (the test's is %d), want a session of its own", e.PID, sid, mine)
 	}
 }
@@ -113,4 +113,13 @@ func TestConcurrentStartsShareRunningServe(t *testing.T) {
 	if es[0].PID != es[1].PID || es[0].PID == 0 {
 		t.Errorf("pids differ: %d vs %d", es[0].PID, es[1].PID)
 	}
+}
+
+// getsid is getsid(2): syscall has no Getsid on Linux.
+func getsid(pid int) (int, error) {
+	sid, _, errno := syscall.RawSyscall(syscall.SYS_GETSID, uintptr(pid), 0, 0)
+	if errno != 0 {
+		return 0, errno
+	}
+	return int(sid), nil
 }
