@@ -1014,6 +1014,36 @@ test('dom: settingLine at 390px: the side is on the name\'s row and the control 
   fixture().replaceChildren();
 });
 
+test('dom: settingLine at 390px: the name has all of its row that the side does not take', async () => {
+  const { put } = await settingWindow(390);
+  const NAME = 'Claude Code permissions';
+  eq(NAME.length, 23);
+  const whole = el => el.scrollWidth <= el.clientWidth;
+  // proj's line: a dropdown whose current choice is long, so its least width is wide.
+  const controls = { ...SETTING_CONTROLS, 'long dropdown': () => pickField({ label: 'Permissions', labelHidden: true, choices: [{ value: '', label: 'Claude Code\'s own setting, whatever it is' }] }).el };
+  for (const kind of ['long dropdown', 'dropdown', 'chips', 'input']) {
+    // A line before and one after: a card's first and last lines have less padding.
+    const c = put([
+      cardLine({ main: 'before' }),
+      settingLine({ name: NAME, control: controls[kind]() }),
+      settingLine({ name: NAME, control: controls[kind](), meta: 'changed here', actions: [{ label: 'Reset' }] }),
+      settingLine({ name: NAME + ' for every new session that this machine starts', control: controls[kind]() }),
+      settingLine({ name: NAME + ' for every new session that this machine starts', control: controls[kind](), meta: 'changed here', actions: [{ label: 'Reset' }] }),
+      cardLine({ main: 'after' }),
+    ]);
+    const [bare, marked, long, both] = c.querySelectorAll('.kit-setting-line');
+    assert(whole(bare.firstChild), `${kind}: with no side the name is whole (${bare.firstChild.clientWidth} of ${bare.firstChild.scrollWidth})`);
+    assert(whole(marked.firstChild), `${kind}: beside a meta and an action the name is whole (${marked.firstChild.clientWidth} of ${marked.firstChild.scrollWidth})`);
+    const name = box(marked.firstChild), side = box(marked.lastChild), meta = box(marked.querySelector('.kit-card-line-meta')), act = box(marked.querySelector('.kit-setting-line-acts'));
+    assert(near(side.left, name.right + 12) && near(side.right, box(marked).right), `the side has the rest of the row (${side.left} after ${name.right})`);
+    assert(near(meta.left, side.left) && near(meta.right, act.left), 'and the meta what the actions leave of it');
+    assert(near(box(long.firstChild).width, box(long).width), `${kind}: a name longer than the row has the whole row with no side (${box(long.firstChild).width} of ${box(long).width})`);
+    assert(near(box(both.firstChild).right + 12, box(both.querySelector('.kit-setting-line-acts')).left), `${kind}: and with a side all of it but the actions`);
+    eq([box(bare).height, box(long).height, box(both).height], [box(marked).height, box(marked).height, box(marked).height], `${kind}: one height`);
+  }
+  fixture().replaceChildren();
+});
+
 test('dom: settingLine with no control: name and side on one row; four actions that do not fit a phone go under the name, with a meta or without', async () => {
   const acts = ['Move up', 'Move down', 'Height', 'Turn off'].map(label => ({ label }));
   const mid = r => r.top + r.height / 2;

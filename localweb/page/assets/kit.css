@@ -399,7 +399,8 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    width and its meta takes what is left, cut with an ellipsis (the meta has no
    width of its own, so the columns never depend on its words). On a phone the
    name and the side share the first row and the control is under them at full
-   width. */
+   width; the name has all of that row the side's actions do not take, and the
+   meta what the name leaves. */
 .kit-setting-line { align-items: center; justify-content: flex-start; gap: 6px 12px; }
 .kit-setting-line.with-control {
   display: grid; grid-template-areas: "name control side";
@@ -423,6 +424,15 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   .kit-setting-line.with-control {
     grid-template-areas: "name side" "control control";
     grid-template-columns: minmax(0, auto) minmax(min-content, 1fr);
+  }
+  /* the control fills both columns and sizes neither: with a width of its own
+     it would put its least width into the side's column, which the name on
+     the row above then could not use */
+  .kit-setting-line.with-control > .kit-setting-line-control { contain: inline-size; }
+  /* with no side there is one column, so the name has the whole row and not
+     the row less the gap to an empty column */
+  .kit-setting-line.with-control:not(:has(> .kit-setting-line-side)) {
+    grid-template-areas: "name" "control"; grid-template-columns: minmax(0, 1fr);
   }
 }
 
