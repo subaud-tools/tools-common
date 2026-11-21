@@ -1483,3 +1483,22 @@ export function betaMark(): HTMLSpanElement;
 export function badgeIfBeta(el: HTMLElement, o?: { url?: string; protocol?: string }): Promise<void>;
 /** Draws the Guide as the whole page in root, as /_kit/guide/ does. */
 export function guidePage(root: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<void>;
+
+export interface ZoomableOptions {
+  /** true: only the ⤢ mark opens the viewer; a click on the holder stays the holder's (a table's text stays selectable). Default false: a click anywhere on the holder but a button or link opens it too, with a zoom-in cursor (.kit-zoom-click). */
+  markOnly?: boolean;
+}
+/**
+ * Shows el bigger over the whole window (.kit-viewer, a dialog on a dark backdrop) with caption in its head and a Close button, which takes the focus.
+ * An SVG (el, or an svg in it) is copied without its width and height and fills the window; an image is copied by its src and scaled to fill the window;
+ * anything else, and anything holding a table, is deep-copied (without ids or contenteditable) onto a white panel (.kit-viewer-panel) at its own width,
+ * at most the window's, scrolling both ways when bigger. Close, Esc or a click on the backdrop outside the picture closes it, and focus goes back to back,
+ * else to what had the focus when it opened.
+ */
+export function viewer(el: Element, caption: string, back?: HTMLElement | null): void;
+/**
+ * Adds the ⤢ mark (button.kit-grow, title "See it bigger", aria-label "See ‹caption› bigger") on holder's top-right corner and marks holder .kit-zoomable
+ * (position: relative). A press on the mark opens viewer(pic(), caption, mark); pic is asked at each press, and null opens nothing.
+ * Returns the mark: hide it with mark.hidden, or take it off and append it to holder again, to show it only while it is wanted.
+ */
+export function zoomable(holder: HTMLElement, pic: () => Element | null, caption: string, opts?: ZoomableOptions): HTMLButtonElement;
