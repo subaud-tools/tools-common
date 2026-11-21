@@ -94,9 +94,11 @@ function alsoOpen() {
 // button.
 export function bar(o) {
   const ctls = new Map();
-  for (const s of o.sections || []) {
-    ctls.set(s.id, h('button', { class: 'kit-ctl', type: 'button', dataset: { id: s.id }, onclick: () => o.onSection && o.onSection(s.id) }, s.label, count(s.count)));
-  }
+  let sectionsShown = true;
+  const sectionButton = s => h('button', { class: 'kit-ctl', type: 'button', hidden: !sectionsShown, dataset: { id: s.id }, onclick: () => o.onSection && o.onSection(s.id) }, s.label, count(s.count));
+  for (const s of o.sections || []) ctls.set(s.id, sectionButton(s));
+  // The section buttons sit between the brand and the status text; a
+  // redraw (setSections) puts the new ones in the same place.
   const status = h('span', { class: 'kit-status' }, o.status || '');
   const also = alsoOpen();
   const pill = h('span', { class: 'kit-live', hidden: true, role: 'status' });
@@ -185,7 +187,18 @@ export function bar(o) {
       }
     },
     setSectionsShown(shown) {
+      sectionsShown = !!shown;
       for (const el of ctls.values()) el.hidden = !shown;
+    },
+    // setSections redraws the section buttons where they were, with the
+    // same look and onSection, for one bar kept across pages. They keep
+    // setSectionsShown's state; active (or none) is the one on.
+    setSections(sections, active) {
+      for (const el of ctls.values()) el.remove();
+      ctls.clear();
+      for (const s of sections || []) ctls.set(s.id, sectionButton(s));
+      status.before(...ctls.values());
+      handle.setSection(active);
     },
     setCount(id, n) {
       const el = ctls.get(id);

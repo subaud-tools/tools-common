@@ -225,6 +225,8 @@ export interface BarHandle {
   setSection(id: string): void;
   /** Show or hide every section button, for one bar kept across pages. */
   setSectionsShown(shown: boolean): void;
+  /** Redraw the section buttons in place, beside the brand, with the same look and onSection, for one bar kept across pages (Plans · Later on one page, Plan · Record on another). active is the one on (none without it); the buttons keep setSectionsShown's state, and setSection and setCount act on the new ones. */
+  setSections(sections: Section[], active?: string): void;
   setCount(id: string, count?: string | number | null): void;
   /** tone: muted (default), signal, or danger (e.g. "offline · 3 queued"). */
   setStatus(text: string, opts?: { tone?: StatusTone }): void;
