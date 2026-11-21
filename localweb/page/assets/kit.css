@@ -1003,6 +1003,9 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
  * control the step outlines, its ring drawn just outside it; the note sits
  * beside it, never on it. */
 .kit-tour { position: fixed; inset: 0; z-index: 200; cursor: default; }
+/* in the top layer (the popover attribute), above a row's menu or a dropdown:
+   the same box, with none of a popover's own looks */
+.kit-tour[popover] { width: auto; height: auto; margin: 0; padding: 0; border: 0; background: none; color: inherit; overflow: visible; }
 .kit-tour-ring {
   position: fixed;
   pointer-events: none;
@@ -1029,7 +1032,12 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 /* ---- the walk's spotlight (spotlight.js) -------------------------------- */
 /* The tour's ring and note, with nothing over the page: the learner presses
  * the real control. Lost: the control isn't on the page yet, so the note waits
- * off the page's text and says the agent is getting it ready. */
+ * off the page's text and says the agent is getting it ready. Both are in
+ * the top layer (the popover attribute), above a sheet, a row's menu and a
+ * dropdown; popOut puts them in again when a menu opens after them. */
+.kit-spot-ring[popover] { inset: auto; margin: 0; padding: 0; border: 0; background: none; overflow: visible; }
+.kit-spot-card[popover] { inset: auto; margin: 0; }
+.kit-spot-ring[hidden], .kit-spot-card[hidden] { display: none; }
 .kit-spot-ring {
   position: fixed;
   z-index: 190;

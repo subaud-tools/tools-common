@@ -512,20 +512,49 @@ let popOpen = null;
 // A pop opened before it is in the page, or taken out of the top layer by the
 // browser when its row is moved, shows there once it is in the page.
 export function popOut({ wrap, btn, pop, onToggle, place }) {
-  let doc = null, win = null, watch = null;
+  let doc = null, win = null, watch = null, was = false, kind = null;
   const moved = e => {
     if (e.target !== pop) place(e);
   };
   // Into the top layer, and to its place: at once when the pop is in the
   // page, else when the page next changes with it in. The browser takes a
-  // pop out of the top layer when its row leaves the page or moves in it.
+  // pop out of the top layer when its row leaves the page or moves in it; one
+  // that has left the page and is not back by the end of that change is
+  // closed, quietly: nothing of it listens on.
   const top = () => {
-    if (pop.hidden || !pop.isConnected) return;
-    if (pop.hasAttribute('popover')) {
+    if (pop.hidden) return;
+    if (!pop.isConnected) {
+      if (was) close(true);
+      return;
+    }
+    was = true;
+    if (kind !== null) {
+      // Drawn before it was in the page (wait): a top-layer pop again, with
+      // the focus the caller gave one of its lines meanwhile.
+      const had = doc.activeElement;
+      pop.setAttribute('popover', kind);
+      kind = null;
+      Object.assign(pop.style, { position: '', opacity: '' });
+      pop.showPopover();
+      if (pop.contains(had) && doc.activeElement !== had) had.focus({ preventScroll: true });
+    } else if (pop.hasAttribute('popover')) {
       if (pop.matches(':popover-open')) return;
       pop.showPopover();
     }
+    raise(doc);
     place?.();
+  };
+  // A top-layer pop shown before it is in the page cannot show, and nothing
+  // in it could take the focus until it does. A caller that redraws a row
+  // with its menu open gives a line the focus as soon as the row is in (a
+  // microtask queued while building it, which runs before the watch below
+  // hears of the row). So until then the pop is an ordinary element, fixed
+  // (it adds nothing to the page's size and a focus scrolls nothing) and not
+  // drawn; top makes it the top-layer pop before the page is next drawn.
+  const wait = () => {
+    kind = pop.getAttribute('popover');
+    pop.removeAttribute('popover');
+    Object.assign(pop.style, { position: 'fixed', opacity: '0' });
   };
   const outside = e => {
     if (!wrap.contains(e.target)) close();
@@ -543,6 +572,11 @@ export function popOut({ wrap, btn, pop, onToggle, place }) {
     } catch { /* its document is gone */ }
     watch?.disconnect();
     watch = null;
+    if (kind !== null) {
+      pop.setAttribute('popover', kind);
+      kind = null;
+      Object.assign(pop.style, { position: '', opacity: '' });
+    }
     win?.removeEventListener('scroll', moved, true);
     win?.removeEventListener('resize', moved);
     win = null;
@@ -556,8 +590,11 @@ export function popOut({ wrap, btn, pop, onToggle, place }) {
     popOpen?.(quiet);
     doc = wrap.ownerDocument;
     pop.hidden = false;
+    was = false;
+    const layer = pop.hasAttribute('popover');
+    if (layer && !pop.isConnected) wait();
     top();
-    if (pop.hasAttribute('popover')) {
+    if (layer) {
       watch = new MutationObserver(top);
       watch.observe(doc, { childList: true, subtree: true });
     }
@@ -573,6 +610,22 @@ export function popOut({ wrap, btn, pop, onToggle, place }) {
     if (!quiet) onToggle?.(true);
   }
   return { show, close, get open() { return !pop.hidden; } };
+}
+
+// A walk's ring and note (spotlight.js) and the tour's overlay (tour.js) are
+// in the top layer too, and stay above any pop-out: the top layer draws in
+// the order things entered it, so a pop-out shown after them puts them in
+// again, keeping the focus and the scroll they had.
+const ABOVE = '.kit-spot-ring, .kit-spot-card, .kit-tour';
+function raise(doc) {
+  for (const el of doc.querySelectorAll(ABOVE)) {
+    if (!el.matches(':popover-open')) continue;
+    const had = doc.activeElement, y = el.scrollTop;
+    el.hidePopover();
+    el.showPopover();
+    el.scrollTop = y;
+    if (had && had.isConnected && doc.activeElement !== had) had.focus({ preventScroll: true });
+  }
 }
 
 // placePop puts a top-layer pop (position fixed) at its button, for pickField

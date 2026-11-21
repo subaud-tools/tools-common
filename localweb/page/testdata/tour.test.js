@@ -1,5 +1,6 @@
 import { test, eq, assert, fixture } from './harness.js';
 import { tour, placeNote, registeredTour } from '/_kit/tour.js';
+import { rowMenu } from '/_kit/frontpage.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // until waits for the overlay to show step id (a loaded machine runs slow).
@@ -126,4 +127,32 @@ test('placeNote: below a control, left of a full-height rail, above one at the f
     p = placeNote(t, card, view);
     assert(p.x >= 0 && p.x + card.width <= view.width && p.y >= 0 && p.y + card.height <= view.height, JSON.stringify(t));
   }
+});
+
+test('tour: the overlay is above a row menu, open before it or opened under it', async () => {
+  const fx = page();
+  const el = rowMenu({ label: 'More', items: [{ label: 'Rename', run() {} }, { label: 'Stop', run() {} }] });
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;justify-content:space-between;margin:40px';
+  row.append('Session', el);
+  fx.append(row);
+  const more = el.querySelector('.kit-row-more'), item = el.querySelector('[role="menuitem"]');
+  const top = () => {
+    const r = item.getBoundingClientRect();
+    return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+  };
+  more.click();
+  assert(top() === item, 'the menu is open');
+  const t = tour(steps(), { seenKey: fresh('kit.tour.menu'), wait: 50 });
+  t.start();
+  const o = await until('a');
+  assert(o.contains(top()), 'the overlay takes the press over a menu open first');
+  more.click();
+  more.click();
+  assert(o.contains(top()), 'and over a menu opened under it');
+  assert(document.activeElement === o.querySelector('.kit-tour-next'), 'next keeps the focus');
+  const b = o.getBoundingClientRect();
+  eq([b.left, b.top, Math.round(b.width), Math.round(b.height)], [0, 0, innerWidth, innerHeight], 'the overlay covers the window');
+  key('Escape');
+  more.click();
 });

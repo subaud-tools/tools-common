@@ -83,8 +83,10 @@ export function tour(steps, o = {}) {
     const skipBtn = h('button', { class: 'kit-btn kit-tour-skip', type: 'button' }, 'skip');
     const nextBtn = h('button', { class: 'kit-btn fill kit-tour-next', type: 'button' }, 'next');
     const card = h('div', { class: 'kit-tour-card', hidden: true }, count, note, h('div', { class: 'kit-tour-acts' }, skipBtn, nextBtn));
-    const overlay = h('div', { class: 'kit-tour', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Show me around' }, ring, card);
+    const overlay = h('div', { class: 'kit-tour', popover: 'manual', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Show me around' }, ring, card);
     document.body.append(overlay);
+    // In the top layer, above a row's menu or a dropdown (popOut keeps it there).
+    overlay.showPopover?.();
 
     let at = -1, ended = false, raf = 0, moving = false, pushed = 0;
     const onHash = () => { if (moving) pushed++; else finish(false); };

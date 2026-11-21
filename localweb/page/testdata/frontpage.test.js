@@ -801,6 +801,57 @@ test('rowMenu: an open menu whose row is moved in the page stays open at its but
   assert(pop.hidden && !pop.matches(':popover-open'), 'closed');
 });
 
+test('rowMenu: open, with a focus on an item queued before the row is in the page, gives that item the focus', async () => {
+  const before = document.createElement('button');
+  fixture().append(before);
+  before.focus();
+  const high = document.documentElement.scrollHeight;
+  const el = rowMenu({ label: 'More', open: true, items: [{ label: 'A', run() {} }, { label: 'B', run() {} }] });
+  const item = parts(el).pop.querySelectorAll('[role="menuitem"]')[1];
+  queueMicrotask(() => item.focus());
+  const row = line('Row', el);
+  row.style.cssText = 'display:flex;justify-content:space-between';
+  fixture().append(row);
+  await new Promise(r => setTimeout(r, 30));
+  assert(document.activeElement === item, `the item has the focus (${document.activeElement && document.activeElement.tagName})`);
+  const { btn, pop } = parts(el);
+  assert(pop.matches(':popover-open') && pop.getAttribute('popover') === 'manual', 'in the top layer');
+  const r = btn.getBoundingClientRect(), m = pop.getBoundingClientRect();
+  eq([Math.round(m.top - r.bottom), Math.round(m.right - r.right)], [4, 0], 'at its button');
+  eq([pop.style.opacity, document.documentElement.scrollHeight], ['', high], 'drawn, and the page no longer');
+  btn.click();
+});
+
+test('rowMenu: an open menu whose row is taken off the page closes and stops listening', async () => {
+  const heard = [];
+  const el = menu([], heard);
+  const row = line('Row', el);
+  fixture().append(row);
+  const { btn, pop } = parts(el);
+  btn.click();
+  await new Promise(r => setTimeout(r, 0));
+  let asked = 0;
+  const real = btn.getBoundingClientRect.bind(btn);
+  btn.getBoundingClientRect = () => { asked++; return real(); };
+  row.remove();
+  await new Promise(r => setTimeout(r, 0));
+  assert(pop.hidden, 'closed');
+  eq(btn.getAttribute('aria-expanded'), 'false');
+  window.dispatchEvent(new Event('scroll'));
+  window.dispatchEvent(new Event('resize'));
+  eq(asked, 0, 'a scroll or a resize places nothing');
+  fixture().append(row);
+  await new Promise(r => setTimeout(r, 0));
+  assert(pop.hidden && !pop.matches(':popover-open'), 'back in the page, it stays closed');
+  eq(asked, 0, 'and is not placed');
+  eq(heard, [true], 'onMenu is not told: a caller keeping open from it draws the next one open');
+  const other = menu();
+  fixture().append(other);
+  parts(other).btn.click();
+  assert(!parts(other).pop.hidden, 'another menu opens as usual');
+  parts(other).btn.click();
+});
+
 test('rowMenu: a menu with no details keeps the width it had inside its wrapper: 140px in a row, its widest line in a wide wrapper', () => {
   const draw = () => rowMenu({ label: 'More', items: [{ label: 'Move this plan over to planned', run() {} }, { label: 'Rename', run() {} }] });
   const inRow = draw(), wide = draw();
