@@ -576,3 +576,19 @@ test('frame foot: a width the tool gives a child of the centre wins over the ful
   p.into.className = 'narrow-child';
   near(p.into.getBoundingClientRect().width, 200, 'its width');
 });
+
+test('frame: a hidden label far down the centre column scrolls with it, not with the document', () => {
+  clean();
+  const f = frame(parts());
+  const app = mount(f);
+  app.style.height = '300px';
+  const tall = document.createElement('div');
+  tall.style.height = '2000px';
+  const label = document.createElement('span');
+  label.className = 'kit-label-hidden';
+  label.textContent = 'a control named for a screen reader';
+  f.centre.append(tall, label);
+  eq(f.centre.contains(label.offsetParent), true, 'the label is placed against the centre column');
+  assert(f.centre.scrollHeight > 2000, 'the centre column scrolls');
+  assert(app.scrollHeight <= app.clientHeight + 1, `the frame itself has nothing to scroll (${app.scrollHeight} in ${app.clientHeight})`);
+});

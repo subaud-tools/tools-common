@@ -558,7 +558,10 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-left-col { width: 288px; padding: 0 0 32px; }
 .kit-right-col { width: 384px; }
 .kit-left-col, .kit-right-col { position: relative; transition: width .15s; }
-.kit-mid { padding: 24px 24px 32px; }
+/* the centre column holds what is placed inside it (a .kit-label-hidden far
+   down a long view), as the side columns do: else it is placed against the
+   page and lengthens the document. */
+.kit-mid { position: relative; padding: 24px 24px 32px; }
 .kit-col-toggle {
   position: sticky; top: 8px; z-index: 3; display: block;
   margin: 8px 12px 0 auto; width: 25px; min-height: 25px; padding: 0;
