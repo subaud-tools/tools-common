@@ -1132,3 +1132,8 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
   .kit-record > .kit-col:not(.kit-mid), .kit-rec-find { display: none; }
   .kit-rec-tab.off { position: static; height: auto; overflow: visible; visibility: visible; }
 }
+
+/* a thin progress bar: the caller sets the filled part's width inline on the
+   inner i (style="width:28%"). Kit tokens only. */
+.kit-progress { display: inline-block; vertical-align: middle; width: 160px; height: 5px; background: var(--kit-line); border-radius: 3px; overflow: hidden; }
+.kit-progress > i { display: block; height: 100%; background: var(--kit-ok); }

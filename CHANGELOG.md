@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.111.0
+
+### Added
+- kit: `.kit-progress`, a thin bar (5px, `--kit-line` track, 3px radius, 160px wide, inline-block) whose filled part is an inner `i` (`--kit-ok`); the caller sets its width inline (`<span class="kit-progress"><i style="width:28%"></i></span>`). Shown on the demo page's `?view=page`.
+
 ## 0.110.0
 
 ### Changed

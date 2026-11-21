@@ -444,7 +444,7 @@ function shapePage() {
   const pill = h('span', { class: 'kit-pill ok' }, 'running');
   const top = band({
     title: 'alpha',
-    beside: [pill, h('span', { class: 'kit-meta' }, 'm7i.large · 200 GB')],
+    beside: [pill, h('span', { class: 'kit-meta' }, 'm7i.large · 200 GB'), h('span', { class: 'kit-progress', role: 'img', 'aria-label': '28% done' }, h('i', { style: 'width:28%' }))],
     under: [stageTrack({
       label: 'Where setting up stands',
       open() {},
