@@ -459,27 +459,83 @@ export function card(o) {
     o.actions && o.actions.length ? buttons(o.actions) : null);
 }
 
+// lineSide is the right side of a card's line (cardLine, settingLine): its
+// small mono meta, or null, and its actions as link-buttons. An action is
+// { label, run, danger, disabled, title, data }: title is its aria-label and
+// data its data-* attributes.
+function lineSide(o) {
+  const meta = o.meta !== undefined && o.meta !== null && o.meta !== '' ? h('small', { class: 'kit-card-line-meta' }, o.meta) : null;
+  const acts = (o.actions || []).map(a => h('button', {
+    class: 'kit-label-link kit-card-line-act' + (a.danger ? ' danger' : ''),
+    type: 'button',
+    disabled: !!a.disabled,
+    'aria-label': a.title || null,
+    dataset: a.data,
+    onclick: () => a.run && a.run(),
+  }, a.label));
+  return { meta, acts };
+}
+const dotted = xs => xs.flatMap((x, i) => (i ? [' · ', x] : [x]));
+
 // cardLine is one line in a card: its words on the left, and on the right its
 // small mono meta and link-buttons, a dot between each. Lines in a card have a
-// rule between them. An action is { label, run, danger, disabled, title }.
+// rule between them.
 export function cardLine(o) {
-  const side = [];
-  if (o.meta !== undefined && o.meta !== null && o.meta !== '') side.push(h('small', { class: 'kit-card-line-meta' }, o.meta));
-  for (const a of o.actions || []) {
-    side.push(h('button', {
-      class: 'kit-label-link kit-card-line-act' + (a.danger ? ' danger' : ''),
-      type: 'button',
-      disabled: !!a.disabled,
-      'aria-label': a.title || null,
-      onclick: () => a.run && a.run(),
-    }, a.label));
-  }
+  const { meta, acts } = lineSide(o);
+  const side = meta ? [meta, ...acts] : acts;
   return h('div', { class: 'kit-card-line' },
     h('span', { class: 'kit-card-line-main' }, o.main),
-    side.length ? h('span', { class: 'kit-card-line-side' }, side.flatMap((x, i) => (i ? [' · ', x] : [x]))) : null);
+    side.length ? h('span', { class: 'kit-card-line-side' }, dotted(side)) : null);
 }
 
 let fieldIds = 0;
+
+// nameless finds what in a setting's control the setting's name should name:
+// the control itself when it is a form control or has a role, else the one
+// input, select or textarea inside it; and only when that has no name of its
+// own (an aria-label, an aria-labelledby, a label for it or around it).
+function nameless(control) {
+  if (!(control instanceof Element)) return null;
+  const FIELD = 'input, select, textarea';
+  let el = control;
+  if (!control.matches(FIELD + ', button, [role]')) {
+    const inside = control.querySelectorAll(FIELD);
+    if (inside.length !== 1) return null;
+    [el] = inside;
+  }
+  if (el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby') || el.closest('label')) return null;
+  if (el.id && [...control.querySelectorAll('label')].some(l => l.htmlFor === el.id)) return null;
+  return el;
+}
+
+// settingLine is one setting in a card, a card line whose height never
+// depends on its right side: the name (and a muted hint after it) in a fixed
+// first column, its control next, and the side (meta, then actions, as
+// cardLine's) at the right end. On a phone the name and the side share the
+// first row and the control is under them at full width. The side never goes
+// under the control: a meta too long for its row is cut with an ellipsis (its
+// title says it whole) and the actions keep their width. The name is one line,
+// cut with an ellipsis when it doesn't fit (its title says it whole). With no
+// control it is the name and the side on one row; actions that don't fit
+// beside the name go under it. A control with no name of its own (nameless)
+// is named by the setting's name: id, or one the kit makes, ties them.
+export function settingLine(o) {
+  const { meta, acts } = lineSide(o);
+  const has = o.control !== undefined && o.control !== null && o.control !== false && o.control !== '';
+  const label = h('span', { class: 'kit-setting-line-label', id: o.id || null }, o.name);
+  const target = has ? nameless(o.control) : null;
+  if (target) {
+    if (!label.id) label.id = `kit-setting-${++fieldIds}`;
+    target.setAttribute('aria-labelledby', label.id);
+  }
+  if (meta) meta.title = meta.textContent;
+  return h('div', { class: 'kit-card-line kit-setting-line' + (has ? ' with-control' : '') },
+    h('span', { class: 'kit-setting-line-name', title: o.name + (o.hint ? ' ' + o.hint : '') }, label,
+      o.hint ? h('small', { class: 'kit-setting-line-hint' }, ' ' + o.hint) : null),
+    has ? h('span', { class: 'kit-setting-line-control' }, o.control) : null,
+    meta || acts.length ? h('span', { class: 'kit-card-line-side kit-setting-line-side' }, meta,
+      acts.length ? h('span', { class: 'kit-setting-line-acts' }, meta ? ' · ' : null, dotted(acts)) : null) : null);
+}
 
 // textField is a label over a text input, with an optional hint line under it;
 // onInput gets the value on every input. mono sets the input in the mono face

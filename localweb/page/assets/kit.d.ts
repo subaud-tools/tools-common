@@ -371,10 +371,40 @@ export interface CardLineAction {
   disabled?: boolean;
   /** Its aria-label, when the label alone doesn't say what it acts on ("Remove alice@example.com"). */
   title?: string;
+  /** Set as data-* attributes on its button (`{ action: 'clear-setting' }` is `data-action="clear-setting"`), so a page can find it. */
+  data?: Record<string, string>;
 }
 
 /** One line in a card: its words on the left, its small mono meta and link-buttons on the right with a dot between each, a rule between lines. No meta and no actions, no right side. */
 export function cardLine(o: { main: Node | string | Array<Node | string>; meta?: Node | string; actions?: CardLineAction[] }): HTMLElement;
+
+/**
+ * One setting in a card: a card line (`div.kit-card-line.kit-setting-line`, the same rule, paddings and type as cardLine) whose height never depends on whether it has a meta or actions.
+ *
+ * Its children, in order: `span.kit-setting-line-name` (holding `span.kit-setting-line-label`, the name, then `small.kit-setting-line-hint` when there is a hint), `span.kit-setting-line-control` (only with a control; the line then carries `with-control`), and `span.kit-card-line-side.kit-setting-line-side` (only with a meta or an action: `small.kit-card-line-meta`, then `span.kit-setting-line-acts` holding the `button.kit-card-line-act`s with a dot between each).
+ *
+ * Wide, with a control: one row. The name is in a fixed first column (`--kit-setting-name`, 200px) so the controls of consecutive lines share a left edge; the control is next, at most `--kit-setting-control` (320px) wide; the side is at the right end. When the window is 640px wide or less: the name and the side share the first row and the control is under them at full width. Set either custom property on the line or anything around it to change a width.
+ *
+ * The side is one row and never goes under the control. Its actions are never cut; its meta takes the room left and is cut with an ellipsis, with its whole text in its `title`. The name is one line, cut with an ellipsis when it doesn't fit, with the name and hint in its `title`.
+ *
+ * With no control the name and the side share one row at every width; when the actions don't fit beside the name they go under it, at the right, whatever the meta says.
+ *
+ * The setting's name becomes the control's accessible name (`aria-labelledby` the label, whose id is `id` or one the kit makes) when the control has none of its own: the control itself when it is an input, select, textarea, button or has a `role`, else the one input, select or textarea inside it. A control with an `aria-label`, an `aria-labelledby` or a `label` (a pickField, a chipPick, a textField) is left as it is.
+ */
+export function settingLine(o: {
+  /** The setting's name. */
+  name: string;
+  /** Small muted words after the name, drawn as given after a space ("· top to bottom", "· 2 of 17 on"). */
+  hint?: string;
+  /** Its control: a pickField's el, a chipPick's el, an input with a button, or words. */
+  control?: Node | string;
+  /** As cardLine's: small mono words on the right ("changed here"). */
+  meta?: Node | string;
+  /** As cardLine's: link-buttons on the right (Reset, All, None). */
+  actions?: CardLineAction[];
+  /** The id of the name's label, when the page wants to choose it; the kit makes one only when it ties the name to the control. */
+  id?: string;
+}): HTMLElement;
 
 /** A label over a text input (its id, given or made, ties them), with an optional hint line; onInput gets the value on every input. mono sets the input in the mono face. */
 export function textField(o: {
