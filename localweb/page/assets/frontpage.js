@@ -123,8 +123,8 @@ export function sortedList({ name, orders, items, row, empty, label, title, grou
   };
 }
 
-// The groups' order: the one kept under <name>.order.<groups.name> with the
-// keys that no longer exist dropped (a key exists while groups.order names it
+// The groups' order as drawn: the one kept under <name>.order.<groups.name>
+// with the keys that no longer exist left out (only here: what is kept keeps them) (a key exists while groups.order names it
 // or an item has it), then each missing key of groups.order right after the
 // one before it there, then the rest A to Z by label.
 function arrange(kept, order, labels) {
@@ -137,6 +137,27 @@ function arrange(kept, order, labels) {
   });
   const rest = [...labels.keys()].filter(k => !out.includes(k)).sort((a, b) => labels.get(a).localeCompare(labels.get(b)));
   return [...out, ...rest];
+}
+
+// The order to keep after a move: next (the groups known now, in their new
+// order) with each kept key it lacks (a group a filter hides, or one no item
+// has now) put back by its kept place: right after the kept key before it
+// that is in, else right before the kept key after it, else at the end.
+// Keys are dropped only when drawing, never from what is kept.
+function keepHidden(next, kept) {
+  const out = [...next];
+  const saved = (kept || []).filter((k, i, a) => typeof k === 'string' && a.indexOf(k) === i);
+  saved.forEach((k, i) => {
+    if (out.includes(k)) return;
+    const before = saved.slice(0, i).reverse().find(p => out.includes(p));
+    if (before !== undefined) {
+      out.splice(out.indexOf(before) + 1, 0, k);
+      return;
+    }
+    const after = saved.slice(i + 1).find(p => out.includes(p));
+    out.splice(after === undefined ? out.length : out.indexOf(after), 0, k);
+  });
+  return out;
 }
 
 function readKept(k) {
@@ -167,10 +188,12 @@ function sortedGroups({ name, groups, items, compare, row, redraw }) {
     labels.set(g.key, g.label);
   }
   const fallback = arrange(null, groups.order, labels);
-  const full = arrange(readKept(orderKey), groups.order, labels);
+  const saved = readKept(orderKey);
+  const full = arrange(saved, groups.order, labels);
   const shown = full.filter(k => byKey.has(k));
   const labelOf = k => labels.get(k) ?? k;
-  const keep = next => {
+  const keep = moved => {
+    const next = keepHidden(moved, saved);
     if (next.length === fallback.length && next.every((k, i) => k === fallback[i])) remembered.remove(orderKey);
     else remembered.set(orderKey, JSON.stringify(next));
     redraw();

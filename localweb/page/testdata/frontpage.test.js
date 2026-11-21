@@ -903,6 +903,22 @@ test('sortedList groups: a kept key that no longer exists is dropped, and a new 
   gfresh();
 });
 
+test('sortedList groups: a move keeps the kept place of every group a filter is hiding', () => {
+  gfresh();
+  const proj = { name: 'project', key: p => ({ key: p.project, label: p.project }), order: [] };
+  const four = ['a', 'b', 'c', 'd'].map((k, i) => ({ name: `p${k}`, at: i, project: k }));
+  localStorage.setItem('kitgroups.order.project', JSON.stringify(['a', 'b', 'c', 'd']));
+  const list = grouped({ items: four.filter(p => p.project === 'b' || p.project === 'd'), groups: proj });
+  fixture().append(list.el);
+  eq(groupKeys(list.el), ['b', 'd']);
+  press(list.el, 'd', 'top');
+  eq(groupKeys(list.el), ['d', 'b']);
+  list.set(four);
+  eq(groupKeys(list.el), ['d', 'a', 'b', 'c']);
+  eq(JSON.parse(localStorage.getItem('kitgroups.order.project')), ['d', 'a', 'b', 'c']);
+  gfresh();
+});
+
 test('sortedList groups: no items shows the empty line in one card', () => {
   gfresh();
   const { el } = grouped({ items: [] });
