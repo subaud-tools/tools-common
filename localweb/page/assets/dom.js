@@ -682,11 +682,22 @@ export function placePop(btn, pop, { right = false } = {}) {
 // in more.choices: then it opens on the longer list, so the current choice is
 // always in the menu. labelHidden keeps the label for a screen reader and
 // does not draw it (a grid or a table cell that already names the dropdown).
+// size 'compact' is the dropdown for a bar or a band (kit-pick-compact on the
+// field): the button 28px high with 12px words, the menu's rows as ever.
+// reads is what the button shows instead of the current choice's label: a
+// string, or a function of the current choice (undefined when the value is no
+// choice), asked again on every pick and every set, so set(value) with the
+// value it has reads again. With reads the button's title is those words in
+// full, and the button is named by its label then those words. The menu
+// reads each choice's own label. onCurrent hears a press, Enter or Space on
+// the choice that is already the current one, after the menu has closed;
+// onPick does not hear it. Without onCurrent that press only closes the menu.
 export function pickField(o) {
   const rest = o.more?.choices || [];
   const all = [...o.choices, ...rest];
   let value = o.value ?? o.choices[0]?.value;
   const name = h('span', { class: 'kit-pick-label' });
+  const says = o.reads !== undefined && o.reads !== null;
   const btn = h('button', {
     class: 'kit-input kit-pick-btn', type: 'button', id: o.id || `kit-field-${++fieldIds}`,
     'aria-haspopup': 'listbox', 'aria-expanded': 'false',
@@ -704,7 +715,16 @@ export function pickField(o) {
   const pop = h('div', { class: 'kit-row-pop kit-pick-pop', role: 'listbox', 'aria-labelledby': btn.id, popover: 'manual' }, opts, rule, moreLine);
   pop.hidden = true;
   const box = h('div', { class: 'kit-pick' }, btn, pop);
-  const el = h('div', { class: 'kit-field' }, h('label', { class: 'kit-field-label' + (o.labelHidden ? ' kit-label-hidden' : ''), for: btn.id }, o.label), box);
+  const label = h('label', { class: 'kit-field-label' + (o.labelHidden ? ' kit-label-hidden' : ''), for: btn.id }, o.label);
+  const el = h('div', { class: 'kit-field' + (o.size === 'compact' ? ' kit-pick-compact' : '') }, label, box);
+  // With reads, the button is named by its label and then its words: ids of
+  // the kit's own, since the caller's id may hold a space.
+  if (says) {
+    const n = ++fieldIds;
+    label.id = `kit-pick-label-${n}`;
+    name.id = `kit-pick-reads-${n}`;
+    btn.setAttribute('aria-labelledby', `${label.id} ${name.id}`);
+  }
   const p = popOut({ wrap: box, btn, pop, onToggle: on => on || closed(), place: () => placePop(btn, pop) });
   // Whether the rest shows: the lines the arrows walk are the choices shown,
   // then the more line while it is there.
@@ -727,7 +747,9 @@ export function pickField(o) {
   function set(v) {
     value = v;
     const c = all.find(x => x.value === v);
-    name.textContent = c ? c.label : '';
+    const words = !says ? (c ? c.label : '') : String(typeof o.reads === 'function' ? o.reads(c) : o.reads);
+    name.textContent = words;
+    if (says) btn.title = words;
     btn.classList.toggle('blank', !!c?.blank);
     opts.forEach((b, i) => {
       const on = all[i].value === v;
@@ -776,6 +798,7 @@ export function pickField(o) {
     set(v);
     close();
     if (changed) o.onPick?.(v);
+    else o.onCurrent?.(v);
   }
   btn.addEventListener('click', () => (p.open ? p.close() : open()));
   btn.addEventListener('keydown', e => {

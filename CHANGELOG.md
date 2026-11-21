@@ -4,6 +4,13 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.112.0
+
+### Added
+- kit: `pickField` takes `size: 'compact'`, the dropdown for a bar or a band: the field carries `kit-pick-compact` and its button is 28px high with 12px words and no padding above or below. The menu's rows are an ordinary dropdown's. The button is as wide as the field, so the page gives the field (`el`) its width. Left out, nothing changes.
+- kit: `pickField` takes `reads`, what the button shows instead of the current choice's label: a string, or a function `(choice) => string` given the current choice (`undefined` when the value is none of the choices). It is asked at the start and again on every pick and every `set(value)`, so `set(field.value)` reads again; the arrows move the focus and change no words. With `reads` the button's `title` is always those words in full, set again on every pick and `set` (a page's own `title` on the button would be replaced), and the button is named by its label then those words (`aria-labelledby` the label and `span.kit-pick-label`, both given ids by the kit). The menu reads each choice's own label. Without `reads` the button has no `title` and no `aria-labelledby`, as before.
+- kit: `pickField` takes `onCurrent(value)`: a press, Enter or Space on the choice that is already the current one calls it once, after the menu has closed and the button has the focus back; `onPick` is not called. Without it that press closes the menu and calls nothing, as before.
+
 ## 0.111.0
 
 ### Added

@@ -423,8 +423,25 @@ function chipsDemo() {
     more: { label: 'All models…', choices: models(['haiku', 'claude-fable-5-1', 'claude-opus-5', 'claude-opus-4-8', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5']) },
   });
   const cell = pickField({ label: 'Model for bettor-help', labelHidden: true, value: 'sonnet', choices: [{ value: '', label: 'Default', blank: true }, ...models(['opus', 'sonnet'])] });
+  // A compact dropdown for a band (size), reading other words than its
+  // choice's label (reads), and hearing a press on the current choice
+  // (onCurrent): a session's model, with a switch held until the turn ends.
+  const ids = { fable: 'anthropic/claude-fable-5-2', opus: 'anthropic/claude-opus-5-5', sonnet: 'anthropic/claude-sonnet-5-5' };
+  const bare = v => ids[v].split('/')[1];
+  let on = 'sonnet', held = '';
+  const said = h('span', { class: 'kit-meta', role: 'status' }, 'Pick a model; pick the current one to send it again.');
+  const bandPick = pickField({
+    label: 'Model of this session', labelHidden: true, size: 'compact', value: on,
+    choices: Object.keys(ids).map(v => ({ value: v, label: ids[v], detail: v === 'fable' ? 'the most capable' : undefined })),
+    reads: c => (held ? `${bare(on)} → ${bare(held)}` : bare(c.value)),
+    onPick: v => { held = v; bandPick.set(on); said.textContent = `Held: switches to ${bare(v)} when this turn ends.`; },
+    onCurrent: v => { held = ''; bandPick.set(on); said.textContent = `On ${bare(v)} now: sent again.`; },
+  });
+  bandPick.el.style.cssText = 'margin:0;width:190px;flex:none';
   const draw = () => body.replaceChildren(
     model.el,
+    h('div', { class: 'kit-field' }, h('div', { class: 'kit-field-hint', style: 'margin:0 0 4px' }, 'A compact dropdown in a band, reading the model without its provider (size, reads, onCurrent):'),
+      h('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap' }, bandPick.el, said)),
     h('div', { class: 'kit-field' }, h('div', { class: 'kit-field-hint', style: 'margin:0 0 4px' }, 'A dropdown whose label is not drawn (a table cell names it):'), cell.el),
     chipPick({ label: 'Sidebar', chips: [{ value: 'on', label: 'on' }, { value: 'off', label: 'off' }], chosen: [sidebar], onToggle: v => { sidebar = v; draw(); } }),
     chipPick({
