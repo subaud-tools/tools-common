@@ -710,6 +710,216 @@ test('sortedList: the items given are not reordered', () => {
   eq(items.map(d => d.name), ['b.md', 'c.md', 'a.md']);
 });
 
+test('sortedList: a list with no groups draws no group heading, grip or menu', () => {
+  fresh();
+  const { el } = sorted();
+  assert(!el.querySelector('.kit-group-line, .kit-group-grip, .kit-row-menu'), 'none');
+  eq(el.querySelectorAll('section').length, 1);
+});
+
+const plans = [
+  { name: 'b', at: 2, status: 'agent', project: 'tools · diazo' },
+  { name: 'a', at: 1, status: 'agent', project: 'tools · galley' },
+  { name: 'c', at: 3, status: 'needs', project: 'tools · diazo' },
+  { name: 'd', at: 4, status: 'done', project: 'tools' },
+  { name: 'e', at: 5, status: 'parked', project: 'tools · galley' },
+];
+const statusLabels = { needs: 'Needs you', agent: 'With the agent', waiting: 'Waiting', parked: 'Parked', done: 'Completed' };
+const byStatus = (o = {}) => ({ name: 'status', key: p => ({ key: p.status, label: statusLabels[p.status] }), order: ['needs', 'agent', 'waiting', 'parked', 'done'], uncounted: ['done'], folded: ['done'], ...o });
+const byProject = { name: 'project', key: p => ({ key: p.project, label: p.project }), order: [] };
+const planRow = p => indexRow({ id: p.name, title: p.name });
+const gfresh = () => { for (const k of Object.keys(localStorage)) if (k.startsWith('kitgroups.')) localStorage.removeItem(k); };
+const grouped = (o = {}) => sortedList({ name: 'kitgroups', orders: docOrders, items: plans, row: planRow, empty: 'No plans.', groups: byStatus(), ...o });
+const groupKeys = el => [...el.querySelectorAll('section.kit-group')].map(s => s.dataset.group);
+const headsOf = el => [...el.querySelectorAll('.kit-group-head')].map(b => b.textContent);
+const rowsIn = (el, key) => [...el.querySelector(`[data-group="${key}"]`).querySelectorAll('.kit-group-rows .kit-index-title')].map(t => t.textContent);
+const menuOf = (el, key) => el.querySelector(`[data-group="${key}"] .kit-row-menu`);
+const press = (el, key, action) => {
+  menuOf(el, key).querySelector('.kit-row-more').click();
+  document.querySelector(`.kit-row-pop:not([hidden]) [data-action="${action}"]`).click();
+};
+
+test('sortedList groups: the switch, then one folding card per group with rows, in the order given', () => {
+  gfresh();
+  const { el } = grouped();
+  fixture().append(el);
+  eq(el.children[0].className, 'kit-sort');
+  eq(groupKeys(el), ['needs', 'agent', 'parked', 'done']);
+  eq(el.querySelector('section').className.split(' ').slice(0, 2), ['kit-card', 'kit-group']);
+  eq(headsOf(el), ['Needs you · 1', 'With the agent · 2', 'Parked · 1', 'Completed']);
+  const line = el.querySelector('[data-group="agent"] .kit-group-line');
+  eq([...line.children].map(c => c.className), ['kit-group-grip', 'kit-label kit-group-head', 'kit-row-menu']);
+  const grip = line.children[0];
+  eq([grip.textContent, grip.getAttribute('draggable')], ['⠿', 'true']);
+  gfresh();
+});
+
+test('sortedList groups: an empty group is hidden, and a key no order names goes after the rest, A to Z', () => {
+  gfresh();
+  const { el } = grouped({ items: [...plans, { name: 'z', at: 0, status: 'zeta' }, { name: 'y', at: 0, status: 'alpha' }], groups: byStatus({ key: p => ({ key: p.status, label: statusLabels[p.status] ?? p.status }) }) });
+  eq(groupKeys(el), ['needs', 'agent', 'parked', 'done', 'alpha', 'zeta']);
+  assert(!el.querySelector('[data-group="waiting"]'), 'waiting has none');
+  gfresh();
+});
+
+test('sortedList groups: rows inside each group are sorted by the chosen order', () => {
+  gfresh();
+  localStorage.removeItem('kitgroups.sort');
+  const { el } = grouped();
+  eq(rowsIn(el, 'agent'), ['b', 'a']);
+  el.querySelector('.kit-sort [data-value="name"]').click();
+  eq(rowsIn(el, 'agent'), ['a', 'b']);
+  eq(groupKeys(el), ['needs', 'agent', 'parked', 'done']);
+  localStorage.removeItem('kitgroups.sort');
+  gfresh();
+});
+
+test('sortedList groups: the ⋯ holds Move up, Move down, Move to top and Reset order, each saying where it goes', () => {
+  gfresh();
+  const { el } = grouped();
+  fixture().append(el);
+  menuOf(el, 'agent').querySelector('.kit-row-more').click();
+  const items = [...document.querySelectorAll('.kit-row-pop:not([hidden]) [role="menuitem"]')];
+  eq(items.map(i => [i.dataset.action, i.firstChild.textContent, i.querySelector('.kit-row-detail').textContent]), [
+    ['up', 'Move up', 'Puts With the agent above Needs you'],
+    ['down', 'Move down', 'Puts it below Parked'],
+    ['top', 'Move to top', 'Makes it the first group'],
+    ['reset', 'Reset order', 'Back to Needs you first'],
+  ]);
+  document.body.click();
+  gfresh();
+});
+
+test('sortedList groups: Move up, Move down and Move to top change the order and keep it across set', () => {
+  gfresh();
+  const list = grouped();
+  fixture().append(list.el);
+  press(list.el, 'agent', 'up');
+  eq(groupKeys(list.el), ['agent', 'needs', 'parked', 'done']);
+  press(list.el, 'agent', 'down');
+  eq(groupKeys(list.el), ['needs', 'agent', 'parked', 'done']);
+  press(list.el, 'parked', 'down');
+  eq(groupKeys(list.el), ['needs', 'agent', 'done', 'parked']);
+  press(list.el, 'done', 'top');
+  eq(groupKeys(list.el), ['done', 'needs', 'agent', 'parked']);
+  list.set(plans);
+  eq(groupKeys(list.el), ['done', 'needs', 'agent', 'parked']);
+  eq(groupKeys(grouped().el), ['done', 'needs', 'agent', 'parked'], 'a new list with the same name');
+  eq(JSON.parse(localStorage.getItem('kitgroups.order.status')).slice(0, 3), ['done', 'needs', 'agent']);
+  gfresh();
+});
+
+test('sortedList groups: a move skips a hidden group, which keeps its place', () => {
+  gfresh();
+  const list = grouped();
+  fixture().append(list.el);
+  press(list.el, 'parked', 'up');
+  eq(groupKeys(list.el), ['needs', 'parked', 'agent', 'done']);
+  list.set([...plans, { name: 'w', at: 0, status: 'waiting' }]);
+  eq(groupKeys(list.el), ['needs', 'parked', 'agent', 'waiting', 'done']);
+  gfresh();
+});
+
+test('sortedList groups: Reset order goes back to the order given and forgets the kept one', () => {
+  gfresh();
+  const list = grouped();
+  fixture().append(list.el);
+  press(list.el, 'done', 'top');
+  press(list.el, 'done', 'reset');
+  eq(groupKeys(list.el), ['needs', 'agent', 'parked', 'done']);
+  eq(localStorage.getItem('kitgroups.order.status'), null);
+  gfresh();
+});
+
+test('sortedList groups: a drag by the grip moves a group before or after the one it is dropped on', () => {
+  gfresh();
+  const list = grouped();
+  fixture().append(list.el);
+  const drag = (from, to, half) => {
+    const dt = new DataTransfer();
+    list.el.querySelector(`[data-group="${from}"] .kit-group-grip`).dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    const target = list.el.querySelector(`[data-group="${to}"]`);
+    const r = target.getBoundingClientRect();
+    const y = half === 'top' ? r.top + 2 : r.bottom - 2;
+    target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: y }));
+    target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: y }));
+  };
+  drag('parked', 'needs', 'top');
+  eq(groupKeys(list.el), ['parked', 'needs', 'agent', 'done']);
+  drag('parked', 'agent', 'bottom');
+  eq(groupKeys(list.el), ['needs', 'agent', 'parked', 'done']);
+  drag('needs', 'done', 'bottom');
+  eq(groupKeys(list.el), ['agent', 'parked', 'done', 'needs']);
+  list.set(plans);
+  eq(groupKeys(list.el), ['agent', 'parked', 'done', 'needs']);
+  gfresh();
+});
+
+test('sortedList groups: a fold is kept across set, and groups.folded starts folded until one is kept', () => {
+  gfresh();
+  const list = grouped();
+  fixture().append(list.el);
+  const sec = key => list.el.querySelector(`[data-group="${key}"]`);
+  assert(sec('done').classList.contains('kit-folded'), 'done starts folded');
+  eq(sec('done').querySelector('.kit-group-head').getAttribute('aria-expanded'), 'false');
+  eq(getComputedStyle(sec('done').querySelector('.kit-group-rows')).display, 'none');
+  eq(getComputedStyle(sec('done').querySelector('.kit-group-line')).display, 'flex');
+  assert(!sec('agent').classList.contains('kit-folded'), 'agent starts open');
+  sec('agent').querySelector('.kit-group-head').click();
+  sec('done').querySelector('.kit-group-head').click();
+  eq([localStorage.getItem('kitgroups.folded.agent'), localStorage.getItem('kitgroups.folded.done')], ['1', '']);
+  list.set(plans);
+  assert(sec('agent').classList.contains('kit-folded'), 'agent kept folded');
+  assert(!sec('done').classList.contains('kit-folded'), 'done kept open');
+  gfresh();
+});
+
+test('sortedList groups: set with another grouping draws its own kept order, and the sort stays', () => {
+  gfresh();
+  const list = grouped();
+  fixture().append(list.el);
+  list.el.querySelector('.kit-sort [data-value="name"]').click();
+  press(list.el, 'done', 'top');
+  list.set(plans, byProject);
+  eq(groupKeys(list.el), ['tools', 'tools · diazo', 'tools · galley']);
+  eq(headsOf(list.el), ['tools · 1', 'tools · diazo · 2', 'tools · galley · 2']);
+  eq(rowsIn(list.el, 'tools · diazo'), ['b', 'c']);
+  press(list.el, 'tools · galley', 'top');
+  eq(groupKeys(list.el), ['tools · galley', 'tools', 'tools · diazo']);
+  list.set(plans, byStatus());
+  eq(groupKeys(list.el), ['done', 'needs', 'agent', 'parked']);
+  list.set(plans, byProject);
+  eq(groupKeys(list.el), ['tools · galley', 'tools', 'tools · diazo']);
+  eq(list.el.querySelector('.kit-chip.on').dataset.value, 'name');
+  localStorage.removeItem('kitgroups.sort');
+  gfresh();
+});
+
+test('sortedList groups: a kept key that no longer exists is dropped, and a new one goes where order puts it', () => {
+  gfresh();
+  localStorage.setItem('kitgroups.order.status', JSON.stringify(['gone', 'done', 'agent', 'needs']));
+  const { el } = grouped();
+  eq(groupKeys(el), ['done', 'agent', 'parked', 'needs'], 'parked follows agent, as order has it');
+  gfresh();
+});
+
+test('sortedList groups: no items shows the empty line in one card', () => {
+  gfresh();
+  const { el } = grouped({ items: [] });
+  eq(el.querySelector('.kit-card > .kit-empty').textContent, 'No plans.');
+  eq(el.querySelectorAll('section').length, 1);
+});
+
+test('sortedList groups: every heading and row is drawn alike, with no edge of its own', () => {
+  gfresh();
+  const { el } = grouped();
+  fixture().append(el);
+  const secs = [...el.querySelectorAll('section.kit-group')];
+  eq(new Set(secs.map(s => s.className.replace(' kit-folded', ''))).size, 1);
+  eq(new Set(secs.map(s => getComputedStyle(s).borderLeftColor)).size, 1);
+  gfresh();
+});
+
 test('indexRow: place is its own muted line between the title and the meta, only when given', () => {
   const el = indexRow({ id: 'r', title: 'spec.md', place: 'tools-ops · docs', meta: 'waiting on you', attention: true });
   fixture().append(el);

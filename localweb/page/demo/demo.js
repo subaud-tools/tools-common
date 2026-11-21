@@ -354,6 +354,25 @@ function frontPage(f) {
     empty: 'No reviews open.',
     title: n => `${n} review${n === 1 ? '' : 's'}`,
   });
+  // The same rows grouped: each group folds and moves (kitdemo-groups.*), sorted inside.
+  const groupedReviews = sortedList({
+    name: 'kitdemo-groups',
+    orders: [
+      { value: 'recent', label: 'recent', compare: (a, b) => b.at - a.at },
+      { value: 'name', label: 'name', compare: (a, b) => a.name.localeCompare(b.name) },
+    ],
+    label: 'sort in groups',
+    items: [...reviews, { name: 'old-notes.md', place: 'tools-ops · docs', meta: 'approved Nov 2', at: 0, done: true }],
+    row: r => indexRow({ id: r.name, title: r.name, place: r.place, meta: r.meta, attention: r.you, select() {} }),
+    empty: 'No reviews.',
+    groups: {
+      name: 'status',
+      key: r => (r.you ? { key: 'needs', label: 'Needs you' } : r.done ? { key: 'done', label: 'Completed' } : { key: 'open', label: 'Open' }),
+      order: ['needs', 'open', 'done'],
+      uncounted: ['done'],
+      folded: ['done'],
+    },
+  });
   const toggled = (on, v) => (!v ? [] : on.includes(v) ? on.filter(x => x !== v) : [...on, v]);
   const line = text => h('li', { class: 'kit-row' }, h('span', { class: 'kit-title' }, text));
   const draw = () => {
@@ -387,7 +406,8 @@ function frontPage(f) {
   draw();
   f.leftBody.append(left);
   f.centre.append(h('div', { class: 'kit-label' }, 'the front page: filter rows, status pills and groups that fold'), slot,
-    h('div', { class: 'kit-label' }, 'or one sorted list: the sort switch over one card, each row naming its place'), sorted.el);
+    h('div', { class: 'kit-label' }, 'or one sorted list: the sort switch over one card, each row naming its place'), sorted.el,
+    h('div', { class: 'kit-label' }, 'or groups that fold and move, the rows sorted inside each'), groupedReviews.el);
 }
 
 // ?view=sendshort|sendlong: a short and a long page of drafts, the send bar

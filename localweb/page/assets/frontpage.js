@@ -88,23 +88,164 @@ export function sortSwitch({ orders, chosen, onPick, label = 'sort' }) {
 // first order when none is or the one remembered is gone. A press re-sorts in
 // place; set(items) redraws with new items in the same order. title, when
 // given, heads the card with title(n) for the n rows shown.
-export function sortedList({ name, orders, items, row, empty, label, title }) {
+//
+// With groups, the switch is followed by one folding card per group that has
+// rows, each with its rows in the chosen order: see sortedGroups below.
+// set(items, groups) redraws with new items and, when given, another grouping.
+export function sortedList({ name, orders, items, row, empty, label, title, groups }) {
   const key = `${name}.sort`;
   const known = v => orders.some(o => o.value === v);
   let chosen = known(remembered.get(key)) ? remembered.get(key) : orders[0].value;
   let now = items;
+  let by = groups;
   const el = h('div', { class: 'kit-sorted' });
   const draw = () => {
     const { compare } = orders.find(o => o.value === chosen);
+    const sw = sortSwitch({ orders, chosen, label, onPick: v => { chosen = v; remembered.set(key, v); draw(); } });
+    if (by && now.length) {
+      el.replaceChildren(sw, ...sortedGroups({ name, groups: by, items: now, compare, row, redraw: draw }));
+      return;
+    }
     const rows = [...now].sort(compare).map(row);
-    el.replaceChildren(
-      sortSwitch({ orders, chosen, label, onPick: v => { chosen = v; remembered.set(key, v); draw(); } }),
+    el.replaceChildren(sw,
       h('section', { class: 'kit-card' },
-        title ? h('div', { class: 'kit-label kit-group-head' }, title(rows.length)) : null,
+        title && !by ? h('div', { class: 'kit-label kit-group-head' }, title(rows.length)) : null,
         rows.length ? h('ul', { class: 'kit-group-rows' }, rows) : h('p', { class: 'kit-empty' }, empty)));
   };
   draw();
-  return { el, set(next) { now = next; draw(); } };
+  return {
+    el,
+    set(next, nextGroups) {
+      now = next;
+      if (nextGroups) by = nextGroups;
+      draw();
+    },
+  };
+}
+
+// The groups' order: the one kept under <name>.order.<groups.name> with the
+// keys that no longer exist dropped (a key exists while groups.order names it
+// or an item has it), then each missing key of groups.order right after the
+// one before it there, then the rest A to Z by label.
+function arrange(kept, order, labels) {
+  const exists = k => order.includes(k) || labels.has(k);
+  const out = (kept || []).filter((k, i, a) => typeof k === 'string' && exists(k) && a.indexOf(k) === i);
+  order.forEach((k, i) => {
+    if (out.includes(k)) return;
+    const before = order.slice(0, i).reverse().find(p => out.includes(p));
+    out.splice(before === undefined ? 0 : out.indexOf(before) + 1, 0, k);
+  });
+  const rest = [...labels.keys()].filter(k => !out.includes(k)).sort((a, b) => labels.get(a).localeCompare(labels.get(b)));
+  return [...out, ...rest];
+}
+
+function readKept(k) {
+  try {
+    const v = JSON.parse(remembered.get(k));
+    return Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+// The key being dragged by its grip, across redraws of the same list.
+let dragging = null;
+
+// sortedGroups draws one folding card per group with rows. Its heading holds
+// the drag grip, the fold with the label and its count (none for a key in
+// uncounted), and a ⋯ that moves it; the folds are kept under
+// <name>.folded.<key> ('1' folded, '' open), groups.folded starting folded
+// while none is kept. Every group is drawn alike.
+function sortedGroups({ name, groups, items, compare, row, redraw }) {
+  const orderKey = `${name}.order.${groups.name}`;
+  const byKey = new Map();
+  const labels = new Map();
+  for (const it of items) {
+    const g = groups.key(it);
+    if (!byKey.has(g.key)) byKey.set(g.key, []);
+    byKey.get(g.key).push(it);
+    labels.set(g.key, g.label);
+  }
+  const fallback = arrange(null, groups.order, labels);
+  const full = arrange(readKept(orderKey), groups.order, labels);
+  const shown = full.filter(k => byKey.has(k));
+  const labelOf = k => labels.get(k) ?? k;
+  const keep = next => {
+    if (next.length === fallback.length && next.every((k, i) => k === fallback[i])) remembered.remove(orderKey);
+    else remembered.set(orderKey, JSON.stringify(next));
+    redraw();
+  };
+  // place puts k before or after another key in the full order.
+  const place = (k, other, after) => {
+    const next = full.filter(x => x !== k);
+    next.splice(next.indexOf(other) + (after ? 1 : 0), 0, k);
+    keep(next);
+  };
+  const uncounted = groups.uncounted || [];
+  const startFolded = groups.folded || [];
+  return shown.map((k, i) => {
+    const rows = [...byKey.get(k)].sort(compare).map(row);
+    const label = labelOf(k);
+    const prev = shown[i - 1];
+    const next = shown[i + 1];
+    const head = h('button', { class: 'kit-label kit-group-head', type: 'button' },
+      uncounted.includes(k) ? label : `${label} · ${rows.length}`);
+    const grip = h('span', { class: 'kit-group-grip', draggable: 'true', title: 'Drag to move', 'aria-hidden': 'true' }, '⠿');
+    const menu = rowMenu({
+      label: `Move ${label}`,
+      buttonClass: 'kit-row-more kit-group-more',
+      items: [
+        { label: 'Move up', action: 'up', disabled: !prev, detail: prev ? `Puts ${label} above ${labelOf(prev)}` : 'It is the first group', run: () => place(k, prev, false) },
+        { label: 'Move down', action: 'down', disabled: !next, detail: next ? `Puts it below ${labelOf(next)}` : 'It is the last group', run: () => place(k, next, true) },
+        { label: 'Move to top', action: 'top', disabled: !prev, detail: 'Makes it the first group', run: () => keep([k, ...full.filter(x => x !== k)]) },
+        { label: 'Reset order', action: 'reset', detail: `Back to ${labelOf(fallback.find(x => byKey.has(x)))} first`, run: () => { remembered.remove(orderKey); redraw(); } },
+      ],
+    });
+    const sec = h('section', { class: 'kit-card kit-group', 'data-group': k },
+      h('div', { class: 'kit-group-line' }, grip, head, menu),
+      h('ul', { class: 'kit-group-rows' }, rows));
+    const foldKey = `${name}.folded.${k}`;
+    const set = on => {
+      sec.classList.toggle('kit-folded', on);
+      head.setAttribute('aria-expanded', String(!on));
+    };
+    const kept = remembered.get(foldKey);
+    set(kept === null ? startFolded.includes(k) : kept === '1');
+    head.addEventListener('click', () => {
+      const on = !sec.classList.contains('kit-folded');
+      set(on);
+      remembered.set(foldKey, on ? '1' : '');
+    });
+    grip.addEventListener('dragstart', e => {
+      dragging = { key: k, list: orderKey };
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', label);
+      }
+    });
+    grip.addEventListener('dragend', () => { dragging = null; });
+    const half = e => {
+      const r = sec.getBoundingClientRect();
+      return e.clientY > r.top + r.height / 2;
+    };
+    const mine = () => dragging && dragging.list === orderKey && dragging.key !== k;
+    sec.addEventListener('dragover', e => {
+      if (!mine()) return;
+      e.preventDefault();
+      const after = half(e);
+      sec.classList.toggle('kit-drop-before', !after);
+      sec.classList.toggle('kit-drop-after', after);
+    });
+    sec.addEventListener('dragleave', () => sec.classList.remove('kit-drop-before', 'kit-drop-after'));
+    sec.addEventListener('drop', e => {
+      if (!mine()) return;
+      e.preventDefault();
+      const from = dragging.key;
+      dragging = null;
+      place(from, k, half(e));
+    });
+    return sec;
+  });
 }
 
 function group({ key, title, rows, empty, edge }, startFolded, onFold) {
