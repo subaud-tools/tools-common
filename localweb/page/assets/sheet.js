@@ -104,3 +104,47 @@ export function sheet(o = {}) {
   (focusables()[0] || el).focus();
   return handle;
 }
+
+// confirm asks one question in a sheet: o.title asks it, o.body (text or a
+// node) says what it does, then the action (o.action.label, tone 'danger' or
+// 'fill') and Cancel. Focus starts on the action. Esc, the backdrop or Cancel
+// close it with nothing done. Pressing the action disables it and awaits
+// o.run(): resolved closes the sheet; rejected shows the reason in the error
+// spot and enables the action again. o.disabled and setDisabled(bool) turn
+// the action off and on (it stays off while run runs).
+export function confirm(o) {
+  let off = !!o.disabled, busy = false;
+  const tone = o.action.tone === 'danger' ? { danger: true } : { fill: true };
+  const s = sheet({
+    title: o.title,
+    body: o.body,
+    actions: [{ label: o.action.label, ...tone, disabled: off, run: go }, { label: 'Cancel', run: () => s.close() }],
+  });
+  const btn = s.el.querySelector('.kit-btns .kit-btn');
+  if (!off) btn.focus();
+
+  async function go() {
+    if (off || busy) return;
+    busy = true;
+    btn.disabled = true;
+    s.error();
+    try {
+      await o.run();
+      s.close();
+    } catch (e) {
+      s.error((e && e.message) || String(e));
+      busy = false;
+      btn.disabled = off;
+      if (!off && s.el.isConnected && !s.el.contains(document.activeElement)) btn.focus();
+    }
+  }
+
+  return {
+    el: s.el,
+    close: () => s.close(),
+    setDisabled(v) {
+      off = !!v;
+      if (!busy) btn.disabled = off;
+    },
+  };
+}

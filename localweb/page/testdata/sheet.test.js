@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture, focusEl } from './harness.js';
-import { sheet } from '/_kit/sheet.js';
+import { sheet, confirm } from '/_kit/sheet.js';
 import { createKeys } from '/_kit/keys.js';
 import { h } from '/_kit/dom.js';
 
@@ -186,4 +186,90 @@ test('sheet: on a narrow sheet the error takes a line of its own rather than a s
       assert(w >= 120, `at ${px}px the error spot is ${Math.round(w)}px wide`);
     }
   } finally { s.close(); }
+});
+
+const tick = () => new Promise(r => setTimeout(r, 0));
+const actionBtn = c => c.el.querySelector('.kit-btns .kit-btn');
+const cancelBtn = c => [...c.el.querySelectorAll('.kit-btns .kit-btn')].find(b => b.textContent === 'Cancel');
+
+test('confirm: opens with the title, body, action and Cancel, focus on the action', () => {
+  const c = confirm({ title: 'Delete "a"?', body: 'It leaves the lists.', action: { label: 'Delete', tone: 'danger' }, run: () => Promise.resolve() });
+  try {
+    eq(c.el.querySelector('.kit-sheet-head').textContent, 'Delete "a"?');
+    eq(c.el.querySelector('.kit-sheet-body').textContent, 'It leaves the lists.');
+    const btn = actionBtn(c);
+    eq([btn.textContent, btn.classList.contains('danger'), btn.classList.contains('fill')], ['Delete', true, false]);
+    assert(cancelBtn(c), 'a Cancel button');
+    assert(document.activeElement === btn, 'focus on the action');
+  } finally { c.close(); }
+  const f = confirm({ title: 't', body: h('ul', null, h('li', null, 'x')), action: { label: 'Move', tone: 'fill' }, run: () => Promise.resolve() });
+  try {
+    assert(actionBtn(f).classList.contains('fill'), 'fill tone');
+    assert(f.el.querySelector('.kit-sheet-body > ul'), 'a Node body');
+  } finally { f.close(); }
+});
+
+test('confirm: Esc, Cancel and the backdrop close it with run not called', () => {
+  let ran = 0;
+  const open = () => confirm({ title: 't', body: 'b', action: { label: 'Go', tone: 'fill' }, run: () => { ran++; return Promise.resolve(); } });
+  const a = open();
+  press('Escape');
+  assert(!a.el.isConnected, 'Esc closes');
+  const b = open();
+  cancelBtn(b).click();
+  assert(!b.el.isConnected, 'Cancel closes');
+  const c = open();
+  document.querySelector('.kit-backdrop').click();
+  assert(!c.el.isConnected, 'backdrop closes');
+  eq(ran, 0);
+});
+
+test('confirm: the action disables while run runs and a resolved run closes it', async () => {
+  let resolve;
+  let ran = 0;
+  const c = confirm({ title: 't', body: 'b', action: { label: 'Go', tone: 'fill' }, run: () => { ran++; return new Promise(r => { resolve = r; }); } });
+  try {
+    actionBtn(c).click();
+    eq(ran, 1);
+    assert(actionBtn(c).disabled, 'disabled while running');
+    actionBtn(c).click();
+    eq(ran, 1, 'a second press does not run again');
+    assert(c.el.isConnected, 'still open while running');
+    resolve();
+    await tick();
+    assert(!c.el.isConnected, 'closed once run resolves');
+  } finally { c.close(); }
+});
+
+test('confirm: a rejected run stays open with its message and the action enabled again', async () => {
+  let fail = true;
+  let ran = 0;
+  const c = confirm({ title: 't', body: 'b', action: { label: 'Go', tone: 'danger' }, run: () => { ran++; return fail ? Promise.reject(new Error('the plan changed')) : Promise.resolve(); } });
+  try {
+    actionBtn(c).click();
+    await tick();
+    assert(c.el.isConnected, 'stays open');
+    eq(c.el.querySelector('.kit-sheet-error').textContent, 'the plan changed');
+    assert(!actionBtn(c).disabled, 'enabled again');
+    fail = false;
+    actionBtn(c).click();
+    eq(c.el.querySelector('.kit-sheet-error').textContent, '', 'a retry clears the error');
+    await tick();
+    eq(ran, 2);
+    assert(!c.el.isConnected, 'the retry closes it');
+  } finally { c.close(); }
+});
+
+test('confirm: setDisabled and disabled turn the action off and on', () => {
+  let ran = 0;
+  const c = confirm({ title: 't', body: 'b', action: { label: 'Move', tone: 'fill' }, disabled: true, run: () => { ran++; return Promise.resolve(); } });
+  try {
+    assert(actionBtn(c).disabled, 'starts disabled');
+    actionBtn(c).click();
+    eq(ran, 0);
+    c.setDisabled(false);
+    assert(!actionBtn(c).disabled, 'enabled');
+    c.setDisabled(true);
+    assert(actionBtn(c).disabled, 'disabled again');
+  } finally { c.close(); }
 });
