@@ -1310,6 +1310,158 @@ test('dom: pickField labelHidden keeps the label for a screen reader and does no
   eq(p.el.getBoundingClientRect().height, p.button.getBoundingClientRect().height, 'the field is as tall as its button');
 });
 
+// A window w wide holding a compact dropdown and an ordinary one, in a band.
+async function compactWindow(w) {
+  const win = document.createElement('iframe');
+  win.style.cssText = `width:${w}px; height:500px; border:0; display:block`;
+  win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{margin:0}</style><body>';
+  const loaded = new Promise(r => win.addEventListener('load', r, { once: true }));
+  fixture().append(win);
+  await loaded;
+  await new Promise(r => setTimeout(r, 50));
+  const small = pickField({ label: 'Model', choices: KINDS, value: 'feature', size: 'compact', labelHidden: true });
+  const plain = pickField({ label: 'Model', choices: KINDS, value: 'feature', labelHidden: true });
+  win.contentDocument.body.append(h('div', { style: 'margin:16px;max-width:260px' }, small.el, plain.el));
+  return { small, plain };
+}
+
+for (const w of [1280, 390]) {
+  test(`dom: pickField size compact at ${w}px: the button is 28px high with 12px text, the menu's rows as they were`, async () => {
+    const { small, plain } = await compactWindow(w);
+    assert(small.el.classList.contains('kit-pick-compact'), 'the field carries kit-pick-compact');
+    assert(!plain.el.classList.contains('kit-pick-compact'), 'not without the option');
+    const s = getComputedStyle(small.button);
+    eq([small.button.getBoundingClientRect().height, s.fontSize, s.paddingTop, s.paddingBottom], [28, '12px', '0px', '0px']);
+    eq(getComputedStyle(small.button.querySelector('.kit-pick-label')).fontSize, '12px', 'the words are 12px');
+    const lab = small.button.querySelector('.kit-pick-label').getBoundingClientRect(), b = small.button.getBoundingClientRect();
+    assert(Math.abs((lab.top + lab.bottom) / 2 - (b.top + b.bottom) / 2) <= 1, 'the words are centred in the button');
+    assert(plain.button.getBoundingClientRect().height > 28 && getComputedStyle(plain.button).fontSize === '14.5px', 'the default is unchanged');
+    const row = p => {
+      p.button.click();
+      const o = pickParts(p).opts[1], r = o.getBoundingClientRect(), c = getComputedStyle(o);
+      const d = getComputedStyle(o.querySelector('.kit-pick-detail'));
+      return [Math.round(r.height), c.fontSize, c.paddingTop, d.fontSize];
+    };
+    const a = row(small), z = row(plain);
+    eq(a, z, 'a compact dropdown\'s rows are an ordinary one\'s');
+    key(plain.button, 'Escape');
+    fixture().replaceChildren();
+  });
+}
+
+const HELD = 'claude-sonnet-5-5 → claude-opus-5-5';
+const label = p => p.button.querySelector('.kit-pick-label').textContent;
+const named = p => (p.button.getAttribute('aria-labelledby') || '').split(' ').filter(Boolean).map(id => p.el.ownerDocument.getElementById(id)?.textContent).join(' ');
+
+test('dom: pickField reads as a string: the button shows it, whatever is picked, and the menu keeps each choice\'s label', () => {
+  const p = pickField({ label: 'Model', choices: SHORT, value: 'fable', reads: HELD });
+  fixture().append(p.el);
+  const { btn, opts } = pickParts(p);
+  eq(label(p), HELD, 'at the start');
+  btn.click();
+  eq(label(p), HELD, 'open');
+  eq(opts.map(o => o.querySelector('.kit-pick-name').textContent), ["The agent's own default", 'fable', 'opus'], 'the menu reads the labels');
+  opts[2].click();
+  eq([p.value, label(p)], ['opus', HELD], 'after a pick by pointer');
+  key(btn, 'Enter');
+  key(document.activeElement, 'ArrowUp');
+  key(document.activeElement, 'Enter');
+  eq([p.value, label(p)], ['fable', HELD], 'after a pick from the keyboard');
+  p.set('opus');
+  eq([p.value, label(p)], ['opus', HELD], 'after set');
+});
+
+test('dom: pickField reads as a function: the button shows what it returns for the current choice, again on every pick and set', () => {
+  const seen = [];
+  let held = '';
+  const p = pickField({
+    label: 'Model', choices: SHORT, value: 'fable', more: { label: 'All models…', choices: REST },
+    reads: c => { seen.push(c?.value); return held || (c ? `on ${c.label}` : 'none'); },
+  });
+  fixture().append(p.el);
+  const { btn, opts } = pickParts(p);
+  eq(label(p), 'on fable', 'at the start');
+  btn.click();
+  eq(label(p), 'on fable', 'open');
+  eq(opts.map(o => o.textContent), ["The agent's own default", 'fable', 'opus', 'sonnet', 'haiku', 'All models…'], 'the menu reads the labels');
+  opts[2].click();
+  eq([p.value, label(p)], ['opus', 'on opus'], 'after a pick by pointer');
+  key(btn, 'ArrowDown');
+  key(document.activeElement, 'ArrowDown');
+  eq(label(p), 'on opus', 'an arrow moves the focus, not the choice');
+  key(document.activeElement, 'ArrowUp');
+  key(document.activeElement, 'ArrowUp');
+  key(document.activeElement, ' ');
+  eq([p.value, label(p)], ['fable', 'on fable'], 'after a pick from the keyboard');
+  p.set('haiku');
+  eq([p.value, label(p)], ['haiku', 'on haiku'], 'after set, a choice from more');
+  held = HELD;
+  p.set(p.value);
+  eq(label(p), HELD, 'set with the same value reads again');
+  held = '';
+  p.set('gone');
+  eq(label(p), 'none', 'a value that is no choice: the function hears undefined');
+  eq(seen[seen.length - 1], undefined);
+  p.set('');
+  eq([label(p), btn.classList.contains('blank')], ["on The agent's own default", true], 'a blank choice still reads muted');
+});
+
+test('dom: pickField reads: the button is named by its label and what it reads, and its title is what it reads', () => {
+  const p = pickField({ label: 'Model', choices: SHORT, value: 'fable', reads: c => (c.value === 'fable' ? HELD : c.label), labelHidden: true });
+  const q = pickField({ label: 'Model', choices: SHORT, value: 'fable' });
+  fixture().append(p.el, q.el);
+  eq(named(p), `Model ${HELD}`, 'label, then the words');
+  eq(p.button.title, HELD, 'the title is the words in full');
+  const lab = p.el.querySelector('label');
+  eq([lab.textContent, lab.htmlFor === p.button.id], ['Model', true], 'the label is still the button\'s');
+  p.button.click();
+  pickParts(p).opts[2].click();
+  eq([named(p), p.button.title], ['Model opus', 'opus'], 'after a pick');
+  p.set('fable');
+  eq([named(p), p.button.title], [`Model ${HELD}`, HELD], 'after set');
+  eq([q.button.hasAttribute('aria-labelledby'), q.button.hasAttribute('title')], [false, false], 'without reads the button is as it was');
+  eq(label(q), 'fable');
+});
+
+test('dom: pickField onCurrent hears a press on the current choice, once, after the menu closes, and onPick does not', () => {
+  const got = [], cur = [];
+  let openThen = null;
+  const p = pickField({ label: 'Model', choices: SHORT, value: 'fable', onPick: v => got.push(v), onCurrent: v => { cur.push(v); openThen = !pickParts(p).pop.hidden; } });
+  fixture().append(p.el);
+  const { btn, pop, opts } = pickParts(p);
+  btn.click();
+  opts[1].click();
+  eq([cur, got, pop.hidden, openThen, p.value], [['fable'], [], true, false, 'fable'], 'a click');
+  assert(document.activeElement === btn, 'focus back on the button');
+  key(btn, 'Enter');
+  assert(document.activeElement === opts[1], 'open on the current choice');
+  key(document.activeElement, 'Enter');
+  eq([cur, got, pop.hidden], [['fable', 'fable'], [], true], 'Enter');
+  key(btn, ' ');
+  key(document.activeElement, ' ');
+  eq([cur, got, pop.hidden], [['fable', 'fable', 'fable'], [], true], 'Space');
+  btn.click();
+  opts[2].click();
+  eq([cur.length, got, p.value], [3, ['opus'], 'opus'], 'another choice goes to onPick alone');
+  btn.click();
+  key(btn, 'Escape');
+  p.set('fable');
+  eq([cur.length, got], [3, ['opus']], 'Esc and set call neither');
+});
+
+test('dom: pickField without onCurrent: a press on the current choice closes the menu and calls nothing', () => {
+  const got = [];
+  const p = pickField({ label: 'Model', choices: SHORT, value: 'fable', onPick: v => got.push(v) });
+  fixture().append(p.el);
+  const { btn, pop, opts } = pickParts(p);
+  btn.click();
+  opts[1].click();
+  eq([got, pop.hidden, p.value, label(p)], [[], true, 'fable', 'fable']);
+  key(btn, 'Enter');
+  key(document.activeElement, 'Enter');
+  eq([got, pop.hidden, document.activeElement === btn], [[], true, true]);
+});
+
 const SIDES = [{ value: 'on', label: 'on' }, { value: 'off', label: 'off' }];
 const chipParts = el => ({ chips: [...el.querySelectorAll('button.kit-chip')], xs: [...el.querySelectorAll('button.kit-chip-x')] });
 

@@ -404,7 +404,7 @@ export interface PickField {
   button: HTMLButtonElement;
   /** The current choice's value. */
   readonly value: string;
-  /** Makes value the current choice, without calling onPick. */
+  /** Makes value the current choice, without calling onPick or onCurrent. With reads, the button's words are worked out again, also when value is the one it has. */
   set(value: string): void;
 }
 
@@ -423,8 +423,11 @@ export interface PickMore {
  * value starts as the current choice (the first choice when left out); onPick hears a value that differs from the current one.
  * more ends the menu with one line reading more.label (button.kit-pick-opt.kit-pick-more, under an hr): the arrows reach it like a choice, and a press, Enter or Space on it picks nothing and leaves the menu open, with the line and its rule hidden, more.choices shown after choices, the menu placed again for its new height and the focus on the first of more.choices. The menu opens collapsed every time, unless the current value is only in more.choices (and not in choices): then it opens on the longer list, on the current choice, so the current choice is always in the menu. value and set(value) take a value from more.choices, and the button then reads that choice's label. With more.choices empty, no line is drawn.
  * labelHidden keeps the label in the page for a screen reader (label.kit-field-label.kit-label-hidden, still naming the button) and does not draw it: for a grid or a table cell that already names the dropdown.
+ * size 'compact' is the dropdown for a bar or a band: the field (el) carries kit-pick-compact and its button is 28px high with 12px words and no padding above or below; the menu's rows are an ordinary dropdown's. The button is as wide as the field, so the page gives el its width. Left out, the dropdown is as before.
+ * reads is what the button shows instead of the current choice's label: a string (the same words whatever is chosen), or a function given the current choice (undefined when the value is none of the choices) that returns the words. It is asked at the start and again on every pick and every set(value), so set(field.value) reads again when what it depends on changed; arrows in the menu move the focus only and change no words. With reads the button's title is always those words in full (for when its width cuts them), kept by the kit on every pick and set, and the button is named for a screen reader by its label then those words (aria-labelledby the label and span.kit-pick-label). The menu still reads each choice's own label, and a blank choice still reads muted. Left out, the button reads the choice's label and has no title or aria-labelledby, as before.
+ * onCurrent hears a press, Enter or Space on the choice that is already the current one, with its value, once, after the menu has closed and the button has the focus back; onPick does not hear that press. Left out, that press only closes the menu, as before.
  */
-export function pickField(o: { label: string; choices: PickChoice[]; value?: string; id?: string; onPick?(value: string): void; more?: PickMore; labelHidden?: boolean }): PickField;
+export function pickField(o: { label: string; choices: PickChoice[]; value?: string; id?: string; onPick?(value: string): void; more?: PickMore; labelHidden?: boolean; size?: 'compact'; reads?: string | ((choice: PickChoice | undefined) => string); onCurrent?(value: string): void }): PickField;
 
 /** One chip of a chipPick. */
 export interface PickChip {
