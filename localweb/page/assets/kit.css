@@ -409,7 +409,6 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-pick-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kit-pick-btn.blank .kit-pick-label { color: var(--kit-muted); }
 .kit-pick-pop.kit-row-pop {
-  position: fixed; inset: auto; margin: 0; overflow: hidden auto; overscroll-behavior: contain; color: var(--kit-fg);
   width: max-content; max-width: min(340px, calc(100vw - 16px)); box-sizing: border-box;
 }
 .kit-pick-pop .kit-pick-opt.on { background: var(--kit-signal-soft); }
@@ -843,8 +842,9 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-group.kit-folded > :not(.kit-group-head) { display: none; }
 .kit-group.kit-folded > .kit-group-head { margin-bottom: 0; }
 .kit-group-rows { list-style: none; margin: 0; padding: 0; }
-/* a row's ⋯ menu (frontpage.js rowMenu): the pop-out hangs below the button,
-   right-aligned; a link reads like a button, a danger item in the danger
+/* a row's ⋯ menu (frontpage.js rowMenu): the pop-out shows in the top layer,
+   placed by placePop below the button, right-aligned (above it near the
+   window's foot), so it adds nothing to the page's size; a link reads like a button, a danger item in the danger
    colour, a disabled one muted; a separator is a line. An item's detail is a
    muted line under its label, as pickField's choices have, and a menu holding
    any caps its width so the lines wrap; a heading is a small muted mono label. */
@@ -859,6 +859,11 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
   position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; min-width: 140px; padding: 6px;
   background: var(--kit-card); border: 1px solid var(--kit-line); border-radius: 8px;
   box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+}
+/* in the top layer (rowMenu's and pickField's): placed from its button by
+   placePop, never taller than the room, scrolling inside itself */
+.kit-row-pop[popover] {
+  position: fixed; inset: auto; margin: 0; overflow: hidden auto; overscroll-behavior: contain; color: var(--kit-fg);
 }
 .kit-row-pop[hidden] { display: none; }
 .kit-row-pop a, .kit-row-pop button {

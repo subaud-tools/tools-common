@@ -1,6 +1,7 @@
 import { test, eq, assert, fixture, focusEl } from './harness.js';
 import { filterRow, statusPills, groupList, rowMenu, sortSwitch, sortedList } from '/_kit/frontpage.js';
 import { indexRow } from '/_kit/index.js';
+import { pickField } from '/_kit/dom.js';
 
 const projects = [{ value: 'diazo', label: 'diazo', count: 3 }, { value: 'sift', label: 'sift', count: 2 }];
 const rowsOf = el => [...el.querySelectorAll('.kit-filter')].map(b => [b.dataset.value, b.querySelector('.kit-index-title').textContent, b.querySelector('.kit-meta').textContent]);
@@ -407,6 +408,193 @@ test('rowMenu: an item with no detail draws exactly as before', () => {
   eq(pop.querySelector('.kit-row-detail'), null);
 });
 
+// A window w by ht with the kit's styles, for a menu's place in it.
+async function menuWindow(w, ht = 600) {
+  const win = document.createElement('iframe');
+  win.style.cssText = `width:${w}px; height:${ht}px; border:0; display:block`;
+  win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{margin:0}'
+    + '.r{display:flex;justify-content:space-between;align-items:center;height:40px;padding:0 12px}</style><body>';
+  const loaded = new Promise(r => win.addEventListener('load', r, { once: true }));
+  fixture().append(win);
+  await loaded;
+  await new Promise(r => setTimeout(r, 50));
+  return { win, doc: win.contentDocument, view: win.contentWindow };
+}
+const DETAILS = [
+  { label: 'Move to planned', detail: 'Save it as an idea for later, to come back to once the work it waits on has landed.', run() {} },
+  { label: 'Rename', run() {} },
+  { separator: true },
+  { label: 'Delete', danger: true, run() {} },
+];
+const line = (text, ...kids) => {
+  const d = document.createElement('div');
+  d.className = 'r';
+  d.append(text, ...kids);
+  return d;
+};
+const box = el => { const r = el.getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; };
+const inside = (m, view, doc) => m.left >= -0.5 && m.top >= -0.5 && m.right <= doc.documentElement.clientWidth + 0.5 && m.bottom <= view.innerHeight + 0.5;
+
+for (const w of [1280, 390]) {
+  test(`rowMenu at ${w}px: opening at the foot of a tall page moves nothing, and the menu opens above its button inside the window`, async () => {
+    const { doc, view } = await menuWindow(w);
+    const el = rowMenu({ label: 'More', items: DETAILS });
+    const tall = document.createElement('div');
+    tall.style.height = '1500px';
+    const a = line('Pane one'), b = line('Pane two'), last = line('Pane three', el);
+    doc.body.append(tall, a, b, last);
+    view.scrollTo(0, 99999);
+    const root = doc.documentElement;
+    const before = [root.scrollHeight, view.scrollY, box(tall), box(a), box(b), box(last), box(el)];
+    assert(view.scrollY > 0, 'scrolled to the foot');
+    const { btn, pop } = parts(el);
+    btn.click();
+    await new Promise(r => setTimeout(r, 30));
+    eq([root.scrollHeight, view.scrollY, box(tall), box(a), box(b), box(last), box(el)], before, 'nothing moved on open');
+    assert(pop.matches(':popover-open'), 'in the top layer');
+    const r = btn.getBoundingClientRect(), m = pop.getBoundingClientRect();
+    assert(inside(m, view, doc), `inside the window (${[m.left, m.top, m.right, m.bottom]})`);
+    eq(Math.round(r.top - m.bottom), 4, '4px above the button: no room below');
+    eq(Math.round(m.right), Math.round(r.right), 'on the button\'s right edge');
+    eq(m.width, 340, 'a menu with details keeps its width');
+    btn.click();
+    await new Promise(r2 => setTimeout(r2, 30));
+    eq([root.scrollHeight, view.scrollY, box(tall), box(a), box(b), box(last), box(el)], before, 'nothing moved on close');
+    fixture().replaceChildren();
+  });
+}
+
+test('rowMenu: with room below, the menu hangs 4px below its button on its right edge', async () => {
+  const { doc, view } = await menuWindow(1280);
+  const el = menu();
+  doc.body.append(line('Pane', el));
+  const { btn, pop } = parts(el);
+  btn.click();
+  const r = btn.getBoundingClientRect(), m = pop.getBoundingClientRect();
+  eq([Math.round(m.top - r.bottom), Math.round(m.right)], [4, Math.round(r.right)]);
+  eq(m.width, 140, 'a menu with no details keeps its 140px');
+  assert(inside(m, view, doc), 'inside the window');
+  btn.click();
+  fixture().replaceChildren();
+});
+
+test('rowMenu at 390px: a menu whose button is at the window\'s left opens on the button\'s left edge, inside the window', async () => {
+  const { doc, view } = await menuWindow(390);
+  const el = rowMenu({ label: 'More', items: DETAILS });
+  const row = line('', el);
+  row.style.justifyContent = 'flex-start';
+  doc.body.append(row);
+  const { btn, pop } = parts(el);
+  btn.click();
+  const r = btn.getBoundingClientRect(), m = pop.getBoundingClientRect();
+  assert(inside(m, view, doc), `inside the window (${[m.left, m.right]})`);
+  eq(Math.round(m.left), Math.round(r.left), 'on the left edge');
+  btn.click();
+  fixture().replaceChildren();
+});
+
+test('rowMenu: a menu of many items is never taller than the window and scrolls inside itself', async () => {
+  const { doc, view } = await menuWindow(400, 300);
+  const el = rowMenu({ label: 'More', items: Array.from({ length: 30 }, (_, i) => ({ label: `Item ${i}`, run() {} })) });
+  doc.body.append(line('Pane', el));
+  const { btn, pop } = parts(el);
+  const high = doc.documentElement.scrollHeight;
+  btn.click();
+  const m = pop.getBoundingClientRect();
+  assert(inside(m, view, doc), `inside the window (${m.top}-${m.bottom})`);
+  assert(m.height <= view.innerHeight, 'no taller than the window');
+  assert(pop.scrollHeight > pop.clientHeight, 'it scrolls inside itself');
+  eq(doc.documentElement.scrollHeight, high, 'the page is no longer');
+  pop.scrollTop = 40;
+  pop.dispatchEvent(new Event('scroll'));
+  eq(pop.scrollTop, 40, 'scrolling the menu keeps its place');
+  btn.click();
+  fixture().replaceChildren();
+});
+
+test('rowMenu: a menu in a scrolling container opens at its button, and follows it when the container scrolls', async () => {
+  const { doc } = await menuWindow(800);
+  const el = menu();
+  const pane = document.createElement('div');
+  pane.style.cssText = 'height:200px;overflow:auto;margin:20px;width:400px';
+  const pad = document.createElement('div');
+  pad.style.height = '300px';
+  const foot = document.createElement('div');
+  foot.style.height = '300px';
+  pane.append(pad, line('Row', el), foot);
+  doc.body.append(pane);
+  pane.scrollTop = 250;
+  const { btn, pop } = parts(el);
+  btn.click();
+  eq(pane.scrollTop, 250, 'the container did not scroll');
+  const at = () => {
+    const r = btn.getBoundingClientRect(), m = pop.getBoundingClientRect();
+    return [Math.round(m.top - r.bottom), Math.round(m.right - r.right)];
+  };
+  eq(at(), [4, 0], 'at its button');
+  pane.scrollTop = 290;
+  pane.dispatchEvent(new Event('scroll'));
+  eq(at(), [4, 0], 'still at its button after a scroll');
+  assert(!pop.hidden, 'and still open');
+  btn.click();
+  fixture().replaceChildren();
+});
+
+test('rowMenu: hidden while closed, in the top layer while open, and the keyboard as before', () => {
+  const got = [];
+  const el = menu(got);
+  fixture().append(el);
+  const { btn, pop } = parts(el);
+  eq([...el.children], [btn, pop], 'the button, then the menu, inside the wrapper');
+  assert(pop.hidden && el.querySelector('.kit-row-pop[hidden]') === pop && !pop.matches(':popover-open'), 'hidden while closed');
+  btn.focus();
+  btn.click();
+  assert(!pop.hidden && pop.matches(':popover-open'), 'open in the top layer');
+  assert(document.activeElement === btn, 'opening leaves the focus on the button');
+  const items = [...pop.querySelectorAll('[role="menuitem"]')];
+  items[0].focus();
+  assert(document.activeElement === items[0], 'an item takes the focus');
+  const r = items[0].getBoundingClientRect();
+  assert(items[0].contains(document.elementFromPoint(r.left + 4, r.top + 4)), 'the item is on top');
+  btn.focus();
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert(pop.hidden && !pop.matches(':popover-open'), 'Esc closes it');
+  eq(getComputedStyle(pop).display, 'none');
+  assert(document.activeElement === btn, 'the focus stays on the button');
+  eq(got, []);
+});
+
+test('rowMenu: opening a pickField closes an open row menu, and the other way round', () => {
+  const el = menu();
+  const p = pickField({ label: 'Kind', choices: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }], value: 'a' });
+  fixture().append(el, p.el);
+  const { btn, pop } = parts(el);
+  const pb = p.el.querySelector('.kit-pick-btn'), pp = p.el.querySelector('.kit-pick-pop');
+  btn.click();
+  pb.click();
+  assert(pop.hidden && !pop.matches(':popover-open'), 'the row menu closed');
+  assert(!pp.hidden, 'the dropdown open');
+  btn.click();
+  assert(pp.hidden && !pp.matches(':popover-open'), 'the dropdown closed');
+  assert(!pop.hidden, 'the row menu open');
+  btn.click();
+});
+
+test('rowMenu: open, drawn before it is in the page, shows at its button once it is', async () => {
+  const el = rowMenu({ label: 'More', open: true, items: [{ label: 'A', run() {} }] });
+  const { btn, pop } = parts(el);
+  assert(!pop.hidden, 'open before it is in the page');
+  const row = line('Row', el);
+  row.style.cssText = 'display:flex;justify-content:space-between';
+  fixture().append(row);
+  await new Promise(r => setTimeout(r, 0));
+  assert(pop.matches(':popover-open'), 'in the top layer');
+  const r = btn.getBoundingClientRect(), m = pop.getBoundingClientRect();
+  eq([Math.round(m.top - r.bottom), Math.round(m.right - r.right)], [4, 0], 'at its button');
+  btn.click();
+  assert(pop.hidden, 'closed');
+});
+
 const orders = [{ value: 'needs', label: 'needs you' }, { value: 'recent', label: 'recent' }, { value: 'name', label: 'name' }];
 const chipsOf = el => [...el.querySelectorAll('button.kit-chip')].map(b => [b.dataset.value, b.textContent, b.classList.contains('on'), b.getAttribute('aria-pressed')]);
 
@@ -595,4 +783,36 @@ test('indexRow: found is its own line in the button after the meta, a mark in it
   eq(getComputedStyle(found.querySelector('mark')).backgroundColor, getComputedStyle(fx).backgroundColor);
   eq(indexRow({ id: 'r', title: 't', found: 'in the name' }).querySelector('.kit-found').textContent, 'in the name');
   eq(indexRow({ id: 'r', title: 't' }).querySelector('.kit-found'), null);
+});
+
+test('rowMenu: an open menu whose row is moved in the page stays open at its button', async () => {
+  const el = menu();
+  const a = line('Row a', el), b = line('Row b');
+  a.style.cssText = b.style.cssText = 'display:flex;justify-content:space-between';
+  fixture().append(a, b);
+  const { btn, pop } = parts(el);
+  btn.click();
+  b.after(a);
+  await new Promise(r => setTimeout(r, 50));
+  assert(!pop.hidden && pop.matches(':popover-open'), 'still showing');
+  const r = btn.getBoundingClientRect(), m = pop.getBoundingClientRect();
+  eq([Math.round(m.top - r.bottom), Math.round(m.right - r.right)], [4, 0], 'at its button');
+  btn.click();
+  assert(pop.hidden && !pop.matches(':popover-open'), 'closed');
+});
+
+test('rowMenu: a menu with no details keeps the width it had inside its wrapper: 140px in a row, its widest line in a wide wrapper', () => {
+  const draw = () => rowMenu({ label: 'More', items: [{ label: 'Move this plan over to planned', run() {} }, { label: 'Rename', run() {} }] });
+  const inRow = draw(), wide = draw();
+  const row = line('Row', inRow);
+  row.style.cssText = 'display:flex;justify-content:space-between';
+  fixture().append(row, wide);
+  parts(inRow).btn.click();
+  eq(parts(inRow).pop.getBoundingClientRect().width, 140, 'in a row: 140px');
+  assert(parts(inRow).pop.querySelector('button').getBoundingClientRect().height > 40, 'and the long label wraps');
+  parts(wide).btn.click();
+  const w = parts(wide).pop.getBoundingClientRect().width;
+  assert(w > 200 && w < 240, `in a wrapper as wide as the page: its widest line (${w})`);
+  assert(parts(wide).pop.querySelector('button').getBoundingClientRect().height < 40, 'on one line');
+  parts(wide).btn.click();
 });

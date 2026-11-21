@@ -1,7 +1,7 @@
 // frontpage.js: a front page's list, moved from diazo's. The parts take plain
 // values: a tool works out its own rows, counts and groups, keeps what is
 // chosen and redraws on a press.
-import { h, popOut } from './dom.js';
+import { h, popOut, placePop } from './dom.js';
 import { remembered } from './remembered.js';
 
 // filterRow is a section of the left column: All with the total, then one row
@@ -140,7 +140,12 @@ export function groupList({ groups, folded, onFold }) {
 // under its label (kit-row-detail), and a menu holding any caps its width so
 // the lines wrap. { heading: '…' } is a muted label over the items after it
 // (kit-row-head): not a menuitem, never focused, and a press on it leaves the
-// menu open. A press on an item closes the menu, then runs it. onMenu hears it open and close. open draws it already open,
+// menu open. A press on an item closes the menu, then runs it. The menu shows
+// in the top layer, placed from the ⋯ button as pickField's is (placePop): on
+// the button's right edge, 4px below it, or above it near the window's foot,
+// never taller than the room and scrolling inside itself, and it stays at the
+// button while the page scrolls. Opening or closing it moves nothing on the
+// page: the page grows no longer and does not scroll. onMenu hears it open and close. open draws it already open,
 // as the one open menu on the page, for a caller that redraws its rows: it
 // neither scrolls nor takes focus, and onMenu does not hear that opening (the
 // caller asked for it), only the closing; the menu it replaces closes without
@@ -155,19 +160,34 @@ export function rowMenu({ label, items, onMenu, open = false, buttonClass = 'kit
     'aria-haspopup': 'menu',
     'aria-expanded': 'false',
   }, '⋯');
-  const pop = h('div', { class: 'kit-row-pop', role: 'menu' }, items.map(menuItem));
+  const pop = h('div', { class: 'kit-row-pop', role: 'menu', popover: 'manual' }, items.map(menuItem));
   pop.hidden = true;
   const wrap = h('div', { class: 'kit-row-menu' }, btn, pop);
-  const { show, close } = popOut({ wrap, btn, pop, onToggle: onMenu });
+  // The menu's width is what it was when it hung inside the wrapper: its
+  // widest line, but no wider than the wrapper unless a word needs it. A menu
+  // with details has its own width (kit.css).
+  const fit = () => {
+    Object.assign(pop.style, { width: '', maxWidth: '' });
+    if (pop.querySelector('.kit-row-detail')) return;
+    const wide = () => pop.getBoundingClientRect().width;
+    pop.style.width = 'min-content';
+    const least = wide();
+    pop.style.width = 'max-content';
+    const most = wide();
+    const edges = most - parseFloat(getComputedStyle(pop).width);
+    pop.style.width = `${Math.min(most, Math.max(least, wrap.clientWidth)) - edges}px`;
+  };
+  const place = e => {
+    if (e?.type !== 'scroll') fit();
+    placePop(btn, pop, { right: true });
+  };
+  const { show, close } = popOut({ wrap, btn, pop, onToggle: onMenu, place });
   btn.addEventListener('click', () => {
     if (!pop.hidden) {
       close();
       return;
     }
     show();
-    // ⋯ sits at a row's foot on a phone: a menu opening past the window's
-    // edge scrolls into it.
-    pop.scrollIntoView({ block: 'nearest' });
   });
   // A press on an item closes the menu, then does what the item does; a press
   // on a disabled one or a heading leaves it open.

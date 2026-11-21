@@ -505,9 +505,28 @@ let popOpen = null;
 // pickField: show opens pop and closes whichever was open; a press outside
 // wrap, or Esc, closes it. onToggle hears it open and close unless the call
 // was quiet. It listens on the document wrap lives in. A pop with the popover
-// attribute shows in the top layer, over any card or sheet that would clip it.
-export function popOut({ wrap, btn, pop, onToggle }) {
-  let doc = null;
+// attribute shows in the top layer, over any card or sheet that would clip it,
+// so it adds nothing to the page's size. place, when given, puts the pop where
+// it belongs (placePop): called once it shows, and again when the window is
+// resized or anything but the pop itself scrolls, so it stays at its button.
+// A pop opened before it is in the page, or taken out of the top layer by the
+// browser when its row is moved, shows there once it is in the page.
+export function popOut({ wrap, btn, pop, onToggle, place }) {
+  let doc = null, win = null, watch = null;
+  const moved = e => {
+    if (e.target !== pop) place(e);
+  };
+  // Into the top layer, and to its place: at once when the pop is in the
+  // page, else when the page next changes with it in. The browser takes a
+  // pop out of the top layer when its row leaves the page or moves in it.
+  const top = () => {
+    if (pop.hidden || !pop.isConnected) return;
+    if (pop.hasAttribute('popover')) {
+      if (pop.matches(':popover-open')) return;
+      pop.showPopover();
+    }
+    place?.();
+  };
   const outside = e => {
     if (!wrap.contains(e.target)) close();
   };
@@ -522,6 +541,11 @@ export function popOut({ wrap, btn, pop, onToggle }) {
     try {
       if (pop.matches(':popover-open')) pop.hidePopover();
     } catch { /* its document is gone */ }
+    watch?.disconnect();
+    watch = null;
+    win?.removeEventListener('scroll', moved, true);
+    win?.removeEventListener('resize', moved);
+    win = null;
     btn.setAttribute('aria-expanded', 'false');
     doc?.removeEventListener('click', outside, true);
     doc?.removeEventListener('keydown', esc);
@@ -532,7 +556,16 @@ export function popOut({ wrap, btn, pop, onToggle }) {
     popOpen?.(quiet);
     doc = wrap.ownerDocument;
     pop.hidden = false;
-    if (pop.hasAttribute('popover') && !pop.matches(':popover-open')) pop.showPopover();
+    top();
+    if (pop.hasAttribute('popover')) {
+      watch = new MutationObserver(top);
+      watch.observe(doc, { childList: true, subtree: true });
+    }
+    if (place) {
+      win = doc.defaultView;
+      win?.addEventListener('scroll', moved, true);
+      win?.addEventListener('resize', moved);
+    }
     btn.setAttribute('aria-expanded', 'true');
     doc.addEventListener('click', outside, true);
     doc.addEventListener('keydown', esc);
@@ -542,14 +575,50 @@ export function popOut({ wrap, btn, pop, onToggle }) {
   return { show, close, get open() { return !pop.hidden; } };
 }
 
+// placePop puts a top-layer pop (position fixed) at its button, for pickField
+// and rowMenu alike: 4px below the button when it fits there or there is more
+// room below than above, else 4px above it; either way never taller than the
+// room, scrolling inside itself. Across, pickField's menu (the default) goes
+// on the button's left edge when it fits from there within the nearest card
+// or sheet and the window, else on its right edge when it fits from that,
+// else on the left edge wrapped to the room it has, and is never narrower
+// than the button. right is a row menu's: on the button's right edge when it
+// fits from there within the window, else its left edge when it fits from
+// that, else the edge with more room, wrapped to it.
+export function placePop(btn, pop, { right = false } = {}) {
+  const doc = btn.ownerDocument;
+  const b = btn.getBoundingClientRect();
+  const c = right ? null : btn.closest('.kit-card, .kit-float')?.getBoundingClientRect();
+  const fromLeft = Math.min(doc.documentElement.clientWidth, c ? c.right : Infinity) - b.left;
+  const fromRight = b.right - Math.max(0, c ? c.left : 0);
+  Object.assign(pop.style, { top: `${b.bottom + 4}px`, left: `${b.left}px`, right: 'auto', bottom: 'auto', minWidth: right ? '' : `${b.width}px`, maxWidth: '', maxHeight: '' });
+  const w = pop.offsetWidth;
+  const onRight = right ? w <= fromRight || (w > fromLeft && fromRight >= fromLeft) : w > fromLeft && w <= fromRight;
+  const room = onRight ? fromRight : fromLeft;
+  if (w > room) pop.style.maxWidth = `${Math.max(room, b.width)}px`;
+  if (onRight) pop.style.left = `${b.right - pop.offsetWidth}px`;
+  // Below the button when it fits there or there is more room below than
+  // above; else above it. Either way capped to the room, scrolling inside.
+  const winH = doc.defaultView.innerHeight;
+  const below = winH - b.bottom - 4 - 8, above = b.top - 4 - 8;
+  const tall = pop.offsetHeight;
+  if (tall > below && above > below) {
+    const ht = Math.min(tall, above);
+    Object.assign(pop.style, { top: `${b.top - 4 - ht}px`, maxHeight: `${ht}px` });
+  } else {
+    pop.style.maxHeight = `${Math.max(0, below)}px`;
+  }
+}
+
 // pickField is the kit's dropdown: a label over a button drawn as kit-input
 // with a chevron, naming the current choice, that opens the kit's menu surface
 // (kit-row-pop) listing each choice ({ value, label, detail?, blank? }) with
 // its muted detail line and the current one in the soft signal fill. A blank
 // choice (one that stands for none picked yet) reads muted on the button. The
-// menu hangs 4px below the button on its left edge, or its right edge when the
-// left would run past the nearest card, sheet or the window (neither fitting, the
-// left edge with its lines wrapped), and is never narrower than the button.
+// menu shows in the top layer, placed by placePop: 4px below the button on its
+// left edge, or its right edge when the left would run past the nearest card,
+// sheet or the window (neither fitting, the left edge with its lines wrapped),
+// and is never narrower than the button.
 // Enter, Space or an arrow opens it on the current choice, arrows move, Enter,
 // Space or a press picks, Esc closes and gives the button the focus back. onPick hears a value that differs from the current one. It
 // returns { el, button, value, set(value) }; set picks without onPick.
@@ -583,7 +652,7 @@ export function pickField(o) {
   pop.hidden = true;
   const box = h('div', { class: 'kit-pick' }, btn, pop);
   const el = h('div', { class: 'kit-field' }, h('label', { class: 'kit-field-label' + (o.labelHidden ? ' kit-label-hidden' : ''), for: btn.id }, o.label), box);
-  const p = popOut({ wrap: box, btn, pop, onToggle: on => on || closed() });
+  const p = popOut({ wrap: box, btn, pop, onToggle: on => on || closed(), place: () => placePop(btn, pop) });
   // Whether the rest shows: the lines the arrows walk are the choices shown,
   // then the more line while it is there.
   let wide = false;
@@ -597,7 +666,7 @@ export function pickField(o) {
   }
   function expand() {
     widen(true);
-    place();
+    placePop(btn, pop);
     show(opts[o.choices.length]);
   }
   const at = () => Math.max(0, all.findIndex(c => c.value === value));
@@ -613,33 +682,6 @@ export function pickField(o) {
       b.setAttribute('aria-selected', String(on));
     });
     if (p.open && !wide && onlyInRest()) widen(true);
-  }
-  // The menu sits in the top layer, placed from the button: 4px below it, on
-  // its left edge when it fits from there within the nearest card or sheet
-  // and the window, else on its right edge when it fits from that, else on the left
-  // edge wrapped to the room it has; never narrower than the button.
-  function place(e) {
-    if (!p.open) return closed();
-    if (e?.target === pop) return; // the menu's own scroll
-    const b = btn.getBoundingClientRect();
-    const c = btn.closest('.kit-card, .kit-float')?.getBoundingClientRect();
-    const right = Math.min(box.ownerDocument.documentElement.clientWidth, c ? c.right : Infinity) - b.left;
-    const left = b.right - Math.max(0, c ? c.left : 0);
-    Object.assign(pop.style, { top: `${b.bottom + 4}px`, left: `${b.left}px`, minWidth: `${b.width}px`, maxWidth: '', maxHeight: '' });
-    const w = pop.offsetWidth;
-    if (w > right && w <= left) pop.style.left = `${b.right - w}px`;
-    else if (w > right) pop.style.maxWidth = `${Math.max(right, b.width)}px`;
-    // Below the button when it fits there or there is more room below than
-    // above; else above it. Either way capped to the room, scrolling inside.
-    const winH = box.ownerDocument.defaultView.innerHeight;
-    const below = winH - b.bottom - 4 - 8, above = b.top - 4 - 8;
-    const tall = pop.offsetHeight;
-    if (tall > below && above > below) {
-      const ht = Math.min(tall, above);
-      Object.assign(pop.style, { top: `${b.top - 4 - ht}px`, maxHeight: `${ht}px` });
-    } else {
-      pop.style.maxHeight = `${Math.max(0, below)}px`;
-    }
   }
   // An option given the focus is scrolled into view inside the menu.
   const show = opt => {
@@ -664,17 +706,12 @@ export function pickField(o) {
   function open() {
     widen(onlyInRest());
     p.show();
-    place();
     win = box.ownerDocument.defaultView;
     win.addEventListener('keydown', esc, true);
-    win.addEventListener('scroll', place, true);
-    win.addEventListener('resize', place);
     show(opts[at()]);
   }
   function closed() {
     win?.removeEventListener('keydown', esc, true);
-    win?.removeEventListener('scroll', place, true);
-    win?.removeEventListener('resize', place);
     win = null;
   }
   function close() {
