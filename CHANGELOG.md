@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.115.1
+
+### Fixed
+- kit: on a phone (640px or less) a `settingLine` with a control gives its name all of the first row that the side does not take. Before, the control under the name put its own least width into the side's column, so a name could be cut with room beside it: "Claude Code permissions" read "Claude Code p…" over a dropdown with a long choice and no side. Now, with no side the name has the whole row; with a side it has the row less the actions, and the meta takes what the name leaves, cut with an ellipsis. The line's height is the same with a side and without, as before. The wide layout, a line with no control and `cardLine` are unchanged.
+
 ## 0.115.0
 
 ### Added
