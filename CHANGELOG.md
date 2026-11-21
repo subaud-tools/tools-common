@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.116.1
+
+### Fixed
+- kit: the frame's centre column (`.kit-mid`) is `position: relative`, as its side columns are. A `.kit-label-hidden` inside it (a `pickField` or `chipPick` with `labelHidden`) was placed against the page, so on a long view the document grew and scrolled while the column did not. Found putting proj's Settings in the frame: 11 hidden labels made the document scroll 329px.
+
 ## 0.116.0
 
 ### Added
