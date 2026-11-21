@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.109.0
+
+### Added
+- kit: `confirm({ title, body, action: { label, tone }, run, disabled? })`, a `sheet` that asks one question: the title asks it, the body (text or a node) says what it does, then the action button (tone `danger` or `fill`) and Cancel. Focus starts on the action. Esc, a backdrop click or Cancel closes it with `run` not called. Pressing the action disables it and awaits `run()`: a resolved promise closes the sheet; a rejected one shows its message in the sheet's `.kit-sheet-error`, enables the action again and keeps the sheet open. `disabled` starts the action off; the handle's `setDisabled(boolean)` turns it off and on (it stays off while `run` runs), and `close()` closes it.
+
 ## 0.108.0
 
 ### Added

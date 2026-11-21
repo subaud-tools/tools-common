@@ -180,6 +180,17 @@ export interface SheetHandle {
 /** With actions, the button row ends with an empty `.kit-sheet-error` (role alert) that error() fills. */
 export function sheet(o?: { title?: string; body?: Node | string; actions?: Button[]; onClose?(): void; returnFocus?: HTMLElement; canDismiss?(): boolean }): SheetHandle;
 
+export interface ConfirmHandle {
+  el: HTMLElement;
+  /** Idempotent; closes it with run not called (or its result ignored). */
+  close(): void;
+  /** Turns the action button off or on; it stays off while run runs. */
+  setDisabled(disabled: boolean): void;
+}
+
+/** A sheet that asks one question: title, body, the action (danger or fill) and Cancel; focus on the action; Esc, backdrop or Cancel close it with nothing done; the action awaits run(): resolved closes, rejected shows the reason in `.kit-sheet-error` and enables the action again. */
+export function confirm(o: { title: string; body?: Node | string; action: { label: string; tone: 'danger' | 'fill' }; run(): Promise<unknown>; disabled?: boolean }): ConfirmHandle;
+
 /** Whether any sheet is open (the keyboard layer suspends page keys while one is). */
 export function sheetOpen(): boolean;
 
