@@ -1,4 +1,5 @@
 import { test, eq, assert, fixture } from './harness.js';
+import { h } from '/_kit/dom.js';
 import { stagePill, stageTrack, workingLine, waitBadges } from '/_kit/track.js';
 
 test('stagePill: its label with its count, as a plain step when it opens nothing', () => {
@@ -56,7 +57,10 @@ test('stagePill: a press on the ⓘ shows the tip and does not open the stage', 
   eq(opened, 0);
 });
 
-test('stageTrack: its stages joined by arrows, each opening what it names', () => {
+const segsOf = t => [...t.querySelector('.kit-stages-bar').children];
+const boxOf = el => el.getBoundingClientRect();
+
+test('stageTrack: its stages in one joined bar with no arrows, each opening what it names', () => {
   const got = [];
   const t = stageTrack({
     label: 'Where this job stands',
@@ -68,24 +72,103 @@ test('stageTrack: its stages joined by arrows, each opening what it names', () =
     ],
   });
   eq([t.tagName, t.className, t.getAttribute('aria-label')], ['NAV', 'kit-stages', 'Where this job stands']);
-  eq([...t.children].map(c => c.textContent), ['✓ Baseline', '→', 'Findings', '→', 'Verify']);
-  eq(t.children[1].className, 'kit-arrow');
-  eq(t.children[1].getAttribute('aria-hidden'), 'true');
-  t.children[2].click();
+  assert(!t.querySelector('.kit-arrow'), 'no arrows');
+  eq([...t.children].map(c => c.className), ['kit-stages-bar']);
+  const segs = segsOf(t);
+  eq(segs.map(c => c.textContent), ['✓ Baseline', 'Findings', 'Verify']);
+  segs[1].click();
   eq(got, ['findings']);
-  assert(t.children[4].classList.contains('plain'), 'one that opens nothing is plain');
+  eq(segs[1].getAttribute('aria-current'), 'step');
+  assert(segs[2].classList.contains('plain'), 'one that opens nothing is plain');
 });
 
-test('stageTrack: a parked track says so in its class', () => {
-  eq(stageTrack({ stages: [], parked: true }).className, 'kit-stages parked');
+test('stageTrack: each state\'s class on its segment', () => {
+  const t = stageTrack({ stages: [
+    { key: 'a', label: 'A', state: 'done' },
+    { key: 'b', label: 'B', state: 'now', live: true },
+    { key: 'c', label: 'C', state: 'now', other: true },
+    { key: 'd', label: 'D', state: 'flagged' },
+    { key: 'e', label: 'E', state: '' },
+  ] });
+  eq(segsOf(t).map(s => s.className), ['kit-stage done plain', 'kit-stage now plain live', 'kit-stage now plain other', 'kit-stage flagged plain', 'kit-stage plain']);
 });
 
-test('stageTrack: a stage the caller built takes its place, and after follows them', () => {
+test('stageTrack: the segments share one row and touch, with one radius at the ends', () => {
+  const fx = fixture();
+  fx.style.width = '900px';
+  const t = stageTrack({ stages: [
+    { key: 'a', label: 'Start', state: 'done' },
+    { key: 'b', label: 'Build', count: '6 of 8', state: 'now', live: true, detail: { title: 'Build' } },
+    { key: 'c', label: 'Sign off', state: '' },
+  ] });
+  fx.append(t);
+  const segs = segsOf(t).map(s => s.matches('.kit-stage') ? s : s.querySelector('.kit-stage'));
+  const bs = segs.map(boxOf);
+  for (let i = 1; i < bs.length; i++) {
+    eq(bs[i].top, bs[0].top, `segment ${i} on the first row`);
+    assert(Math.abs(bs[i].left - bs[i - 1].right) <= 1.01, `segment ${i} touches the one before: ${bs[i - 1].right} → ${bs[i].left}`);
+  }
+  const cs = segs.map(s => getComputedStyle(s));
+  assert(cs[0].borderTopLeftRadius !== '0px' && cs[0].borderTopRightRadius === '0px', 'first rounds its left');
+  eq([cs[1].borderTopLeftRadius, cs[1].borderTopRightRadius], ['0px', '0px'], 'middle is square');
+  assert(cs[2].borderTopRightRadius !== '0px' && cs[2].borderTopLeftRadius === '0px', 'last rounds its right');
+  fx.style.width = '';
+});
+
+test('stageTrack: a parked track says so in its class, and greys its segments', () => {
+  const fx = fixture();
+  const t = stageTrack({ stages: [{ key: 'a', label: 'A', state: 'now' }], parked: true });
+  fx.append(t);
+  eq(t.className, 'kit-stages parked');
+  const cs = getComputedStyle(t.querySelector('.kit-stage'));
+  eq([cs.opacity, cs.filter], ['0.55', 'grayscale(1)']);
+});
+
+test('stageTrack: a stage the caller built takes its place in the bar, and after follows it after a gap', () => {
+  const fx = fixture();
   const tab = document.createElement('button');
+  tab.className = 'kit-stage';
+  tab.textContent = 'Tab';
   const badge = document.createElement('span');
+  badge.textContent = 'badge';
   const t = stageTrack({ stages: [{ key: 'a', label: 'A', state: '' }, tab], after: [badge, null] });
-  eq(t.children.length, 4);
-  assert(t.children[2] === tab && t.children[3] === badge, 'in order');
+  fx.append(t);
+  eq(t.children.length, 2);
+  const bar = t.children[0];
+  assert(bar.children.length === 2 && bar.children[1] === tab && t.children[1] === badge, 'in order');
+  assert(boxOf(badge).left - boxOf(bar).right >= 6, 'after sits apart from the bar');
+});
+
+test('stageTrack: on a narrow page the bar wraps onto a second line, its borders kept', () => {
+  const fx = fixture();
+  fx.style.width = '220px';
+  const t = stageTrack({ stages: ['Start', 'Understanding', 'Decisions', 'Look', 'Spec', 'Plans'].map(l => ({ key: l, label: l, state: 'done' })) });
+  fx.append(t);
+  const segs = segsOf(t);
+  const tops = new Set(segs.map(s => Math.round(boxOf(s).top)));
+  assert(tops.size > 1, 'more than one line');
+  for (const s of segs) {
+    const cs = getComputedStyle(s);
+    eq([cs.borderTopWidth, cs.borderBottomWidth, cs.borderLeftWidth, cs.borderRightWidth], ['1px', '1px', '1px', '1px']);
+  }
+  assert(boxOf(t).right <= boxOf(fx).right + 0.5, 'inside its column');
+  fx.style.width = '';
+});
+
+test('stageTrack: in a band wider than a phone, a track longer than the band scrolls sideways on one row', () => {
+  assert(innerWidth > 640, `the window is wider than a phone: ${innerWidth}`);
+  const fx = fixture();
+  fx.style.width = '600px';
+  const t = stageTrack({ stages: ['Start', 'Understanding', 'Decisions', 'Look', 'Spec', 'Plans', 'Build · 6 of 8', 'Sign off', 'Wrap up'].map(l => ({ key: l, label: l, state: 'done' })) });
+  fx.append(h('header', { class: 'kit-band' }, h('div', { class: 'kit-band-under' }, t)));
+  assert(t.scrollWidth > t.clientWidth, `it scrolls: ${t.scrollWidth} > ${t.clientWidth}`);
+  const segs = segsOf(t);
+  eq(new Set(segs.map(s => Math.round(boxOf(s).top))).size, 1, 'all on one row');
+  t.scrollLeft = t.scrollWidth;
+  const last = boxOf(segs[segs.length - 1]);
+  const nav = boxOf(t);
+  assert(last.right <= nav.right + 1 && last.left >= nav.left - 1, 'the last segment scrolls into view');
+  fx.style.width = '';
 });
 
 test('waitBadges: none, nothing', () => {

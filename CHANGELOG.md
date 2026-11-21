@@ -4,6 +4,14 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.114.0
+
+### Changed
+- kit: the stage track and the status pills draw as one joined bar. `stageTrack` puts its stages in `span.kit-stages-bar` inside `nav.kit-stages`: no `.kit-arrow` spans between them and no gaps, one border and a 6px radius round the segments with a hairline between them. Done segments are green with ✓, `now` is filled in the signal colour, `now.other` is outlined on a tint, `flagged` keeps its agent tint, `live` keeps its dot, and `.parked` greys the segments as before. A caller's element in `stages` takes its place in the bar; `after` follows the bar on the line after a gap. On a narrow page the bar wraps onto a second line with every border kept, and in a `band`'s under line on a phone (640px or less) it wraps instead of scrolling. `statusPills` draws in the same bar and writes its count after a dot, `Open · 8` (`span.kit-pill-n` now holds ` · 8`, with no margin of its own). Classes, `data-stage`/`data-value`, `aria-current`/`aria-pressed`, the buttons and the ⓘ tips are as they were. What a page that uses them sees: the new look on its next kit bump, and a page that read `nav.kit-stages`'s children directly finds the stages one level down, in `.kit-stages-bar`. `.kit-arrow` keeps its muted colour for a caller that draws its own.
+
+### Added
+- kit: `sortedList` takes `groups: { name, key(item) → { key, label }, order, uncounted?, folded? }`. With it the list draws the sort switch, then one folding `section.kit-card.kit-group` per group with rows, in the kept order, rows sorted inside each by the chosen order. Each heading (`div.kit-group-line`) has a drag grip (`span.kit-group-grip`, ⠿), the fold (`button.kit-group-head`) reading `label · n` (no count for a key in `uncounted`) and a `rowMenu` ⋯ with Move up, Move down, Move to top and Reset order, each with a detail line naming where the group goes. A drag or a move redraws in the new order and keeps it under `<listname>.order.<groups.name>` (a JSON array, removed when it equals the default); Reset order removes it. A kept key that no longer exists is left out of what is drawn, but never from what is kept: a move keeps each group a filter hides in its kept place; a key of `order` missing from the kept order goes right after the key before it in `order`, and keys `order` doesn't name follow the rest, A to Z. A group with no rows is hidden and keeps its place. Folds are kept under `<listname>.folded.<key>` (`'1'` folded, `''` open); a key in `groups.folded` starts folded while nothing is kept. `set(items, groups?)` redraws with new items and, when given, another grouping with its own kept order, keeping the sort. Without `groups` the list draws exactly as before. Shown on the demo page's `?view=parts`.
+
 ## 0.113.0
 
 ### Added

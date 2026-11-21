@@ -828,7 +828,7 @@ export interface StageTrackOptions {
   after?: (Node | null)[];
 }
 
-/** The stages joined by arrows. */
+/** The stages as one joined bar (nav.kit-stages holding span.kit-stages-bar): no arrows and no gaps, one border and radius round the segments, a hairline between them; it wraps onto a second line on a narrow page. A caller's element in stages takes its place in the bar; after follows the bar on the line, after a gap. */
 export function stageTrack(o: StageTrackOptions): HTMLElement;
 
 export interface WaitValue {
@@ -955,7 +955,7 @@ export interface FilterItem {
 /** A section of the left column: All with the total of the top items, then one row per item with its count, each followed by its subs while it or one of them is chosen. Several can be chosen; All is on when none is. onToggle hears the value pressed, '' for All. */
 export function filterRow(o: { label: string; items: FilterItem[]; chosen: string[]; onToggle(value: string): void }): HTMLElement;
 
-/** The status pills, drawn as a stage track with no arrows, since statuses aren't a sequence. A pill with no count is hidden unless chosen. The value '' is the tool's All, on when none is chosen. onToggle hears the value pressed. */
+/** The status pills, drawn in the stage track's joined bar (nav.kit-stages holding span.kit-stages-bar), each count after a dot in its span.kit-pill-n: Open · 8. A pill with no count is hidden unless chosen. The value '' is the tool's All, on when none is chosen. onToggle hears the value pressed. */
 export function statusPills(o: { pills: FilterItem[]; chosen: string[]; onToggle(value: string): void; label?: string }): HTMLElement;
 
 /** An order a sort switch offers. */
@@ -974,14 +974,39 @@ export interface SortedOrder<T> extends SortOrder {
 }
 
 export interface SortedList<T> {
-  /** div.kit-sorted: the sort switch, then one section.kit-card. */
+  /** div.kit-sorted: the sort switch, then one section.kit-card, or with groups one section.kit-card.kit-group per group that has rows. */
   el: HTMLElement;
-  /** Redraw with new items, in the order chosen. */
-  set(items: T[]): void;
+  /** Redraw with new items, in the order chosen; groups, when given, replaces the grouping (another grouping draws its own kept order). With no groups it keeps the current grouping: a grouped list stays grouped. A page that wants the plain list again builds a new sortedList. */
+  set(items: T[], groups?: SortedGroups<T>): void;
 }
 
-/** One list in the order chosen on its sort switch (div.kit-sorted): the switch, then one section.kit-card holding ul.kit-group-rows with row(item) for each item in that order, or p.kit-empty reading empty when there are none. The choice is remembered under <name>.sort; with none, or one no order has, the first order. A press re-sorts and redraws in place; the items given are not reordered. label replaces the switch's sort. title, when given, opens the card with div.kit-label.kit-group-head reading title(n) for the n rows shown, redrawn on every press and set (it doesn't fold). After a press with the focus in the switch, the chosen chip has it. */
-export function sortedList<T>(o: { name: string; orders: SortedOrder<T>[]; items: T[]; row(item: T): HTMLElement; empty: string; label?: string; title?(n: number): string }): SortedList<T>;
+/** One group an item is in: its key (kept in the groups' order and its fold) and the words its heading shows. */
+export interface SortedGroup {
+  key: string;
+  label: string;
+}
+
+/**
+ * sortedList's groups: rows grouped into cards that fold and move, sorted inside each by the chosen order.
+ * Each heading (div.kit-group-line) holds span.kit-group-grip (⠿, draggable: drop it on another group, on its upper or lower half, to put it before or after that group), button.kit-label.kit-group-head (the fold, aria-expanded, reading `label · n`, or label alone for a key in uncounted), and a rowMenu ⋯ (button.kit-row-more.kit-group-more) with Move up, Move down, Move to top and Reset order (data-action up, down, top, reset), each with a detail line naming where the group goes. A move or a drop redraws in the new order and keeps it under <listname>.order.<name> as a JSON array of keys (removed when it equals the default); Reset order removes it. A group with no rows is hidden and keeps its place; a move goes past it.
+ * The order drawn: the kept one, with keys that no longer exist left out (a key exists while order names it or an item has it); they are left out only when drawing, and a move keeps every kept key a filter hides in its kept place (right after the kept key before it that is shown, else right before the one after it); then each key of order missing from it, right after the key before it in order; then the rest A to Z by label. With nothing kept, order, then the rest A to Z.
+ * Folds are kept under <listname>.folded.<key> ('1' folded, '' open); a key in folded starts folded while nothing is kept. Every heading and row is drawn alike: no edge or colour of its own.
+ */
+export interface SortedGroups<T> {
+  /** The grouping's name: its order is kept under <listname>.order.<name>. */
+  name: string;
+  /** The group an item is in. */
+  key(item: T): SortedGroup;
+  /** The default order of the keys; keys it doesn't name follow, A to Z. */
+  order: string[];
+  /** Keys whose heading shows no count. */
+  uncounted?: string[];
+  /** Keys that start folded while no fold is kept for them. */
+  folded?: string[];
+}
+
+/** One list in the order chosen on its sort switch (div.kit-sorted): the switch, then one section.kit-card holding ul.kit-group-rows with row(item) for each item in that order, or p.kit-empty reading empty when there are none. With groups (SortedGroups), the switch is followed instead by one folding section.kit-card.kit-group per group that has rows, each with its ul.kit-group-rows in the chosen order, and title is not drawn; with no items, the one card with the empty line. Without groups it draws exactly as before. The choice is remembered under <name>.sort; with none, or one no order has, the first order. A press re-sorts and redraws in place; the items given are not reordered. label replaces the switch's sort. title, when given, opens the card with div.kit-label.kit-group-head reading title(n) for the n rows shown, redrawn on every press and set (it doesn't fold). After a press with the focus in the switch, the chosen chip has it. */
+export function sortedList<T>(o: { name: string; orders: SortedOrder<T>[]; items: T[]; row(item: T): HTMLElement; empty: string; label?: string; title?(n: number): string; groups?: SortedGroups<T> }): SortedList<T>;
 
 export interface ListGroup {
   key: string;

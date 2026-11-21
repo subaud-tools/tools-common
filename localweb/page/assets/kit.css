@@ -260,12 +260,20 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
 }
 .kit-band-under > .kit-stages > * { flex: none; }
+/* the band's line is one fixed-height row that scrolls: its bar stays on one
+   line, as long as its stages (it wraps only on a phone, below) */
+.kit-band-under > .kit-stages > .kit-stages-bar { max-width: none; flex-wrap: nowrap; }
 /* a pill in the band is 24px, its words centred with or without a border */
 .kit-band .kit-pill, .kit-band .kit-working, .kit-band .kit-stage {
   box-sizing: border-box; display: inline-flex; align-items: center;
   height: 24px; padding: 0 12px; line-height: 22px;
 }
-@media (width <= 640px) { .kit-band { padding-inline: 12px; } }
+@media (width <= 640px) {
+  .kit-band { padding-inline: 12px; }
+  /* on a phone the band's bar wraps onto a second line instead of scrolling */
+  .kit-band-under > .kit-stages { height: auto; min-height: 28px; flex-wrap: wrap; overflow-x: visible; }
+  .kit-band-under > .kit-stages > .kit-stages-bar { flex: 0 1 auto; max-width: 100%; flex-wrap: wrap; }
+}
 
 /* the list panel: a quiet ground */
 .kit-list {
@@ -706,12 +714,32 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   border: 1px solid color-mix(in srgb, var(--kit-muted) 70%, var(--kit-card));
   background: transparent; color: var(--kit-muted);
 }
+/* one joined bar (stageTrack, statusPills): each segment keeps its own border
+   and the next overlaps it by a pixel, sideways and, once the bar wraps,
+   downwards, so one hairline sits between them and every border stays on a
+   second line; only the ends round. */
+.kit-stages-bar {
+  display: inline-flex; flex-wrap: wrap; align-items: stretch;
+  min-width: 0; max-width: 100%; box-sizing: border-box; padding: 0 0 1px 1px;
+}
+.kit-stages-bar > :not(.kit-tip-at), .kit-stages-bar > .kit-tip-at > .kit-stage { margin: 0 0 -1px -1px; }
+.kit-stages-bar > .kit-tip-at { display: inline-flex; }
+.kit-stages-bar .kit-stage {
+  position: relative; border-radius: 0; padding: 0 10px;
+  border-color: color-mix(in srgb, var(--kit-muted) 45%, var(--kit-card));
+}
+.kit-stages-bar > .kit-stage:first-child, .kit-stages-bar > :first-child > .kit-stage { border-radius: 6px 0 0 6px; }
+.kit-stages-bar > .kit-stage:last-child, .kit-stages-bar > :last-child > .kit-stage { border-radius: 0 6px 6px 0; }
+.kit-stages-bar > .kit-stage:only-child, .kit-stages-bar > :only-child > .kit-stage { border-radius: 6px; }
 .kit-stage.done { color: var(--kit-ok); border-color: var(--kit-ok); background: transparent; }
+.kit-stages-bar .kit-stage.done { border-color: color-mix(in srgb, var(--kit-muted) 45%, var(--kit-card)); }
 .kit-stage.now { color: var(--kit-signal-ink); background: var(--kit-signal); border-color: var(--kit-signal); }
 .kit-stage.flagged {
   color: var(--kit-agent); border-color: var(--kit-agent);
   background: color-mix(in srgb, var(--kit-agent) 14%, transparent);
 }
+/* a coloured segment's border sits over its neighbours' hairlines */
+.kit-stages-bar .kit-stage:is(.now, .flagged) { z-index: 1; }
 .kit-stage.live::before {
   content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px;
   border-radius: 50%; background: var(--kit-ok); animation: kit-pulse 1.2s infinite;
@@ -724,8 +752,9 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 }
 .kit-stage.now.other.live::before { background: var(--kit-signal); }
 .kit-stage.plain { cursor: default; }
+/* a caller's own separator in after (no longer drawn by stageTrack) */
 .kit-arrow { color: var(--kit-muted); }
-.kit-stages.parked :is(.kit-stage, .kit-arrow) { opacity: .55; filter: grayscale(1); }
+.kit-stages.parked .kit-stage { opacity: .55; filter: grayscale(1); }
 .kit-stages.parked .kit-stage.live::before { animation: none; }
 .kit-more {
   display: inline-block; margin-left: 6px; width: 14px; height: 14px; line-height: 12px;
@@ -822,7 +851,7 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
    shares list()'s .kit-sub name, whose type and colour it takes none of. */
 .kit-index-row.kit-sub { font-size: inherit; color: inherit; margin-top: 0; }
 .kit-index-row.kit-sub .kit-index-main { padding-left: 26px; }
-.kit-pill-n { margin-left: 6px; }
+.kit-pill-n { opacity: .75; }
 /* the sorted list (frontpage.js sortedList): the sort switch over one card of rows */
 .kit-sorted > .kit-card { max-width: 1100px; margin: 0 0 24px; }
 /* its title heads the card like a group's, but it doesn't fold */
@@ -845,6 +874,19 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-group.kit-folded > :not(.kit-group-head) { display: none; }
 .kit-group.kit-folded > .kit-group-head { margin-bottom: 0; }
 .kit-group-rows { list-style: none; margin: 0; padding: 0; }
+/* a sorted list's groups (sortedList's groups): a heading of the drag grip,
+   the fold with its label and count, and the ⋯ that moves it */
+.kit-group-line { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+.kit-group.kit-folded > .kit-group-line { display: flex; margin-bottom: 0; }
+.kit-group-line > .kit-group-head { flex: 1 1 auto; min-width: 0; margin: 0; }
+.kit-sorted .kit-group-line > .kit-group-head { cursor: pointer; }
+.kit-sorted .kit-group-line > .kit-group-head::before { content: '▾ '; }
+.kit-sorted .kit-group.kit-folded > .kit-group-line > .kit-group-head::before { content: '▸ '; }
+.kit-sorted .kit-group-line > .kit-group-head:hover { color: var(--kit-signal); }
+.kit-group-grip { color: var(--kit-muted); cursor: grab; letter-spacing: -2px; user-select: none; }
+.kit-group-line > .kit-row-menu { flex: none; }
+.kit-group.kit-drop-before { box-shadow: 0 -2px 0 var(--kit-signal); }
+.kit-group.kit-drop-after { box-shadow: 0 2px 0 var(--kit-signal); }
 /* a row's ⋯ menu (frontpage.js rowMenu): the pop-out shows in the top layer,
    placed by placePop below the button, right-aligned (above it near the
    window's foot), so it adds nothing to the page's size; a link reads like a button, a danger item in the danger
