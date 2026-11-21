@@ -1,4 +1,5 @@
 import { test, eq, assert, fixture } from './harness.js';
+import { h } from '/_kit/dom.js';
 import { stagePill, stageTrack, workingLine, waitBadges } from '/_kit/track.js';
 
 test('stagePill: its label with its count, as a plain step when it opens nothing', () => {
@@ -151,6 +152,22 @@ test('stageTrack: on a narrow page the bar wraps onto a second line, its borders
     eq([cs.borderTopWidth, cs.borderBottomWidth, cs.borderLeftWidth, cs.borderRightWidth], ['1px', '1px', '1px', '1px']);
   }
   assert(boxOf(t).right <= boxOf(fx).right + 0.5, 'inside its column');
+  fx.style.width = '';
+});
+
+test('stageTrack: in a band wider than a phone, a track longer than the band scrolls sideways on one row', () => {
+  assert(innerWidth > 640, `the window is wider than a phone: ${innerWidth}`);
+  const fx = fixture();
+  fx.style.width = '600px';
+  const t = stageTrack({ stages: ['Start', 'Understanding', 'Decisions', 'Look', 'Spec', 'Plans', 'Build · 6 of 8', 'Sign off', 'Wrap up'].map(l => ({ key: l, label: l, state: 'done' })) });
+  fx.append(h('header', { class: 'kit-band' }, h('div', { class: 'kit-band-under' }, t)));
+  assert(t.scrollWidth > t.clientWidth, `it scrolls: ${t.scrollWidth} > ${t.clientWidth}`);
+  const segs = segsOf(t);
+  eq(new Set(segs.map(s => Math.round(boxOf(s).top))).size, 1, 'all on one row');
+  t.scrollLeft = t.scrollWidth;
+  const last = boxOf(segs[segs.length - 1]);
+  const nav = boxOf(t);
+  assert(last.right <= nav.right + 1 && last.left >= nav.left - 1, 'the last segment scrolls into view');
   fx.style.width = '';
 });
 

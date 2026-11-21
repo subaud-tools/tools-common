@@ -260,6 +260,9 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
 }
 .kit-band-under > .kit-stages > * { flex: none; }
+/* the band's line is one fixed-height row that scrolls: its bar stays on one
+   line, as long as its stages (it wraps only on a phone, below) */
+.kit-band-under > .kit-stages > .kit-stages-bar { max-width: none; flex-wrap: nowrap; }
 /* a pill in the band is 24px, its words centred with or without a border */
 .kit-band .kit-pill, .kit-band .kit-working, .kit-band .kit-stage {
   box-sizing: border-box; display: inline-flex; align-items: center;
@@ -269,7 +272,7 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   .kit-band { padding-inline: 12px; }
   /* on a phone the band's bar wraps onto a second line instead of scrolling */
   .kit-band-under > .kit-stages { height: auto; min-height: 28px; flex-wrap: wrap; overflow-x: visible; }
-  .kit-band-under > .kit-stages > .kit-stages-bar { flex: 0 1 auto; }
+  .kit-band-under > .kit-stages > .kit-stages-bar { flex: 0 1 auto; max-width: 100%; flex-wrap: wrap; }
 }
 
 /* the list panel: a quiet ground */
