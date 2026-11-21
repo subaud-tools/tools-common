@@ -64,6 +64,55 @@ test('dom: bar', () => {
   assert(b.themeControl && b.themeControl.textContent === 'theme', 'theme control');
 });
 
+test('dom: bar setSections redraws the sections in place', () => {
+  let section = '';
+  const b = bar({
+    brand: { name: 'diazo' },
+    sections: [{ id: 'plans', label: 'Plans', count: 3 }, { id: 'later', label: 'Later' }],
+    active: 'plans',
+    onSection: id => (section = id),
+    status: 'synced',
+    primary: { label: 'Go', run() {} },
+  });
+  fixture().append(b.el);
+  const el = b.el;
+  const brand = el.querySelector('.kit-brand');
+  const right = [el.querySelector('.kit-status'), el.querySelector('.kit-sp'), b.guideControl, b.themeControl, el.querySelector('.kit-primary')];
+  const before = [brand, ...right].map(n => n.getBoundingClientRect().left);
+  const look = cs(el.querySelector('.kit-ctl[data-id="plans"]'));
+  const lookOf = s => [s.height, s.fontSize, s.paddingLeft, s.borderTopWidth];
+  const oldLook = lookOf(look);
+  const plans = el.querySelector('[data-id="plans"]');
+
+  b.setSections([{ id: 'plan', label: 'Plan' }, { id: 'record', label: 'Record', count: 2 }], 'record');
+  eq(plans.isConnected, false);
+  eq(el.querySelectorAll('.kit-ctl[data-id]').length, 2);
+  const ids = [...el.children].map(n => n.dataset.id || n.className);
+  eq(ids.slice(0, 4), ['kit-brand', 'plan', 'record', 'kit-status']);
+  const rec = el.querySelector('.kit-ctl[data-id="record"]');
+  eq(rec.textContent, 'Record2');
+  assert(rec.classList.contains('on') && rec.getAttribute('aria-current') === 'page', 'active given is on');
+  eq(lookOf(cs(rec)), oldLook);
+  eq([brand, ...right.slice(2)].map(n => n.getBoundingClientRect().left), [before[0], ...before.slice(3)], 'the brand and the controls right of the spacer stay put');
+  el.querySelector('.kit-ctl[data-id="plan"]').click();
+  eq(section, 'plan');
+  b.setSection('plan');
+  assert(el.querySelector('[data-id="plan"]').classList.contains('on') && !rec.classList.contains('on'), 'setSection on the new buttons');
+  b.setCount('plan', 5);
+  eq(el.querySelector('[data-id="plan"] .kit-n').textContent, '5');
+  b.setSectionsShown(false);
+  assert(rec.hidden, 'setSectionsShown hides the new buttons');
+  b.setSections([{ id: 'plans', label: 'Plans' }, { id: 'later', label: 'Later' }]);
+  assert(el.querySelector('[data-id="plans"]').hidden, 'the hidden state carries to redrawn buttons');
+  b.setSectionsShown(true);
+  b.setSections([{ id: 'plan', label: 'Plan' }, { id: 'record', label: 'Record', count: 2 }]);
+  assert(!el.querySelector('.kit-ctl.on[data-id]'), 'no active: none on');
+  // Same labels as at first: nothing outside the sections moved.
+  b.setSections([{ id: 'plans', label: 'Plans', count: 3 }, { id: 'later', label: 'Later' }], 'plans');
+  eq([brand, ...right].map(n => n.getBoundingClientRect().left), before);
+  eq(brand.isConnected && right.every(n => n.isConnected), true);
+});
+
 test('dom: bar brand links home only with an href', () => {
   const plain = bar({ brand: { name: 'cull' } }).el.querySelector('.kit-brand');
   eq([plain.tagName, plain.hasAttribute('href')], ['SPAN', false]);

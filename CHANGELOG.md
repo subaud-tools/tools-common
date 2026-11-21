@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.116.0
+
+### Added
+- kit: `bar`'s handle has `setSections(sections, active?)`, which redraws the section buttons in place: between the brand and the status text, with the same `kit-ctl` look and the bar's `onSection`, so one bar kept across pages can show Plans · Later on one page and Plan · Record on another. `active` is the button that is on (none without it). The new buttons keep `setSectionsShown`'s state, and `setSection` and `setCount` act on them. Nothing else in the bar is redrawn: the brand and every control right of the status keep their nodes and their place.
+
 ## 0.115.1
 
 ### Fixed
