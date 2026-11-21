@@ -265,7 +265,12 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   box-sizing: border-box; display: inline-flex; align-items: center;
   height: 24px; padding: 0 12px; line-height: 22px;
 }
-@media (width <= 640px) { .kit-band { padding-inline: 12px; } }
+@media (width <= 640px) {
+  .kit-band { padding-inline: 12px; }
+  /* on a phone the band's bar wraps onto a second line instead of scrolling */
+  .kit-band-under > .kit-stages { height: auto; min-height: 28px; flex-wrap: wrap; overflow-x: visible; }
+  .kit-band-under > .kit-stages > .kit-stages-bar { flex: 0 1 auto; }
+}
 
 /* the list panel: a quiet ground */
 .kit-list {
@@ -706,12 +711,32 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   border: 1px solid color-mix(in srgb, var(--kit-muted) 70%, var(--kit-card));
   background: transparent; color: var(--kit-muted);
 }
+/* one joined bar (stageTrack, statusPills): each segment keeps its own border
+   and the next overlaps it by a pixel, sideways and, once the bar wraps,
+   downwards, so one hairline sits between them and every border stays on a
+   second line; only the ends round. */
+.kit-stages-bar {
+  display: inline-flex; flex-wrap: wrap; align-items: stretch;
+  min-width: 0; max-width: 100%; box-sizing: border-box; padding: 0 0 1px 1px;
+}
+.kit-stages-bar > :not(.kit-tip-at), .kit-stages-bar > .kit-tip-at > .kit-stage { margin: 0 0 -1px -1px; }
+.kit-stages-bar > .kit-tip-at { display: inline-flex; }
+.kit-stages-bar .kit-stage {
+  position: relative; border-radius: 0; padding: 0 10px;
+  border-color: color-mix(in srgb, var(--kit-muted) 45%, var(--kit-card));
+}
+.kit-stages-bar > .kit-stage:first-child, .kit-stages-bar > :first-child > .kit-stage { border-radius: 6px 0 0 6px; }
+.kit-stages-bar > .kit-stage:last-child, .kit-stages-bar > :last-child > .kit-stage { border-radius: 0 6px 6px 0; }
+.kit-stages-bar > .kit-stage:only-child, .kit-stages-bar > :only-child > .kit-stage { border-radius: 6px; }
 .kit-stage.done { color: var(--kit-ok); border-color: var(--kit-ok); background: transparent; }
+.kit-stages-bar .kit-stage.done { border-color: color-mix(in srgb, var(--kit-muted) 45%, var(--kit-card)); }
 .kit-stage.now { color: var(--kit-signal-ink); background: var(--kit-signal); border-color: var(--kit-signal); }
 .kit-stage.flagged {
   color: var(--kit-agent); border-color: var(--kit-agent);
   background: color-mix(in srgb, var(--kit-agent) 14%, transparent);
 }
+/* a coloured segment's border sits over its neighbours' hairlines */
+.kit-stages-bar .kit-stage:is(.now, .flagged) { z-index: 1; }
 .kit-stage.live::before {
   content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px;
   border-radius: 50%; background: var(--kit-ok); animation: kit-pulse 1.2s infinite;
@@ -724,8 +749,9 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 }
 .kit-stage.now.other.live::before { background: var(--kit-signal); }
 .kit-stage.plain { cursor: default; }
+/* a caller's own separator in after (no longer drawn by stageTrack) */
 .kit-arrow { color: var(--kit-muted); }
-.kit-stages.parked :is(.kit-stage, .kit-arrow) { opacity: .55; filter: grayscale(1); }
+.kit-stages.parked .kit-stage { opacity: .55; filter: grayscale(1); }
 .kit-stages.parked .kit-stage.live::before { animation: none; }
 .kit-more {
   display: inline-block; margin-left: 6px; width: 14px; height: 14px; line-height: 12px;
@@ -822,7 +848,7 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
    shares list()'s .kit-sub name, whose type and colour it takes none of. */
 .kit-index-row.kit-sub { font-size: inherit; color: inherit; margin-top: 0; }
 .kit-index-row.kit-sub .kit-index-main { padding-left: 26px; }
-.kit-pill-n { margin-left: 6px; }
+.kit-pill-n { opacity: .75; }
 /* the sorted list (frontpage.js sortedList): the sort switch over one card of rows */
 .kit-sorted > .kit-card { max-width: 1100px; margin: 0 0 24px; }
 /* its title heads the card like a group's, but it doesn't fold */

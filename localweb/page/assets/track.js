@@ -44,15 +44,15 @@ export function stagePill(s, open) {
   return box;
 }
 
-// stageTrack joins the stages with arrows. A stage whose opens is set presses
-// through to open(opens); an element in stages (a tab of the caller's) takes its
-// place as it is. after holds what follows on the line: wait badges, counts.
+// stageTrack draws the stages as one joined bar (span.kit-stages-bar): no
+// arrows and no gaps, one border and radius round them all. A stage whose opens
+// is set presses through to open(opens); an element in stages (a tab of the
+// caller's) takes its place in the bar as it is. after holds what follows the
+// bar on the line, after a gap: wait badges, words.
 export function stageTrack(o) {
   return h('nav', { class: 'kit-stages' + (o.parked ? ' parked' : ''), 'aria-label': o.label },
-    o.stages.flatMap((s, i) => [
-      i ? h('span', { class: 'kit-arrow', 'aria-hidden': 'true' }, '→') : null,
-      s instanceof Node ? s : stagePill(s, o.open && s.opens != null ? () => o.open(s.opens) : null),
-    ]),
+    h('span', { class: 'kit-stages-bar' },
+      o.stages.map(s => s instanceof Node ? s : stagePill(s, o.open && s.opens != null ? () => o.open(s.opens) : null))),
     o.after);
 }
 

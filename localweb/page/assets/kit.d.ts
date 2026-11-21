@@ -828,7 +828,7 @@ export interface StageTrackOptions {
   after?: (Node | null)[];
 }
 
-/** The stages joined by arrows. */
+/** The stages as one joined bar (nav.kit-stages holding span.kit-stages-bar): no arrows and no gaps, one border and radius round the segments, a hairline between them; it wraps onto a second line on a narrow page. A caller's element in stages takes its place in the bar; after follows the bar on the line, after a gap. */
 export function stageTrack(o: StageTrackOptions): HTMLElement;
 
 export interface WaitValue {
@@ -955,7 +955,7 @@ export interface FilterItem {
 /** A section of the left column: All with the total of the top items, then one row per item with its count, each followed by its subs while it or one of them is chosen. Several can be chosen; All is on when none is. onToggle hears the value pressed, '' for All. */
 export function filterRow(o: { label: string; items: FilterItem[]; chosen: string[]; onToggle(value: string): void }): HTMLElement;
 
-/** The status pills, drawn as a stage track with no arrows, since statuses aren't a sequence. A pill with no count is hidden unless chosen. The value '' is the tool's All, on when none is chosen. onToggle hears the value pressed. */
+/** The status pills, drawn in the stage track's joined bar (nav.kit-stages holding span.kit-stages-bar), each count after a dot in its span.kit-pill-n: Open · 8. A pill with no count is hidden unless chosen. The value '' is the tool's All, on when none is chosen. onToggle hears the value pressed. */
 export function statusPills(o: { pills: FilterItem[]; chosen: string[]; onToggle(value: string): void; label?: string }): HTMLElement;
 
 /** An order a sort switch offers. */

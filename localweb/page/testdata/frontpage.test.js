@@ -75,13 +75,27 @@ const pillsOf = el => [...el.querySelectorAll('.kit-stage')].map(b => b.textCont
 test('statusPills: each with its count, an empty one hidden', () => {
   const el = statusPills({ pills, chosen: [], onToggle() {} });
   eq(el.className, 'kit-stages');
-  eq(pillsOf(el), ['All3', 'Needs you3']);
-  eq(el.querySelector('.kit-pill-n').textContent, '3');
+  eq(pillsOf(el), ['All · 3', 'Needs you · 3']);
+  assert(!el.querySelector('.kit-arrow'), 'no arrows');
+  eq([...el.children].map(c => c.className), ['kit-stages-bar']);
+});
+
+test('statusPills: one joined bar, the count after a dot, the segments touching', () => {
+  const fx = fixture();
+  const el = statusPills({ pills: [{ value: '', label: 'All', count: 32 }, { value: 'open', label: 'Open', count: 8 }, { value: 'planned', label: 'Planned', count: 15 }], chosen: [], onToggle() {} });
+  fx.append(el);
+  const segs = [...el.querySelectorAll('.kit-stage')];
+  eq(segs[1].textContent, 'Open · 8');
+  const bs = segs.map(s => s.getBoundingClientRect());
+  for (let i = 1; i < bs.length; i++) {
+    eq(bs[i].top, bs[0].top);
+    assert(Math.abs(bs[i].left - bs[i - 1].right) <= 1.01, `segment ${i} touches the one before`);
+  }
 });
 
 test('statusPills: an empty one shows while it is chosen, and the chosen are on', () => {
   const el = statusPills({ pills, chosen: ['needs', 'built'], onToggle() {} });
-  eq(pillsOf(el), ['All3', 'Needs you3', 'Built0']);
+  eq(pillsOf(el), ['All · 3', 'Needs you · 3', 'Built · 0']);
   eq(onOf(el), ['needs', 'built']);
   eq(onOf(statusPills({ pills, chosen: [], onToggle() {} })), ['']);
 });

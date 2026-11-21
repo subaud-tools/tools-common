@@ -178,6 +178,18 @@ function parts(tabbed) {
         { key: 'verify', label: 'Verify', state: '' },
       ],
       after: waitBadges([{ text: 'waiting on you · 2', who: 'you' }, { text: 'waiting on Alex · 1', who: 'Alex' }]),
+    }),
+    h('div', { class: 'kit-label' }, 'stage track, parked'),
+    stageTrack({
+      label: 'Where this plan stands',
+      parked: true,
+      stages: [
+        { key: 'start', label: 'Start', state: 'done' },
+        { key: 'spec', label: 'Spec', state: 'done' },
+        { key: 'plans', label: 'Plans', count: '1 to write', state: 'now' },
+        { key: 'build', label: 'Build', state: '' },
+      ],
+      after: [h('span', { class: 'kit-meta' }, 'parked · waits on ASK2')],
     }));
   const drafts = createDrafts();
   const note = drafts.box('thread:F2', 'A note on this', 3);

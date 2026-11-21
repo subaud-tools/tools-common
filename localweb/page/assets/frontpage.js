@@ -33,20 +33,21 @@ export function filterRow({ label, items, chosen, onToggle }) {
     })));
 }
 
-// statusPills draws the pills as a stage track with no arrows, since statuses
-// aren't a sequence. A pill with no count is hidden unless chosen. The value ''
-// is the tool's All, on when none is chosen.
+// statusPills draws the pills in the stage track's joined bar, each count
+// after a dot (Open · 8). A pill with no count is hidden unless chosen. The
+// value '' is the tool's All, on when none is chosen.
 export function statusPills({ pills, chosen, onToggle, label = 'Filter by status' }) {
   const on = value => (value ? chosen.includes(value) : !chosen.length);
   return h('nav', { class: 'kit-stages', 'aria-label': label },
-    pills.filter(p => on(p.value) || p.count).map(p =>
-      h('button', {
-        class: `kit-stage${on(p.value) ? ' now' : ''}`,
-        type: 'button',
-        'data-value': p.value,
-        'aria-pressed': String(on(p.value)),
-        onclick: () => onToggle(p.value),
-      }, p.label, h('span', { class: 'kit-pill-n' }, String(p.count)))));
+    h('span', { class: 'kit-stages-bar' },
+      pills.filter(p => on(p.value) || p.count).map(p =>
+        h('button', {
+          class: `kit-stage${on(p.value) ? ' now' : ''}`,
+          type: 'button',
+          'data-value': p.value,
+          'aria-pressed': String(on(p.value)),
+          onclick: () => onToggle(p.value),
+        }, p.label, p.count == null || p.count === '' ? null : h('span', { class: 'kit-pill-n' }, ` · ${p.count}`)))));
 }
 
 // The press being handled: a switch drawn during it, with the order pressed
