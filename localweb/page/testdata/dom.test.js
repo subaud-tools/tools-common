@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture, blurEl } from './harness.js';
-import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, textField, confirmBox, emptyCard, keyedRows, pickField, chipPick } from '/_kit/dom.js';
+import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, settingLine, textField, confirmBox, emptyCard, keyedRows, pickField, chipPick } from '/_kit/dom.js';
 import { createKeys } from '/_kit/keys.js';
 import { sheet } from '/_kit/sheet.js';
 import { fakeFetch, fakeTimers, flush } from './fakes.js';
@@ -851,6 +851,199 @@ test('dom: cardLines in a card: a rule between them, its words and meta in the k
   assert(ar.left < mr.left && Math.abs(mr.right - a.getBoundingClientRect().right) < 1, 'words left, meta right');
   const token = name => { const p = h('span', { style: `color: var(${name})` }); c.append(p); const col = cs(p).color; p.remove(); return col; };
   eq(cs(b.querySelector('.danger')).color, token('--kit-danger'));
+});
+
+test('dom: cardLine is as it was, and an action\'s data lands as data-* on its button', () => {
+  const l = cardLine({ main: 'iCloud Keychain', meta: 'added 4 Nov', actions: [{ label: 'Rename' }, { label: 'Remove', danger: true, disabled: true, title: 'Remove iCloud Keychain' }] });
+  eq(l.outerHTML, '<div class="kit-card-line"><span class="kit-card-line-main">iCloud Keychain</span><span class="kit-card-line-side">'
+    + '<small class="kit-card-line-meta">added 4 Nov</small> · <button class="kit-label-link kit-card-line-act" type="button">Rename</button>'
+    + ' · <button class="kit-label-link kit-card-line-act danger" type="button" disabled="" aria-label="Remove iCloud Keychain">Remove</button></span></div>');
+  const d = cardLine({ main: 'x', actions: [{ label: 'Reset', data: { action: 'clear-setting', settingPath: 'a.b' } }] }).querySelector('button');
+  eq([d.dataset.action, d.getAttribute('data-setting-path')], ['clear-setting', 'a.b']);
+});
+
+test('dom: settingLine draws its name, hint, control, meta and actions', () => {
+  const ran = [];
+  const input = h('input', { class: 'kit-input', type: 'text' });
+  const l = settingLine({
+    name: 'An older version', hint: '· by its full name', control: h('div', null, input, h('button', { type: 'button' }, 'Add')),
+    meta: 'changed here', actions: [{ label: 'Reset', title: 'Reset an older version', data: { action: 'clear-setting' }, run: () => ran.push('reset') }],
+  });
+  eq([l.tagName, l.className], ['DIV', 'kit-card-line kit-setting-line with-control']);
+  eq([...l.children].map(c => [c.tagName, c.className]), [['SPAN', 'kit-setting-line-name'], ['SPAN', 'kit-setting-line-control'], ['SPAN', 'kit-card-line-side kit-setting-line-side']]);
+  const name = l.firstChild;
+  eq([...name.children].map(c => [c.tagName, c.className, c.textContent]), [['SPAN', 'kit-setting-line-label', 'An older version'], ['SMALL', 'kit-setting-line-hint', ' · by its full name']]);
+  eq(name.title, 'An older version · by its full name');
+  const side = l.lastChild;
+  eq([...side.children].map(c => [c.tagName, c.className]), [['SMALL', 'kit-card-line-meta'], ['SPAN', 'kit-setting-line-acts']]);
+  eq([side.textContent, side.firstChild.title], ['changed here · Reset', 'changed here']);
+  const act = side.querySelector('button');
+  eq([act.className, act.type, act.getAttribute('aria-label'), act.dataset.action], ['kit-label-link kit-card-line-act', 'button', 'Reset an older version', 'clear-setting']);
+  act.click();
+  eq(ran, ['reset']);
+  const bare = settingLine({ name: 'scratch' });
+  eq(bare.outerHTML, '<div class="kit-card-line kit-setting-line"><span class="kit-setting-line-name" title="scratch"><span class="kit-setting-line-label">scratch</span></span></div>');
+  eq(settingLine({ name: 'x', actions: [{ label: 'All' }, { label: 'None' }] }).lastChild.textContent, 'All · None');
+  eq(settingLine({ name: 'x', meta: h('b', null, 'in your settings file') }).querySelector('.kit-card-line-meta').title, 'in your settings file');
+});
+
+test('dom: settingLine names a control that has no label of its own, and leaves one that has', () => {
+  const named = el => (el.getAttribute('aria-labelledby') || '').split(' ').filter(Boolean).map(id => el.ownerDocument.getElementById(id)?.textContent).join(' ');
+  const input = h('input', { class: 'kit-input', type: 'text' });
+  const add = h('button', { type: 'button' }, 'Add');
+  const a = settingLine({ name: 'An older version', hint: '· full name', control: h('div', null, input, add) });
+  const lone = h('input', { type: 'text' });
+  const b = settingLine({ name: 'Height', id: 'pane-height', control: lone });
+  const pick = pickField({ label: 'Agent', labelHidden: true, choices: [{ value: 'pi', label: 'pi' }] });
+  const c = settingLine({ name: 'Agent', control: pick.el });
+  const chips = chipPick({ label: 'Sidebar', labelHidden: true, chips: [{ value: 'on', label: 'on' }], chosen: ['on'], onToggle() {} });
+  const d = settingLine({ name: 'Sidebar', control: chips });
+  const group = h('div', { role: 'group' }, h('button', { type: 'button' }, 'on'), h('button', { type: 'button' }, 'off'));
+  const e = settingLine({ name: 'Open in', control: group });
+  const said = h('input', { type: 'text', 'aria-label': 'Its own' });
+  const f = settingLine({ name: 'Other', control: said });
+  const g = settingLine({ name: 'Words', control: 'none saved' });
+  fixture().append(a, b, c, d, e, f, g);
+  eq([named(input), add.hasAttribute('aria-labelledby')], ['An older version', false], 'the one input, by the name without its hint');
+  eq([named(lone), b.querySelector('.kit-setting-line-label').id], ['Height', 'pane-height'], 'the given id ties them');
+  eq([pick.button.hasAttribute('aria-labelledby'), pick.el.hasAttribute('aria-labelledby'), pick.button.labels[0].textContent], [false, false, 'Agent'], 'a dropdown keeps its own label');
+  eq(named(chips), 'Sidebar', 'chips keep their own label');
+  eq(chips.getAttribute('aria-labelledby'), chips.querySelector('.kit-field-label').id);
+  eq(named(group), 'Open in', 'a group with no name takes the setting\'s');
+  eq(said.hasAttribute('aria-labelledby'), false, 'a control that names itself is left');
+  eq(g.querySelector('.kit-setting-line-label').id, '', 'no id when nothing is tied');
+  fixture().replaceChildren();
+});
+
+// settingWindow is a window w wide with a card of lines in it, as a tool's page
+// draws them: the kit's narrow layout follows the window's width.
+async function settingWindow(w) {
+  const win = document.createElement('iframe');
+  win.style.cssText = `width:${w}px; height:900px; border:0; display:block`;
+  win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{margin:0;height:auto}.add{display:flex;gap:8px;align-items:center}.add>input{flex:1 1 0;min-width:0}</style><body>';
+  const loaded = new Promise(r => win.addEventListener('load', r, { once: true }));
+  fixture().append(win);
+  await loaded;
+  await new Promise(r => setTimeout(r, 50));
+  const doc = win.contentDocument;
+  const put = lines => {
+    const c = card({ head: 'New sessions', body: h('div', null, lines) });
+    c.style.margin = '16px';
+    doc.body.replaceChildren(c);
+    return c;
+  };
+  return { doc, put };
+}
+
+const SETTING_CONTROLS = {
+  dropdown: () => pickField({ label: 'Agent', labelHidden: true, choices: [{ value: 'cc', label: 'Claude Code' }, { value: 'pi', label: 'pi' }] }).el,
+  chips: () => chipPick({ label: 'Sidebar', labelHidden: true, chips: [{ value: 'on', label: 'on' }, { value: 'off', label: 'off' }], chosen: ['off'], onToggle() {} }),
+  input: () => h('div', { class: 'add' }, h('input', { class: 'kit-input mono', type: 'text', placeholder: 'e.g. claude-opus-4-8' }), h('button', { class: 'kit-btn', type: 'button' }, 'Add')),
+  none: () => undefined,
+};
+// Longer than a card at 1280: about 1500px in the side's 12px mono.
+const LONG_META = 'claude-gone-2 is saved but no longer available on this machine or on any other machine that you have ever signed in to with this account; '.repeat(2).trim();
+const box = el => el.getBoundingClientRect();
+const near = (a, b) => Math.abs(a - b) < 0.6;
+
+for (const w of [1280, 390]) {
+  test(`dom: settingLine at ${w}px: a meta and an action appearing change no height and move nothing below`, async () => {
+    const { put } = await settingWindow(w);
+    for (const [kind, control] of Object.entries(SETTING_CONTROLS)) {
+      const measure = side => {
+        const c = put([settingLine({ name: 'Agent', control: control(), ...side }), settingLine({ name: 'Model for pi', control: control() })]);
+        const [a, b] = c.querySelectorAll('.kit-setting-line');
+        return [box(a).height, box(b).top, box(c).height];
+      };
+      const bare = measure({});
+      eq(measure({ meta: 'changed here', actions: [{ label: 'Reset' }] }), bare, `${kind}: changed here · Reset`);
+      eq(measure({ meta: LONG_META, actions: [{ label: 'Reset' }] }), bare, `${kind}: a very long meta`);
+      eq(measure({ meta: LONG_META }), bare, `${kind}: a very long meta alone`);
+    }
+    fixture().replaceChildren();
+  });
+
+  test(`dom: settingLine at ${w}px: a very long meta is cut with an ellipsis inside the card, and its action is whole`, async () => {
+    const { put } = await settingWindow(w);
+    for (const [kind, control] of Object.entries(SETTING_CONTROLS)) {
+      const c = put([settingLine({ name: 'Model for Claude Code', control: control(), meta: LONG_META, actions: [{ label: 'Reset' }] })]);
+      const l = c.querySelector('.kit-setting-line'), meta = l.querySelector('.kit-card-line-meta'), act = l.querySelector('button.kit-card-line-act');
+      const edge = box(c).right - parseFloat(cs(c).paddingRight);
+      eq([cs(meta).textOverflow, cs(meta).whiteSpace, meta.title], ['ellipsis', 'nowrap', LONG_META], kind);
+      assert(meta.scrollWidth > meta.clientWidth && meta.clientWidth > 0, `${kind}: the meta is cut, and some of it shows (${meta.clientWidth} of ${meta.scrollWidth})`);
+      assert(box(l.querySelector('.kit-setting-line-side')).right <= edge + 0.5 && box(act).right <= edge + 0.5, `${kind}: the side ends inside the card`);
+      const alone = h('button', { class: 'kit-label-link kit-card-line-act', type: 'button' }, 'Reset');
+      c.append(alone);
+      assert(near(box(act).width, box(alone).width), `${kind}: Reset keeps its width (${box(act).width} of ${box(alone).width})`);
+      assert(box(meta).right <= box(act).left, `${kind}: the meta stops before Reset`);
+      assert(c.ownerDocument.documentElement.scrollWidth <= w, `${kind}: nothing runs past the window`);
+    }
+    fixture().replaceChildren();
+  });
+}
+
+test('dom: settingLine at 1280px: one row, the name in a 200px column, the controls of consecutive lines on one left edge', async () => {
+  const { put } = await settingWindow(1280);
+  const c = put([
+    settingLine({ name: 'Agent', control: SETTING_CONTROLS.dropdown(), meta: 'changed here', actions: [{ label: 'Reset' }] }),
+    settingLine({ name: 'Claude Code permissions', control: SETTING_CONTROLS.dropdown() }),
+    settingLine({ name: 'Sidebar', hint: '· for new sessions', control: SETTING_CONTROLS.chips(), actions: [{ label: 'Reset' }] }),
+    settingLine({ name: 'An older version', control: SETTING_CONTROLS.input() }),
+  ]);
+  const lines = [...c.querySelectorAll('.kit-setting-line')];
+  const ctl = lines.map(l => box(l.querySelector('.kit-setting-line-control')));
+  eq(ctl.map(r => Math.round(r.left - box(lines[0]).left)), [212, 212, 212, 212], 'a 200px name column and a 12px gap');
+  eq(ctl.slice(0, 2).map(r => Math.round(r.width)), [320, 320], 'a dropdown is 320px wide, with a side or without');
+  const [a] = lines, name = box(a.firstChild), side = box(a.lastChild), mid = r => r.top + r.height / 2;
+  assert(Math.abs(mid(name) - mid(ctl[0])) < 1 && Math.abs(mid(side) - mid(ctl[0])) < 1, 'name, control and side on one row, centred');
+  assert(near(side.right, box(a).right), 'the side at the right end');
+  fixture().replaceChildren();
+});
+
+test('dom: settingLine at 390px: the side is on the name\'s row and the control is under them at full width', async () => {
+  const { put } = await settingWindow(390);
+  for (const kind of ['dropdown', 'chips', 'input']) {
+    const c = put([settingLine({ name: 'Agent', control: SETTING_CONTROLS[kind](), meta: 'changed here', actions: [{ label: 'Reset' }] })]);
+    const l = c.querySelector('.kit-setting-line'), name = box(l.firstChild), ctl = box(l.children[1]), side = box(l.lastChild);
+    const mid = r => r.top + r.height / 2;
+    assert(Math.abs(mid(name) - mid(side)) < 1 && side.top >= name.top - 0.5 && side.bottom <= name.bottom + 0.5, `${kind}: the side is on the name's row (${side.top}-${side.bottom} in ${name.top}-${name.bottom})`);
+    assert(near(side.right, box(l).right) && name.right <= side.left, `${kind}: name left, side right`);
+    assert(ctl.top >= name.bottom, `${kind}: the control is under the name`);
+    assert(near(ctl.left, box(l).left) && near(ctl.width, box(l).width), `${kind}: the control is as wide as the line (${ctl.width} of ${box(l).width})`);
+  }
+  fixture().replaceChildren();
+});
+
+test('dom: settingLine with no control: name and side on one row; four actions that do not fit a phone go under the name, with a meta or without', async () => {
+  const acts = ['Move up', 'Move down', 'Height', 'Turn off'].map(label => ({ label }));
+  const mid = r => r.top + r.height / 2;
+  const wide = await settingWindow(1280);
+  let l = wide.put([settingLine({ name: 'scratch', hint: '· 12 rows', meta: 'changed here', actions: acts })]).querySelector('.kit-setting-line');
+  assert(Math.abs(mid(box(l.firstChild)) - mid(box(l.lastChild))) < 1 && near(box(l.lastChild).right, box(l).right), 'one row at 1280, the side at the right end');
+  fixture().replaceChildren();
+  const { put } = await settingWindow(390);
+  const measure = meta => {
+    const c = put([settingLine({ name: 'a pane with a long name', hint: '· 12 rows', meta, actions: acts }), settingLine({ name: 'shell' })]);
+    const [a, b] = c.querySelectorAll('.kit-setting-line');
+    return [box(a).height, box(b).top, Math.round(box(a.querySelector('.kit-setting-line-acts')).top - box(a.firstChild).top) > 4];
+  };
+  const bare = measure(undefined);
+  eq(bare[2], true, 'the actions are under the name');
+  eq(measure('changed here'), bare, 'changed here');
+  eq(measure(LONG_META), bare, 'a very long meta');
+  l = put([settingLine({ name: 'yazi', meta: 'changed here', actions: acts.slice(1) })]).querySelector('.kit-setting-line');
+  assert(Math.abs(mid(box(l.firstChild)) - mid(box(l.lastChild))) < 1, 'three actions share the name\'s row at 390');
+  // A card too narrow for the four on one row: they wrap inside it, the same with a meta.
+  const tight = meta => {
+    const c = put([settingLine({ name: 'scratch', meta, actions: acts }), settingLine({ name: 'shell' })]);
+    c.style.width = '220px';
+    const [a, b] = c.querySelectorAll('.kit-setting-line');
+    const edge = box(c).right - parseFloat(cs(c).paddingRight);
+    assert([...a.querySelectorAll('button')].every(x => box(x).right <= edge + 0.5), 'every action ends inside the card');
+    return [box(a).height, box(b).top];
+  };
+  eq(tight(LONG_META), tight(undefined), 'the actions wrap the same with a meta');
+  fixture().replaceChildren();
 });
 
 test('dom: textField is a label over an input, with a hint', () => {

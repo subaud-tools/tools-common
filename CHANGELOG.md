@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.115.0
+
+### Added
+- kit: `settingLine({ name, hint?, control?, meta?, actions?, id? })`, the line a settings card is made of: a card line (`div.kit-card-line.kit-setting-line`, with cardLine's rule, paddings and type) whose height is the same with a meta or actions and without, at every width, so nothing under it moves when "changed here · Reset" appears or goes. Its children are `span.kit-setting-line-name` (holding `span.kit-setting-line-label` and, with a hint, `small.kit-setting-line-hint`), `span.kit-setting-line-control` when there is a control (the line then carries `with-control`), and `span.kit-card-line-side.kit-setting-line-side` when there is a meta or an action (`small.kit-card-line-meta`, then `span.kit-setting-line-acts` holding the `button.kit-card-line-act`s). Wide, with a control, it is one row: the name in a 200px first column (`--kit-setting-name`) so the controls of consecutive lines share a left edge, the control at most 320px wide (`--kit-setting-control`), the side at the right end. When the window is 640px wide or less (the kit's phone breakpoint) the name and the side share the first row and the control is under them at full width. The side never goes under the control: its actions keep their width, and its meta takes the room left, cut with an ellipsis with its whole text in `title`. The name is one line, cut with an ellipsis when it doesn't fit, with its whole text in `title`. With no control the name and the side share one row at every width, and actions that don't fit beside the name go under it (and wrap there if the card is narrower than they are), whatever the meta. A control with no name of its own (the control when it is an input, select, textarea, button or has a `role`, else the one input, select or textarea inside it, with no `aria-label`, `aria-labelledby` or `label`) is named by the setting's name through `aria-labelledby`; a pickField, chipPick or textField keeps its own label. Shown on the demo page's `?view=page`, and a rule in `PAGE-STANDARD.md`.
+- kit: a `cardLine` or `settingLine` action takes `data: { action: 'clear-setting' }`, set as `data-*` attributes on its button, so a page no longer tags the buttons after building the line. `cardLine` draws exactly what it drew before for what it was given before.
+
 ## 0.114.0
 
 ### Changed
