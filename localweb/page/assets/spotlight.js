@@ -61,6 +61,11 @@ let lits = 0;
 
 let current = null;
 
+// onTop puts the ring and the note in the top layer (the popover attribute),
+// above a sheet and above a row's menu or a dropdown, which are there too;
+// popOut puts them in again when a menu opens after them.
+const onTop = (...els) => els.forEach(e => e.showPopover?.());
+
 // clearSpotlight takes the step shown away, if any.
 export function clearSpotlight() {
   if (!current) return;
@@ -78,16 +83,17 @@ export async function spotlight(step) {
   if (step && step.end) return endCard(step.end);
   if (!step || !step.walk) return;
   const sel = `[data-walk="${CSS.escape(step.walk)}"]`;
-  const ring = h('div', { class: 'kit-spot-ring', hidden: true });
+  const ring = h('div', { class: 'kit-spot-ring', popover: 'manual', hidden: true });
   const waiting = h('p', { class: step.prepare ? 'kit-spot-wait kit-spot-prep' : 'kit-spot-wait', hidden: true }, step.prepare || 'Your agent is getting this ready…');
   const title = h('p', { class: 'kit-spot-title' }, step.title || '');
   const note = step.note ? h('p', { class: 'kit-spot-note' }, step.note) : null;
   const okBtn = step.ok ? h('button', { class: 'kit-btn fill kit-spot-ok', type: 'button' }, 'ok') : null;
   const acts = okBtn ? h('div', { class: 'kit-spot-acts' }, okBtn) : null;
-  const card = h('div', { class: 'kit-spot-card', role: 'status', 'aria-live': 'polite', hidden: true, 'data-walk-step': String(step.n || '') },
+  const card = h('div', { class: 'kit-spot-card', role: 'status', 'aria-live': 'polite', popover: 'manual', hidden: true, 'data-walk-step': String(step.n || '') },
     h('p', { class: 'kit-spot-count' }, step.n && step.of ? `${step.n} of ${step.of}` : ''),
     title, note, waiting, acts);
   document.body.append(ring, card);
+  onTop(ring, card);
 
   let stopped = false, timer = 0, seen = false, lit = null, centred = false;
   const litMark = String(++lits);
@@ -220,12 +226,13 @@ export async function spotlight(step) {
 // and Start, which shows the walk's first step.
 function introCard(intro) {
   const btn = h('button', { class: 'kit-btn fill kit-spot-start', type: 'button' }, 'Start');
-  const card = h('div', { class: 'kit-spot-card kit-spot-end kit-spot-intro', role: 'dialog', 'aria-label': intro.title || `${intro.tool || 'Walk'}: intro`, 'data-walk-intro': intro.tool || '' },
+  const card = h('div', { class: 'kit-spot-card kit-spot-end kit-spot-intro', popover: 'manual', role: 'dialog', 'aria-label': intro.title || `${intro.tool || 'Walk'}: intro`, 'data-walk-intro': intro.tool || '' },
     h('p', { class: 'kit-spot-count' }, intro.tool || ''),
     h('p', { class: 'kit-spot-title' }, intro.title || ''),
     intro.text ? h('p', { class: 'kit-spot-note' }, intro.text) : null,
     h('div', { class: 'kit-spot-acts' }, btn));
   document.body.append(card);
+  onTop(card);
   const me = { stop() { card.remove(); } };
   current = me;
   btn.addEventListener('click', () => {
@@ -243,13 +250,14 @@ function introCard(intro) {
 function endCard(end) {
   const label = end.next_tool ? `Go on to ${end.next_tool}` : 'Done';
   const btn = h('button', { class: 'kit-btn fill kit-spot-next', type: 'button' }, label);
-  const card = h('div', { class: 'kit-spot-card kit-spot-end', role: 'dialog', 'aria-label': `${end.tool || 'Walk'}: you learned`, 'data-walk-end': end.tool || '' },
+  const card = h('div', { class: 'kit-spot-card kit-spot-end', popover: 'manual', role: 'dialog', 'aria-label': `${end.tool || 'Walk'}: you learned`, 'data-walk-end': end.tool || '' },
     h('p', { class: 'kit-spot-count' }, end.tool || ''),
     h('p', { class: 'kit-spot-title' }, 'You learned'),
     h('ul', { class: 'kit-spot-learned' }, ...(end.learned || []).map(l => h('li', {}, l))),
     end.next ? h('p', { class: 'kit-spot-note' }, end.next) : null,
     h('div', { class: 'kit-spot-acts' }, btn));
   document.body.append(card);
+  onTop(card);
   const me = { stop() { card.remove(); } };
   current = me;
   btn.addEventListener('click', () => {

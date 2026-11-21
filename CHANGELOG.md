@@ -4,6 +4,22 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.110.0
+
+### Changed
+- kit: `rowMenu`'s menu opens in the top layer, placed from its ⋯ button the way `pickField`'s is, so opening or closing it moves nothing on the page. Before, the menu hung inside the page: near the foot it made the page longer and `rowMenu` then scrolled it into view (a pane's menu at the foot of proj's Settings moved everything up 158px). What a page that uses `rowMenu` sees after this release:
+  - Nothing to change in its calls: the options, the items (`detail`, `{ heading }`, links, separators, disabled), `onMenu`, `open` and `buttonClass` are as they were, and so is the markup (`div.kit-row-menu` holding the ⋯ button and `div.kit-row-pop`, which has `hidden` while closed). One pop-out is open at a time; a press outside or Esc closes it. The menu's width is what it had inside the wrapper: 140px at least, no wider than the wrapper unless a word needs it, and `min(340px, 100vw - 16px)` at most with details.
+  - `.kit-row-pop` now carries `popover="manual"` and is `position: fixed` in the top layer, over any card, sheet or `overflow` that clipped it before. Opening it no longer changes the page's height or scroll position; `rowMenu` no longer calls `scrollIntoView`.
+  - It hangs 4px below the ⋯ button on the button's right edge, as before (it was 4px below the wrapper, which in a block wrapper is a pixel or two lower). New: when the right edge would run it past the window's left it goes on the button's left edge (neither fitting, the edge with more room, wrapped); when it does not fit below and there is more room above, it opens above the button; it is never taller than the room and scrolls inside itself. It follows its button when the page or a container scrolls and when the window is resized.
+  - `rowMenu` sets `top`, `left`, `right`, `bottom`, `width`, `max-width` and `max-height` on the menu's style, so a page's own CSS for those on `.kit-row-pop` no longer has an effect (`min-width` and the rest still do). A page that left-aligned a menu with `left: 0; right: auto` gets it on the button's right edge wherever that fits.
+  - A menu drawn with `open` before it is in the page shows a moment after it is added (a microtask, before the page is next drawn), not in the same call; `hidden` is off at once, as before, and a focus given to one of its items as soon as the row is in lands as before.
+  - An open menu whose row is taken off the page with no replacement closes; `onMenu` is not told.
+- kit: `popOut` takes `place(e?)`: called once the pop shows, and again when the window is resized or anything but the pop scrolls. A pop with the `popover` attribute opened before it is in the page, or put back in the page after being moved, shows in the top layer once it is there. `pickField` places its menu through it, unchanged, and a `pickField` menu whose field is moved in the page while open is shown again at its button (before, the browser dropped it from the top layer and it stayed open but not drawn). An open pop taken off the page and not put back by the end of that change is closed quietly (no `onToggle`), and its scroll, resize, click and key listeners go with it. A top-layer pop opened before it is in the page is an ordinary fixed, undrawn element until it is (its `popover` attribute is off for that moment), so a focus the caller gives one of its lines as soon as the row is in lands.
+- kit: a walk's ring and note (`.kit-spot-ring`, `.kit-spot-card`, the intro and end cards) and the tour's overlay (`.kit-tour`) carry `popover="manual"` and show in the top layer, so they stay above an open row menu or dropdown (which would otherwise cover them, being in the top layer themselves) and above a sheet; `popOut` puts them in again when a menu opens after them, keeping their focus and scroll. Their API, placing and pointer behaviour are as before: the ring lets a press through, the tour's overlay takes every one.
+
+### Added
+- kit: `placePop(btn, pop, { right? })`, the placement `pickField` and `rowMenu` share: a top-layer pop 4px below its button, or above it when there is more room above, never taller than the room. The default is `pickField`'s (the button's left edge first, within the nearest card or sheet, never narrower than the button); `right` is a row menu's (the button's right edge first, within the window).
+
 ## 0.109.0
 
 ### Added

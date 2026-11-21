@@ -1,6 +1,8 @@
 import { test, eq, assert, fixture } from './harness.js';
 import { spotlight, clearSpotlight } from '/_kit/spotlight.js';
 import { live } from '/_kit/live.js';
+import { rowMenu } from '/_kit/frontpage.js';
+import { pickField } from '/_kit/dom.js';
 import { fakeEventSource } from './fakes.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -528,4 +530,91 @@ test('live: an end-card spotlight event draws the end card', async () => {
   assert(document.querySelector('.kit-spot-end'), 'drawn');
   clearSpotlight();
   l.stop();
+});
+
+// A row with a ⋯ menu whose second item is a walk's control.
+function walkRow() {
+  const el = rowMenu({ label: 'More', items: [{ label: 'Rename', run() {} }, { label: 'Open in Ghostty', walk: 'open-ghostty', run() {} }, { label: 'Stop', run() {} }] });
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;justify-content:space-between;margin:80px 40px';
+  row.append('Session', el);
+  fixture().append(row);
+  return { el, more: el.querySelector('.kit-row-more'), pop: el.querySelector('.kit-row-pop'), item: el.querySelector('[data-walk="open-ghostty"]') };
+}
+// over says the ring and the note are drawn above the open menu pop: with the
+// ring made pressable for the check, it is what is at the lit item's middle
+// and edge; and the note, put over the menu, is what is at its own middle.
+function over(pop, item) {
+  const ring = document.querySelector('.kit-spot-ring'), card = document.querySelector('.kit-spot-card');
+  assert(ring && !ring.hidden && card && !card.hidden, 'the ring and the note are drawn');
+  const r = item.getBoundingClientRect(), rr = ring.getBoundingClientRect();
+  assert(near(r.x, rr.x) && near(r.y, rr.y), 'the ring is on the item');
+  ring.style.pointerEvents = 'auto';
+  try {
+    assert(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === ring, 'the ring is above the menu at the item\'s middle');
+    assert(document.elementFromPoint(rr.right - 1, rr.y + rr.height / 2) === ring, 'and at the ring\'s edge');
+  } finally { ring.style.pointerEvents = ''; }
+  const m = pop.getBoundingClientRect();
+  Object.assign(card.style, { left: `${Math.max(0, m.right - card.offsetWidth)}px`, top: `${m.top}px` });
+  const c = card.getBoundingClientRect();
+  const at = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
+  assert(card.contains(at), `the note is above the menu (${at && at.className})`);
+  eq(getComputedStyle(ring).pointerEvents, 'none', 'the ring still lets a press through');
+  const mid = document.elementFromPoint(r.x + 4, r.y + r.height / 2);
+  assert(mid === item || card.contains(mid), 'a press on the item still lands on it');
+}
+
+test('spotlight: the ring and the note are above a row menu that was open first', async () => {
+  const { more, pop, item } = walkRow();
+  more.click();
+  await spotlight(step({ walk: 'open-ghostty' }));
+  over(pop, item);
+  clearSpotlight();
+  more.click();
+});
+
+test('spotlight: the ring and the note are above a row menu opened after them', async () => {
+  const { more, pop, item } = walkRow();
+  await spotlight(step({ walk: 'open-ghostty' }));
+  more.click();
+  await sleep(350);
+  over(pop, item);
+  clearSpotlight();
+  more.click();
+});
+
+test('spotlight: the ring and the note are above a dropdown\'s menu, opened before or after them', async () => {
+  const p = pickField({ label: 'Kind', choices: [{ value: 'a', label: 'Feature' }, { value: 'b', label: 'Investigation' }], value: 'a' });
+  const box = document.createElement('div');
+  box.style.cssText = 'margin:80px 40px;width:220px';
+  box.append(p.el);
+  fixture().append(box);
+  const btn = p.el.querySelector('.kit-pick-btn'), pop = p.el.querySelector('.kit-pick-pop'), opt = pop.querySelectorAll('[role="option"]')[1];
+  opt.setAttribute('data-walk', 'pick-kind');
+  btn.click();
+  await spotlight(step({ walk: 'pick-kind' }));
+  over(pop, opt);
+  btn.click();
+  btn.click();
+  await sleep(350);
+  over(pop, opt);
+  clearSpotlight();
+  btn.click();
+});
+
+test('spotlight: an intro card keeps the focus on Start when a menu opens under it', async () => {
+  const { more, pop } = walkRow();
+  await spotlight({ intro: { tool: 'proj', title: 'Sessions', text: 'Where your agents run.' } });
+  const start = document.querySelector('.kit-spot-start');
+  assert(document.activeElement === start, 'Start has the focus');
+  more.click();
+  assert(document.activeElement === start, 'and keeps it');
+  const card = document.querySelector('.kit-spot-card');
+  const m = pop.getBoundingClientRect();
+  Object.assign(card.style, { left: `${Math.max(0, m.right - card.offsetWidth)}px`, top: `${m.top}px`, transform: 'none' });
+  const c = card.getBoundingClientRect();
+  const at = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
+  assert(card.contains(at), `the card is above the menu (${at && at.className}, ${JSON.stringify([c.left, c.top, c.width, c.height, m.left, m.top, card.matches(':popover-open'), pop.hidden])})`);
+  clearSpotlight();
+  more.click();
 });
