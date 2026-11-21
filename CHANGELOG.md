@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.113.0
+
+### Added
+- kit: `viewer.js`, the ⤢ "see it bigger" viewer ported from diazo's (without its mockup frames). `zoomable(holder, pic, caption, { markOnly })` puts a `button.kit-grow` ⤢ on the holder's top-right corner and returns it, so a page can hide it (`mark.hidden`) while it isn't wanted; with `markOnly` only the mark opens the viewer and a click on the holder stays the holder's. `viewer(el, caption, back)` covers the window (`.kit-viewer`, dark backdrop) with the caption and a Close button: an SVG or image fills the window, and any other element (a table) is deep-copied, without ids or `contenteditable`, onto a white panel at most the window's width that scrolls both ways. Close, Esc or a click outside the picture closes it and returns focus to `back`. For galley's wide tables; diazo moving onto it is a follow-up.
+
 ## 0.112.0
 
 ### Added

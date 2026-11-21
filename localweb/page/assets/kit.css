@@ -1140,3 +1140,36 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
    inner i (style="width:28%"). Kit tokens only. */
 .kit-progress { display: inline-block; vertical-align: middle; width: 160px; height: 5px; background: var(--kit-line); border-radius: 3px; overflow: hidden; }
 .kit-progress > i { display: block; height: 100%; background: var(--kit-ok); }
+
+/* the viewer (viewer.js): a ⤢ mark on a holder's top-right corner opens its
+   picture bigger over the window: an SVG or image scaled to fill it, anything
+   else (a table) as a copy on a white panel that scrolls both ways. */
+.kit-zoomable { position: relative; }
+.kit-zoom-click { cursor: zoom-in; }
+.kit-grow {
+  position: absolute; top: 6px; right: 6px; z-index: 1; padding: 1px 6px;
+  border: 1px solid var(--kit-line); border-radius: 6px; background: var(--kit-card); color: var(--kit-fg);
+  font-size: 13px; line-height: 1.2; cursor: zoom-in; opacity: .92;
+}
+.kit-grow[hidden] { display: none; }
+.kit-grow:hover, .kit-grow:focus-visible { opacity: 1; border-color: var(--kit-signal); }
+.kit-viewer {
+  position: fixed; inset: 0; z-index: 150; display: flex; flex-direction: column;
+  padding: 12px 32px 32px; background: rgb(17 24 39);
+}
+.kit-viewer-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; color: #fff; font: 13px var(--kit-mono); }
+.kit-viewer-head b { flex: 1; font-weight: 500; }
+.kit-viewer-head .kit-viewer-close { background: #fff; border-color: #fff; color: #111; }
+.kit-viewer-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.kit-viewer-pic { flex: none; background: #fff; border-radius: 6px; }
+.kit-viewer-svg { width: 100%; height: 100%; }
+.kit-viewer-img { object-fit: contain; }
+/* any other element: its copy at its own width, at most the stage's, from the
+   top; the panel scrolls both ways when the copy is bigger. Light inside, so
+   the page's tokens read dark on white in either theme. */
+.kit-viewer-panel {
+  flex: 0 1 auto; align-self: flex-start; max-width: 100%; max-height: 100%; overflow: auto;
+  color-scheme: light; color: var(--kit-fg);
+}
+.kit-viewer-panel > table { width: auto; max-width: none; margin: 0; }
+@media (max-width: 640px) { .kit-viewer { padding: 10px; } }
