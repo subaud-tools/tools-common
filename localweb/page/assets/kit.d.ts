@@ -976,7 +976,7 @@ export interface SortedOrder<T> extends SortOrder {
 export interface SortedList<T> {
   /** div.kit-sorted: the sort switch, then one section.kit-card, or with groups one section.kit-card.kit-group per group that has rows. */
   el: HTMLElement;
-  /** Redraw with new items, in the order chosen; groups, when given, replaces the grouping (another grouping draws its own kept order). */
+  /** Redraw with new items, in the order chosen; groups, when given, replaces the grouping (another grouping draws its own kept order). With no groups it keeps the current grouping: a grouped list stays grouped. A page that wants the plain list again builds a new sortedList. */
   set(items: T[], groups?: SortedGroups<T>): void;
 }
 
