@@ -1019,7 +1019,7 @@ test('dom: a centre with no left column fills the app grid under the band', () =
   fx.replaceChildren();
 });
 
-test('dom: the bar fits a phone: brand, Guide, theme, a menu and the primary on one line', async () => {
+test('dom: the bar fits a phone: brand, a menu of the tool\'s and the primary on one line', async () => {
   const win = document.createElement('iframe');
   win.style.cssText = 'width:390px; height:300px; border:0; display:block';
   win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{margin:0}</style><body>';
@@ -1040,6 +1040,124 @@ test('dom: the bar fits a phone: brand, Guide, theme, a menu and the primary on 
     assert(cr.height <= 40, `${c.className} is one line (${cr.height}px)`);
   }
   fixture().replaceChildren();
+});
+
+// Everything drawn in the bar ends inside the window: no element's right edge
+// past it (hidden ones have no box).
+function insideWindow(doc, root, what) {
+  const edge = doc.documentElement.clientWidth;
+  for (const n of root.querySelectorAll('*')) {
+    const r = n.getBoundingClientRect();
+    if (!r.width) continue;
+    assert(r.right <= edge + 0.5, `${what}: ${n.className || n.tagName} ends at ${r.right}, past ${edge}`);
+  }
+}
+const shown = n => n.getBoundingClientRect().width > 0;
+
+test('dom: the bar on a phone with diazo\'s parts: 52px, one line, the rest in its ⋯, each still working', async () => {
+  const doc = await bandWindow(390);
+  const themeBtn = h('button', { class: 'kit-ctl', type: 'button' }, 'theme');
+  const theme = initTheme('dom-phone', themeBtn);
+  const fetched = [];
+  const b = bar({
+    brand: { name: 'diazo', href: '/' },
+    sections: [{ id: 'plans', label: 'Plans', count: 7 }, { id: 'later', label: 'Later', count: 2 }],
+    active: 'plans', theme: themeBtn, primary: { label: 'New plan', run() {} },
+    signIn: { fetch: async url => { fetched.push(url); return new Response('', { status: 500 }); } },
+  });
+  b.setElsewhere([{ label: 'one', tone: 'you', onClick() {} }, { label: 'two', onClick() {} }, { label: 'three', onClick() {} }]);
+  b.setLive('live');
+  doc.body.append(b.el);
+  const real = window.fetch;
+  window.fetch = async () => new Response(JSON.stringify({ tool: 'diazo', tools: [] }));
+  try {
+    eq(b.el.getBoundingClientRect().height, 52, 'the bar stays 52px');
+    insideWindow(doc, b.el, 'closed');
+    const also = b.el.querySelector('.kit-also'), pill = b.el.querySelector('.kit-live');
+    for (const n of [b.el.querySelector('.kit-brand'), ...b.el.querySelectorAll('.kit-ctl[data-id]'), b.el.querySelector('.kit-primary'), b.moreControl]) {
+      assert(shown(n), `${n.className} stays on the bar`);
+      assert(n.getBoundingClientRect().height <= 40, `${n.className} is one line`);
+    }
+    for (const n of [also, pill, b.guideControl, themeBtn]) assert(!shown(n), `${n.className} is not on the bar`);
+    assert(b.moreControl.compareDocumentPosition(b.el.querySelector('.kit-primary')) & Node.DOCUMENT_POSITION_FOLLOWING, 'the ⋯ is before the primary');
+
+    b.moreControl.click();
+    const tray = b.el.querySelector('.kit-bar-tray');
+    assert(tray.matches(':popover-open'), 'the ⋯ opens its tray');
+    for (const n of [also, pill, b.guideControl, themeBtn]) {
+      assert(tray.contains(n) && shown(n), `${n.className} is in the tray`);
+    }
+    insideWindow(doc, tray, 'the tray');
+    themeBtn.click();
+    eq(theme.get(), 'light', 'theme cycles');
+    assert(tray.matches(':popover-open'), 'the tray stays open for the theme');
+    b.setLive('stale');
+    pill.querySelector('.kit-signin').click();
+    await flush();
+    eq(fetched, ['/signin'], 'Sign in again posts /signin');
+    also.querySelector('.kit-also-btn').click();
+    assert(document.querySelector('.kit-also-menu'), 'the also-open list opens');
+    assert(!tray.matches(':popover-open'), 'and the tray closes for it');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    b.moreControl.click();
+    b.guideControl.click();
+    await new Promise(r => setTimeout(r, 30));
+    const dlg = document.querySelector('.kit-guide-sheet');
+    assert(dlg, 'Guide opens the guide');
+    assert(!tray.matches(':popover-open'), 'and the tray closes for it');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    eq([...b.el.children].map(c => c.className.split(' ')[0] || c.tagName).slice(-8), ['kit-status', 'kit-sp', 'kit-also', 'kit-live', 'kit-ctl', 'kit-ctl', 'kit-bar-more', 'kit-primary'], 'closed, each is back in its place');
+    b.moreControl.click();
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert(!tray.matches(':popover-open'), 'Esc closes the tray');
+  } finally {
+    window.fetch = real;
+    theme.set('system');
+    fixture().replaceChildren();
+  }
+});
+
+test('dom: the bar on a phone with cull\'s and casebook\'s parts: 52px, nothing past the edge, the primary whole', async () => {
+  const doc = await bandWindow(390);
+  const b = bar({
+    brand: { name: 'casebook' }, status: 'synced 2m ago · courts-macbook-pro',
+    sections: [{ id: 'label', label: 'label', count: '37/150' }, { id: 'eval', label: 'eval', count: 12 }, { id: 'rules', label: 'rules', count: 1516 }],
+    active: 'label', primary: { label: 'Next unlabeled', run() {} },
+  });
+  b.setElsewhere([{ label: 'one', tone: 'you', onClick() {} }, { label: 'two', onClick() {} }]);
+  doc.body.append(b.el);
+  try {
+    eq(b.el.getBoundingClientRect().height, 52, 'the bar stays 52px');
+    insideWindow(doc, b.el, 'the bar');
+    const prim = b.el.querySelector('.kit-primary');
+    assert(shown(prim) && prim.scrollWidth <= prim.clientWidth, 'the primary is whole');
+    assert(!shown(b.el.querySelector('.kit-status')), 'the status is not on the bar');
+    b.moreControl.click();
+    const tray = b.el.querySelector('.kit-bar-tray');
+    assert(tray.contains(b.el.querySelector('.kit-status')) && shown(tray.querySelector('.kit-status')), 'it is in the tray');
+    insideWindow(doc, tray, 'the tray');
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: the bar above 640px draws as before, with no ⋯', async () => {
+  const doc = await bandWindow(1280);
+  const b = bar({
+    brand: { name: 'diazo' }, status: 'synced', sections: [{ id: 'plans', label: 'Plans', count: 7 }],
+    primary: { label: 'New plan', run() {} },
+  });
+  b.setElsewhere([{ label: 'one', onClick() {} }]);
+  b.setLive('live');
+  doc.body.append(b.el);
+  try {
+    eq(b.el.getBoundingClientRect().height, 52);
+    assert(!shown(b.moreControl), 'no ⋯');
+    for (const n of [b.el.querySelector('.kit-status'), b.el.querySelector('.kit-also'), b.el.querySelector('.kit-live'), b.guideControl, b.themeControl, b.el.querySelector('.kit-primary')]) {
+      assert(n.parentNode === b.el && shown(n), `${n.className} on the bar`);
+    }
+    const tops = [...b.el.children].filter(shown).map(c => Math.round(c.getBoundingClientRect().top + c.getBoundingClientRect().height / 2));
+    eq(new Set(tops).size, 1, 'one line');
+  } finally { fixture().replaceChildren(); }
 });
 
 test('dom: a long email beside the title shrinks on a phone and the title stays', () => {

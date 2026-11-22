@@ -104,6 +104,8 @@ export function bar(o) {
   const also = alsoOpen();
   const pill = h('span', { class: 'kit-live', hidden: true, role: 'status' });
   const themeControl = o.theme || h('button', { class: 'kit-ctl', type: 'button' }, 'theme');
+  // marks it as one of the parts the bar's ⋯ takes on a phone (kit.css)
+  themeControl.classList.add('kit-bar-theme');
   // Guide is on every page, left of the theme control (guide.js).
   const guideControl = h('button', { class: 'kit-ctl kit-guide-btn', type: 'button', onclick: () => void openGuide() }, 'Guide');
   // Sign in again asks the server (localweb's POST /signin) to open a
@@ -173,13 +175,15 @@ export function bar(o) {
   // A beta tool (its guide entry says so) carries " · beta" after its name.
   const brand = h(o.brand.href ? 'a' : 'span', { class: 'kit-brand', href: o.brand.href || null }, o.brand.mark || null, o.brand.name);
   const beta = badgeIfBeta(brand);
+  const more = barMore([status, also.el, pill, guideControl, themeControl]);
   const handle = {
     beta,
     el: h('header', { class: 'kit-bar' },
       brand,
-      ...ctls.values(), status, h('span', { class: 'kit-sp' }), also.el, pill, guideControl, themeControl, primary),
+      ...ctls.values(), status, h('span', { class: 'kit-sp' }), also.el, pill, guideControl, themeControl, more.el, primary),
     themeControl,
     guideControl,
+    moreControl: more.button,
     setSection(id) {
       for (const [k, el] of ctls) {
         el.classList.toggle('on', k === id);
@@ -239,6 +243,52 @@ export function bar(o) {
   handle.setSection(o.active);
   handle.setPrimary(o.primary || null);
   return handle;
+}
+
+// barMore is the bar's ⋯ on a phone (640px wide or less), where the bar
+// keeps one 52px line: the brand, the sections and the primary stay, and the
+// parts given (the status, the also-open switcher, the live pill, Guide and
+// theme) are hidden on the bar (kit.css) and shown in the ⋯'s tray, a
+// top-layer pop. They are the same elements, moved into the tray while it is
+// open and back to their places (a marker each) when it closes, so each keeps
+// working and a page that reaches them by reference changes nothing. Above
+// 640px the ⋯ is hidden and never opens. A press on the also-open button or
+// Guide closes the tray, since each opens something of its own; theme and
+// Sign in again leave it open.
+function barMore(parts) {
+  const button = h('button', { class: 'kit-ctl kit-bar-more-btn', type: 'button', 'aria-label': 'More', 'aria-haspopup': 'true', 'aria-expanded': 'false' }, '⋯');
+  const tray = h('div', { class: 'kit-bar-tray', popover: 'manual' });
+  tray.hidden = true;
+  const el = h('div', { class: 'kit-bar-more' }, button, tray);
+  let marks = [];
+  const putBack = () => {
+    for (const [mark, part] of marks) if (mark.parentNode) mark.replaceWith(part);
+    marks = [];
+  };
+  const pop = popOut({
+    wrap: el, btn: button, pop: tray,
+    onToggle: open => { if (!open) putBack(); },
+    place: () => {
+      // the window grew past a phone's width: the parts go back on the bar
+      if (!button.getClientRects().length) { pop.close(); return; }
+      placePop(button, tray, { right: true });
+    },
+  });
+  button.addEventListener('click', () => {
+    if (pop.open) { pop.close(); return; }
+    putBack();
+    marks = parts.filter(p => p.parentNode).map(p => {
+      const mark = document.createComment('');
+      p.replaceWith(mark);
+      return [mark, p];
+    });
+    tray.replaceChildren(...marks.map(([, p]) => p));
+    pop.show();
+  });
+  tray.addEventListener('click', e => {
+    if (e.target.closest?.('.kit-also-btn, .kit-guide-btn')) pop.close();
+  });
+  return { el, button };
 }
 
 // band is the strip under the bar with the page's title, one height (104px)

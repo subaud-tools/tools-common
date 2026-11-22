@@ -190,13 +190,34 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   border: 0; border-radius: 6px; padding: 7px 26px; cursor: pointer;
 }
 .kit-primary[hidden] { display: none; }
-/* the bar on a phone: tighter, and an empty status takes no room, so the
-   brand, Guide, theme, a menu and the primary fit on one line at 390px */
+/* the bar's ⋯ (dom.js barMore): shown only on a phone, where it holds the
+   status, the also-open switcher, the live pill, Guide and theme in its tray,
+   a top-layer pop placed under it */
+.kit-bar-more { display: none; flex: none; }
+.kit-bar-more-btn { height: 28px; padding: 0 10px; font: 16px/1 var(--kit-sans); color: var(--kit-muted); }
+.kit-bar-more-btn[aria-expanded="true"] { background: var(--kit-card); color: var(--kit-fg); }
+.kit-bar-tray {
+  box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  min-width: 160px; padding: 10px; color: var(--kit-fg);
+  background: var(--kit-card); border: 1px solid var(--kit-line); border-radius: 8px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+}
+.kit-bar-tray[popover] { position: fixed; inset: auto; margin: 0; overflow: hidden auto; overscroll-behavior: contain; }
+.kit-bar-tray[hidden] { display: none; }
+.kit-bar-tray > .kit-status { margin-left: 0; overflow-wrap: anywhere; }
+/* the bar on a phone: one 52px line in every tool. The brand, the section
+   buttons, the ⋯ and the primary stay; the status, the also-open switcher,
+   the live pill, Guide and theme go into the ⋯. The section buttons give way
+   first, with an ellipsis, so nothing ends past the window's right edge. */
 @media (width <= 640px) {
   .kit-bar { gap: 6px; padding: 0 12px; }
   .kit-bar .kit-ctl { padding: 4px 8px; }
   .kit-bar .kit-status:empty { display: none; }
-  .kit-primary { padding: 7px 12px; white-space: nowrap; }
+  .kit-primary { flex: none; padding: 7px 12px; white-space: nowrap; }
+  .kit-bar > :is(.kit-status, .kit-also, .kit-live, .kit-guide-btn, .kit-bar-theme) { display: none; }
+  .kit-bar > .kit-bar-more { display: block; }
+  .kit-bar > .kit-ctl[data-id] { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kit-bar > .kit-brand { flex: none; }
 }
 /* the bar's "also open" area: other work a click away, before the live pill.
    Chips keep their size; what doesn't fit folds into "+N more" (dom.js).

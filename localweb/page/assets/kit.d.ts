@@ -222,6 +222,8 @@ export interface BarHandle {
   themeControl: HTMLElement;
   /** The Guide button every page's bar has, left of the theme control: it opens openGuide(). */
   guideControl: HTMLElement;
+  /** The bar's ⋯, shown only at 640px wide or less, where the bar stays one 52px line: the brand, the section buttons (which shrink with an ellipsis first) and the primary stay, and the status, the also-open switcher, the live pill, Guide and themeControl go into its tray. They are the same elements, moved there while the tray is open and back when it closes, so each keeps working. themeControl carries the class kit-bar-theme for it. */
+  moreControl: HTMLElement;
   setSection(id: string): void;
   /** Show or hide every section button, for one bar kept across pages. */
   setSectionsShown(shown: boolean): void;
