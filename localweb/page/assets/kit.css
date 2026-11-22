@@ -787,8 +787,17 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-thread .kit-note-line { flex-direction: column; align-items: stretch; }
 
 /* tabs in the right column (tabs.js): the row sits under the fold toggle's line */
-.kit-rail-tabs { padding-top: 41px; }
+/* the tab row starts 16px under the band, where a thread's first label does,
+   with the column's hide toggle beside it on its line: the toggle comes down
+   to the tabs' middle (a tab is 27px, the toggle 25px), the body rises under
+   it as ever, and the row keeps clear of the toggle (its 25px, its 12px right
+   margin and a 12px gap), wrapping before it. A narrow page's open column has
+   its toggle in a strip of its own, and a folded one only the toggle. */
+.kit-rail-tabs { padding-top: 16px; }
 .kit-rail-tabrow { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px; }
+:not(.kit-narrow) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-toggle { margin-top: 17px; }
+:not(.kit-narrow) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-body { margin-top: -42px; }
+:not(.kit-narrow) > .kit-right-col > .kit-col-body > .kit-rail-tabs > .kit-rail-tabrow { padding-right: 49px; }
 .kit-rail-panel { padding: 0 16px 16px; }
 .kit-right-col > .kit-col-body .kit-rail-panel .kit-thread { padding: 0; }
 
