@@ -1,7 +1,7 @@
 import { test, eq, assert, fixture, focusEl } from './harness.js';
 import { filterRow, statusPills, groupList, rowMenu, sortSwitch, sortedList } from '/_kit/frontpage.js';
 import { indexRow } from '/_kit/index.js';
-import { pickField } from '/_kit/dom.js';
+import { pickField, band } from '/_kit/dom.js';
 
 const projects = [{ value: 'diazo', label: 'diazo', count: 3 }, { value: 'sift', label: 'sift', count: 2 }];
 const rowsOf = el => [...el.querySelectorAll('.kit-filter')].map(b => [b.dataset.value, b.querySelector('.kit-index-title').textContent, b.querySelector('.kit-meta').textContent]);
@@ -1106,4 +1106,67 @@ test('rowMenu: a menu with no details keeps the width it had inside its wrapper:
   assert(w > 200 && w < 240, `in a wrapper as wide as the page: its widest line (${w})`);
   assert(parts(wide).pop.querySelector('button').getBoundingClientRect().height < 40, 'on one line');
   parts(wide).btn.click();
+});
+
+// A window w wide with the kit's stylesheet: the band's phone rules answer to it.
+async function sortWindow(w) {
+  const win = document.createElement('iframe');
+  win.style.cssText = `width:${w}px; height:400px; border:0; display:block`;
+  win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{margin:0}</style><body>';
+  const loaded = new Promise(r => win.addEventListener('load', r, { once: true }));
+  fixture().append(win);
+  await loaded;
+  await new Promise(r => setTimeout(r, 50));
+  return win.contentDocument;
+}
+
+test('sortedList: given a band, its switch goes in the band\'s sort place and none sits over its cards', () => {
+  fresh();
+  const b = band({ title: 'Documents' });
+  const list = sorted({ band: b });
+  eq(list.el.querySelectorAll('.kit-sort').length, 0, 'no switch in the list');
+  eq([...list.el.children].map(c => c.className), ['kit-card']);
+  const under = b.el.querySelector('.kit-band-under');
+  const sw = under.lastElementChild.lastElementChild;
+  assert(sw.querySelector('.kit-sort'), 'the band\'s last element holds the switch');
+  sw.querySelector('.kit-chip[data-value="name"]').click();
+  eq(namesOf(list.el), ['a.md', 'b.md', 'c.md'], 'a press re-sorts the list');
+  eq(localStorage.getItem('kittest.sort'), 'name');
+  assert(under.lastElementChild.lastElementChild === sw, 'the same place, redrawn in it');
+  eq(sw.querySelector('.kit-chip.on').dataset.value, 'name');
+  list.set(docs);
+  eq(b.el.querySelectorAll('.kit-sort').length, 1, 'set keeps one switch');
+  fresh();
+});
+
+test('sortedList: given a band, on a wide page the chips show and the picker is hidden', async () => {
+  fresh();
+  const doc = await sortWindow(1280);
+  const b = band({ title: 'Documents' });
+  sorted({ band: b });
+  doc.body.append(b.el);
+  assert(b.el.querySelector('.kit-sort').getBoundingClientRect().width > 0, 'the chips show');
+  eq(b.el.querySelector('.kit-pick-compact').getBoundingClientRect().width, 0, 'the picker is hidden');
+});
+
+test('sortedList: given a band, on a phone the switch is a compact picker that re-sorts', async () => {
+  fresh();
+  const doc = await sortWindow(390);
+  const b = band({ title: 'Documents' });
+  const list = sorted({ band: b });
+  doc.body.append(b.el);
+  eq(b.el.querySelector('.kit-sort').getBoundingClientRect().width, 0, 'the chips are hidden');
+  const pick = b.el.querySelector('.kit-pick-compact');
+  const btn = pick.querySelector('.kit-pick-btn');
+  assert(btn.getBoundingClientRect().width > 0, 'the picker shows');
+  eq(btn.getBoundingClientRect().height, 28, 'a compact one');
+  eq(btn.textContent, 'recent');
+  btn.click();
+  pick.querySelector('.kit-pick-opt[data-value="name"]').click();
+  eq(namesOf(list.el), ['a.md', 'b.md', 'c.md']);
+  eq(localStorage.getItem('kittest.sort'), 'name');
+  eq(b.el.querySelector('.kit-pick-btn').textContent, 'name');
+  assert(b.el.querySelector('.kit-pick-btn') === btn && btn.isConnected, 'the picker stays in place, so it keeps the focus');
+  eq(b.el.querySelector('.kit-sort .kit-chip.on').dataset.value, 'name', 'the chips follow');
+  fresh();
 });

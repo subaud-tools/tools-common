@@ -777,8 +777,169 @@ test('dom: band measures as diazo\'s does', () => {
     eq(pr.height, 24, 'a borderless pill too');
     assert(Math.abs((words.top + words.bottom) / 2 - (pr.top + pr.bottom) / 2) < 1, 'its words centred');
     b.setUnder(null);
-    eq(b.el.getBoundingClientRect().height, 61, 'the title line alone');
+    eq(b.el.getBoundingClientRect().height, 104, 'the title line alone: still 104px');
   } finally { fx.style.width = ''; }
+});
+
+// A window w wide with the kit's stylesheet, so the band's phone rules (640 or
+// less) answer to it.
+async function bandWindow(w) {
+  const win = document.createElement('iframe');
+  win.style.cssText = `width:${w}px; height:400px; border:0; display:block`;
+  win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{margin:0}</style><body>';
+  const loaded = new Promise(r => win.addEventListener('load', r, { once: true }));
+  fixture().append(win);
+  await loaded;
+  await new Promise(r => setTimeout(r, 50));
+  return win.contentDocument;
+}
+
+const lastEl = node => [...node.querySelectorAll('*')].at(-1);
+const contentRight = b => b.el.getBoundingClientRect().right - parseFloat(cs(b.el).paddingRight);
+const stages = n => h('nav', { class: 'kit-stages' }, h('span', { class: 'kit-stages-bar' },
+  Array.from({ length: n }, (_, i) => h('button', { class: `kit-stage${i ? '' : ' now'}`, type: 'button' }, `Stage ${i} · ${i * 3}`))));
+
+test('dom: band is 104px with or without a row under the title', () => {
+  const fx = fixture();
+  fx.style.width = '1440px';
+  try {
+    for (const o of [{}, { under: [stages(3)] }, { search: { placeholder: 'Search plans' } }, { sort: h('span', null, 'sort') }]) {
+      const b = band({ title: 'Plans', ...o });
+      fx.replaceChildren(b.el);
+      eq(b.el.getBoundingClientRect().height, 104, JSON.stringify(Object.keys(o)));
+    }
+  } finally { fx.style.width = ''; fx.replaceChildren(); }
+});
+
+test('dom: band search is a field at the title line\'s right end, and hears every input', () => {
+  const fx = fixture();
+  fx.style.width = '1440px';
+  try {
+    const heard = [];
+    const act = h('button', { class: 'kit-ctl', type: 'button' }, 'Open');
+    const b = band({ title: 'Plans', beside: [h('span', null, '290')], end: [act], search: { placeholder: 'Search plans', value: 'dz', onInput: v => heard.push(v) } });
+    fx.append(b.el);
+    const line = b.el.querySelector('.kit-band-line');
+    const field = lastEl(line);
+    eq([field.tagName, field.type, field.placeholder, field.value, field.getAttribute('aria-label')], ['INPUT', 'search', 'Search plans', 'dz', 'Search plans']);
+    assert(b.search === field, 'the handle names the field');
+    assert(Math.abs(field.getBoundingClientRect().right - contentRight(b)) < 1, 'it ends at the band\'s right edge');
+    eq(field.getBoundingClientRect().height, 28, 'one line high');
+    assert(act.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING, 'end nodes come before the search');
+    assert(act.getBoundingClientRect().left > line.querySelector('span').getBoundingClientRect().right + 100, 'the end sits at the right, apart from beside');
+    field.value = 'dza';
+    field.dispatchEvent(new Event('input'));
+    eq(heard, ['dza']);
+  } finally { fx.style.width = ''; fx.replaceChildren(); }
+});
+
+test('dom: band sort is the second line\'s last element, after underEnd, at its right end', () => {
+  const fx = fixture();
+  fx.style.width = '1440px';
+  try {
+    const sort = h('div', { class: 'my-sort' }, 'recent');
+    const need = h('span', { class: 'kit-pill' }, '1 needs you');
+    const b = band({ title: 'Plans', under: [stages(3)], underEnd: [need], sort });
+    fx.append(b.el);
+    const under = b.el.querySelector('.kit-band-under');
+    assert(under.lastElementChild.lastElementChild === sort, 'the sort is the line\'s last element');
+    assert(need.compareDocumentPosition(sort) & Node.DOCUMENT_POSITION_FOLLOWING, 'underEnd before it');
+    assert(Math.abs(sort.getBoundingClientRect().right - contentRight(b)) < 1, 'at the right edge');
+    eq(b.el.getBoundingClientRect().height, 104);
+  } finally { fx.style.width = ''; fx.replaceChildren(); }
+});
+
+test('dom: band with only a sort or underEnd draws the row under the title for them', () => {
+  const b = band({ title: 'Plans', underEnd: [h('span', null, 'x')] });
+  eq(b.el.querySelectorAll('.kit-band-under').length, 1);
+  b.setUnderEnd(null);
+  eq(b.el.querySelectorAll('.kit-band-under').length, 0, 'gone with nothing in it');
+  b.setSort(h('span', null, 's'));
+  eq(b.el.querySelectorAll('.kit-band-under').length, 1);
+  b.setSort(null);
+  eq(b.el.outerHTML, '<header class="kit-band"><div class="kit-band-line"><h1 class="kit-band-title">Plans</h1></div></header>');
+});
+
+test('dom: band setters for its places change them in place and leave the rest', () => {
+  const back = h('a', null, 'back');
+  const b = band({ title: 'alpha', beside: [h('span', null, 'stopped')], under: [back] });
+  const under = b.el.querySelector('.kit-band-under');
+  const sort = h('span', null, 'sort');
+  b.setSort(sort);
+  b.setUnderEnd([h('span', null, 'needs')]);
+  assert(b.el.querySelector('.kit-band-under') === under && under.firstChild === back, 'the row under is the same, its start kept');
+  eq(under.lastElementChild.textContent, 'needssort');
+  b.setUnder([h('i', null, 'track')]);
+  eq(under.textContent, 'trackneedssort', 'setUnder keeps the end');
+  b.setEnd([h('button', null, 'Open')]);
+  b.setSearch({ placeholder: 'Find' });
+  b.setBeside([h('span', null, 'running')]);
+  eq(b.el.firstChild.textContent, 'alpharunningOpen', 'setBeside keeps the end');
+  eq(b.search.placeholder, 'Find');
+  b.setSearch(null);
+  eq(b.search, null);
+  b.setEnd(null);
+  eq(b.el.firstChild.children.length, 2, 'an empty end draws nothing');
+});
+
+test('dom: band fold nodes show beside the title, and a ⋯ holds only the tool\'s menu on a wide page', async () => {
+  const doc = await bandWindow(1280);
+  const ran = [];
+  const model = h('span', { class: 'kit-pill' }, 'opus');
+  const b = band({ title: 'A plan', fold: [{ node: model, item: { label: 'Model: opus', action: 'model', run: () => ran.push('model') } }] });
+  doc.body.append(b.el);
+  assert(model.getBoundingClientRect().width > 0, 'the fold node shows');
+  const more = b.el.querySelector('.kit-band-more');
+  assert(!more || more.getBoundingClientRect().width === 0, 'no ⋯ with no menu of its own');
+  b.setMenu([{ label: 'Delete', action: 'delete', run: () => ran.push('delete') }]);
+  const btn = b.el.querySelector('.kit-band-more .kit-row-more');
+  assert(btn && btn.getBoundingClientRect().width > 0, 'its ⋯ shows');
+  eq(b.el.querySelectorAll('.kit-row-more').length, 1, 'one ⋯');
+  const shown = [...b.el.querySelectorAll('[role="menuitem"]')].filter(i => doc.defaultView.getComputedStyle(i).display !== 'none').map(i => i.dataset.action);
+  eq(shown, ['delete'], 'the fold\'s items are hidden while their nodes show');
+  assert(lastEl(b.el.querySelector('.kit-band-line')).closest('.kit-band-more'), 'the ⋯ ends the title line');
+});
+
+test('dom: band on a phone stays 104px, its second line one line, the fold in the one ⋯', async () => {
+  const doc = await bandWindow(390);
+  const model = h('span', { class: 'kit-pill' }, 'opus');
+  const term = h('button', { class: 'kit-ctl', type: 'button' }, 'Open in Terminal');
+  const sort = h('span', { class: 'my-sort' }, 'recent ▾');
+  const b = band({
+    title: 'System design: check again', beside: [h('span', { class: 'kit-pill' }, 'building')],
+    fold: [{ node: model, item: { label: 'Model', action: 'model', run() {} } }, { node: term, item: { label: 'Open in Terminal', action: 'term', run() {} } }],
+    menu: [{ label: 'Delete', action: 'delete', run() {} }],
+    under: [stages(9)], sort,
+  });
+  doc.body.append(b.el);
+  const win = doc.defaultView;
+  eq(b.el.getBoundingClientRect().height, 104, 'still 104px');
+  eq([model.getBoundingClientRect().width, term.getBoundingClientRect().width], [0, 0], 'the fold nodes are hidden');
+  eq(b.el.querySelectorAll('.kit-row-more').length, 1, 'one ⋯');
+  const btn = b.el.querySelector('.kit-band-more .kit-row-more');
+  assert(btn.getBoundingClientRect().width > 0, 'the ⋯ shows');
+  assert(btn.getBoundingClientRect().right <= contentRight(b) + 0.5, 'inside the band');
+  const shown = [...b.el.querySelectorAll('[role="menuitem"]')].filter(i => win.getComputedStyle(i).display !== 'none').map(i => i.dataset.action);
+  eq(shown, ['model', 'term', 'delete'], 'the fold\'s items, then the tool\'s');
+  const under = b.el.querySelector('.kit-band-under');
+  eq(under.getBoundingClientRect().height, 28, 'the second line is one line');
+  const segs = [...under.querySelectorAll('.kit-stage')];
+  eq(new Set(segs.map(s => Math.round(s.getBoundingClientRect().top))).size, 1, 'the track does not wrap');
+  const track = under.querySelector('.kit-stages');
+  assert(track.scrollWidth > track.clientWidth, 'it scrolls sideways');
+  assert(Math.abs(sort.getBoundingClientRect().right - contentRight(b)) < 1, 'the sort stays at the end');
+  assert(Math.abs(sort.getBoundingClientRect().top - segs[0].getBoundingClientRect().top) < 4, 'on the track\'s line');
+});
+
+test('dom: band search on a phone stays a field at the title line\'s end', async () => {
+  const doc = await bandWindow(390);
+  const b = band({ title: 'Plans', search: { placeholder: 'Search plans' }, under: [stages(6)], sort: h('span', null, 'recent ▾') });
+  doc.body.append(b.el);
+  const f = b.search.getBoundingClientRect();
+  assert(f.width >= 120, `a usable field (${f.width})`);
+  assert(Math.abs(f.right - contentRight(b)) < 1, 'at the end');
+  eq(b.el.querySelector('.kit-band-title').scrollWidth <= b.el.querySelector('.kit-band-title').clientWidth, true, 'the title whole');
+  eq(b.el.getBoundingClientRect().height, 104);
 });
 
 test('dom: band spans every column of the app grid', () => {
