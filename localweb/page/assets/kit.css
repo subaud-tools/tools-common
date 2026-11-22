@@ -1324,7 +1324,7 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-diff.numbered .kit-dl { grid-template-columns: 3em 3em 1.6em minmax(0, 1fr); }
 .kit-dl .kit-n { color: var(--kit-muted); text-align: right; padding-right: 8px; margin: 0; user-select: none; }
 .kit-dl .kit-sign { text-align: center; color: var(--kit-muted); user-select: none; }
-.kit-dl .kit-t { min-height: 1.6em; tab-size: 4; }
+.kit-dl .kit-t { min-height: 1.6em; tab-size: 4; text-decoration: none; }
 .kit-dl.add { background: color-mix(in srgb, var(--kit-ok) 13%, transparent); }
 .kit-dl.add .kit-sign { color: var(--kit-ok); }
 .kit-dl.del { background: color-mix(in srgb, var(--kit-danger) 11%, transparent); }

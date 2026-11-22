@@ -138,6 +138,10 @@ function sectionLine(hk, numbers) {
   return label ? h('div', { class: 'kit-diff-section' }, label) : null;
 }
 
+// TAG is each line's text element: a removed line is del and an added one
+// ins, so a screen reader says which is which.
+const TAG = { del: 'del', add: 'ins' };
+
 // diffBox is the diff drawn: the tool's head and why, then each hunk under
 // its section with the folds counted. With no change it is the tool's none
 // words, or null without them.
@@ -153,12 +157,12 @@ export function diffBox({ head, why, diff, a, b, numbers = false, marks, none } 
       numbers ? h('span', { class: 'kit-n', 'aria-hidden': 'true' }, l.old ? String(l.old) : '') : null,
       numbers ? h('span', { class: 'kit-n', 'aria-hidden': 'true' }, l.new ? String(l.new) : '') : null,
       h('span', { class: 'kit-sign', 'aria-hidden': 'true' }, mark ? '!' : SIGN[l.op]),
-      h('span', { class: 'kit-t' }, l.text),
+      h(TAG[l.op] ?? 'span', { class: 'kit-t' }, l.text),
     );
   };
   return h(
     'section',
-    { class: `kit-diff${numbers ? ' numbered' : ''}`, 'aria-label': typeof head === 'string' ? head : undefined },
+    { class: `kit-diff${numbers ? ' numbered' : ''}`, 'aria-label': typeof head === 'string' ? head : head?.textContent || undefined },
     head ? h('div', { class: 'kit-diff-head' }, head) : null,
     why ? h('div', { class: 'kit-diff-why' }, why) : null,
     hunks.length

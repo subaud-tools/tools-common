@@ -197,3 +197,15 @@ test('diffBox: a marked old line is drawn with ! and the mark class', () => {
   const del = getComputedStyle(plain.querySelector('.kit-dl.del')).backgroundColor;
   assert(mark !== del, `a marked line has its own tint: ${mark}`);
 });
+
+test('diffBox: removed and added text reach a screen reader as del and ins, and a node head still labels the box', () => {
+  const head = document.createElement('span');
+  head.append('Changed since you approved it: 2 lines');
+  const box = diffBox({ head, a: 'a\nb\n', b: 'a\nB\n' });
+  fixture().append(box);
+  eq(box.querySelector('.kit-dl.del .kit-t').tagName, 'DEL');
+  eq(box.querySelector('.kit-dl.add .kit-t').tagName, 'INS');
+  eq(box.querySelector('.kit-dl.same .kit-t').tagName, 'SPAN');
+  eq(getComputedStyle(box.querySelector('.kit-dl.add .kit-t')).textDecorationLine, 'none');
+  eq(box.getAttribute('aria-label'), 'Changed since you approved it: 2 lines');
+});
