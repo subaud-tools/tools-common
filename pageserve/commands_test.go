@@ -303,7 +303,7 @@ func TestChannelScopeIsTheSessionsFolder(t *testing.T) {
 	}
 }
 
-// `<tool> skills install` writes the two family skills beside the tool's
+// `<tool> skills install` writes the family skills beside the tool's
 // own, the same bytes the guide renders, for every tool.
 func TestSkillsInstallAlsoWritesTheFamilySkills(t *testing.T) {
 	pi := t.TempDir()
