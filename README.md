@@ -97,7 +97,7 @@ A tool can override any built-in by registering a command with the same `Name`
 (e.g. wrap `update` with domain-specific convergence).
 
 `Config.Gated` marks a tool whose `/dl` is closed to anyone: `update` then
-fetches `latest`, the tarball and its `.sha256` through five-minute signed
+fetches `latest`, the tarball, its `.sha256` and its receipt through five-minute signed
 links (`auth.Link`, `POST /links` with the machine's token) instead of from
 `https://<domain>/dl`. With no token, or one the service refuses, it points to
 the setup line on the account page (`auth.ErrNotSignedIn`,
@@ -132,16 +132,38 @@ different command; re-registering a `Name` replaces its aliases.
 `<tool> update` means the same thing everywhere. `SelfUpdate`:
 
 1. GET `https://<domain>/dl/<tool>/latest` → bare semver (leading `v` tolerated).
-2. If it equals the current version → no-op.
+2. If it equals the current version → no-op. If it is older than the current
+   version (`receipt.Older`: `X.Y.Z` or `X.Y.Z-rc.N`, an rc older than its
+   final version), as for an rc or a local build ahead of the latest release,
+   nothing is downloaded or replaced either: `update` prints `<tool> <version>
+   is newer than the latest release <latest>; nothing to do` and exits 0, so
+   an old release offered as the latest rolls nobody back. A build whose
+   version is not one of those forms, such as a dev build, always updates.
 3. Otherwise download
    `https://<domain>/dl/<tool>/<version>/<tool>_<os>_<arch>.tar.gz` and its
    `.sha256` sidecar.
 4. **Fail-closed** sha256 verify against the sidecar.
-5. Extract the `<tool>` binary from the tar.gz.
-6. Atomically replace the running binary (stage `.<tool>.new.<pid>` →
-   `os.Rename`), so a running process keeps its inode.
+5. Download `<file>.receipt` and `<file>.receipt.sig`. The receipt is
+   `{"tool":"<tool>","version":"<version>","file":"<file>","sha256":"<hex>"}`,
+   signed with Ed25519 by the release; it must verify against one of the two
+   public keys in `receipt` (the release key, or the offline backup key) and
+   name this tool, this version, this file and its sha256 (`receipt.Check`).
+6. Extract the `<tool>` binary from the tar.gz (`receipt.Extract`: only a
+   regular, non-empty file named exactly `<tool>`, as every release packs it;
+   a file of that name in a directory or a link is not taken) and stage it
+   beside the running binary (`.<tool>.new.<pid>`).
+7. On macOS, the staged file must carry a valid signature by the family's
+   Apple Developer ID team (`receipt.CheckSigner`, which runs
+   `/usr/bin/codesign`). Linux has no such check.
+8. Atomically replace the running binary (`os.Rename`), so a running process
+   keeps its inode.
 
-A gated tool (`Config.Gated`) asks for each of the three files as a signed
+When 5, 6 or 7 fails, `update` prints one line,
+`<tool> update: update refused: <which check failed>`, exits 1 and leaves the
+running binary as it was. No flag, environment variable or config skips a
+check.
+
+A gated tool (`Config.Gated`) asks for each of the five files as a signed
 link instead of a fixed URL.
 
 ## Version format

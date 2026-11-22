@@ -4,6 +4,16 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.120.0
+
+### Changed
+- `update` (`SelfUpdate`) installs a release only when its signed receipt verifies. Beside the file and its `.sha256` it fetches `<file>.receipt` and `<file>.receipt.sig`, and the receipt must be signed by one of the two keys the family trusts (the release key, or the offline backup key) and name this tool, this version, this file and its checksum. When `latest` is older than the running version (an rc is older than its final version), as for an rc or a local build ahead of the latest release, it installs nothing, prints `<tool> <version> is newer than the latest release <latest>; nothing to do` and exits 0, where before it replaced the running binary with the older release; `SelfUpdate` then returns `false` and the latest release's version. A dev build always updates. On macOS it refuses a binary that is not signed by the family's Apple Developer ID. A refusal is one line, `<tool> update: update refused: <which check failed>`, and leaves the running binary as it was. Nothing skips a check. A release that publishes no receipts can no longer be installed by `update`.
+
+- `update` takes the binary out of a release's tarball only as a regular, non-empty file named exactly `<tool>`. A release packed any other way (the binary in a directory, a link, an empty file) is refused with `update refused: the download holds no regular file named "<tool>"` or `update refused: the file "<tool>" in the download is empty`, where before the first entry with that base name was installed, whatever it was.
+
+### Added
+- `receipt`: `Check` and `Verify` (a release file against its signed receipt), `Older` (the downgrade rule), `Extract` (the binary out of a release's tarball) and `CheckSigner` (the macOS Developer ID check), for kempt, which installs the other tools.
+
 ## 0.119.0
 
 ### Changed

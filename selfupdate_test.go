@@ -4,7 +4,9 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -18,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/subaud-tools/tools-common/auth"
+	"github.com/subaud-tools/tools-common/receipt"
 )
 
 // makeTarGz builds a gzip+tar containing a single file named bin with content.
@@ -60,13 +63,48 @@ func dlServer(t *testing.T, name, latest string, tarball []byte, sidecar string)
 	mux.HandleFunc("/dl/"+name+"/"+latest+"/"+asset+".sha256", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, sidecar)
 	})
+	rcpt := receiptFor(name, latest, asset, tarball)
+	mux.HandleFunc("/dl/"+name+"/"+latest+"/"+asset+".receipt", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(rcpt)
+	})
+	mux.HandleFunc("/dl/"+name+"/"+latest+"/"+asset+".receipt.sig", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(signReceipt(testReleaseKey, rcpt))
+	})
 	return httptest.NewServer(mux)
+}
+
+// The tests' own key pairs, standing for the release key and the backup
+// key: the family's private keys are in no test.
+var (
+	_, testReleaseKey, _ = ed25519.GenerateKey(nil)
+	_, testBackupKey, _  = ed25519.GenerateKey(nil)
+	testKeys             = receipt.Keys{testReleaseKey.Public().(ed25519.PublicKey), testBackupKey.Public().(ed25519.PublicKey)}
+)
+
+// trustTestKeys makes a's update check receipts against the tests' keys
+// (the real check otherwise) and accept a staged file that is no signed
+// binary.
+func trustTestKeys(a *App) {
+	a.checkReceipt = testKeys.Check
+	a.checkSigner = func(string) error { return nil }
+}
+
+// receiptFor is a receipt as a release writes it.
+func receiptFor(tool, version, file string, data []byte) []byte {
+	sum := sha256.Sum256(data)
+	return fmt.Appendf(nil, `{"tool":"%s","version":"%s","file":"%s","sha256":"%s"}`+"\n", tool, version, file, hex.EncodeToString(sum[:]))
+}
+
+// signReceipt is a .receipt.sig as a release writes it.
+func signReceipt(key ed25519.PrivateKey, rcpt []byte) []byte {
+	return []byte(base64.StdEncoding.EncodeToString(ed25519.Sign(key, rcpt)) + "\n")
 }
 
 func newUpdateApp(t *testing.T, srv *httptest.Server, current, exe string) *App {
 	a := New(Config{Name: "kempt", Domain: "kempt.tools", Version: Version{Number: current}})
 	a.setDLHost(srv.URL)
 	a.exePath = func() (string, error) { return exe, nil }
+	trustTestKeys(a)
 	return a
 }
 
@@ -209,6 +247,7 @@ func gatedApp(t *testing.T, gated bool, links *httptest.Server, signedIn bool, e
 	}
 	a.auth = &auth.Client{API: links.URL, Path: tokenPath}
 	a.exePath = func() (string, error) { return exe, nil }
+	trustTestKeys(a)
 	return a
 }
 
@@ -230,7 +269,8 @@ func TestAGatedToolUpdatesThroughSignedLinks(t *testing.T) {
 	if b, _ := os.ReadFile(exe); string(b) != string(newBin) {
 		t.Errorf("target not replaced: %q", b)
 	}
-	want := []string{"kempt/latest", "kempt/0.2.0/" + assetName("kempt"), "kempt/0.2.0/" + assetName("kempt") + ".sha256"}
+	file := "kempt/0.2.0/" + assetName("kempt")
+	want := []string{"kempt/latest", file, file + ".sha256", file + ".receipt", file + ".receipt.sig"}
 	if fmt.Sprint(*asked) != fmt.Sprint(want) {
 		t.Fatalf("asked %v, want %v", *asked, want)
 	}
@@ -247,6 +287,7 @@ func TestAToolAsksForItsProductsLinks(t *testing.T) {
 	a := New(Config{Name: "cull", Product: "tackle", Domain: "tackle.tools", Version: Version{Number: "0.1.0"}, Gated: true})
 	a.auth = &auth.Client{API: links.URL, Path: filepath.Join(t.TempDir(), "token")}
 	a.exePath = func() (string, error) { return exe, nil }
+	trustTestKeys(a)
 
 	if _, _, err := a.SelfUpdate(io.Discard, io.Discard); err != nil {
 		t.Fatal(err)
