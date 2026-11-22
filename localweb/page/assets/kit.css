@@ -285,9 +285,16 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    96px floor; the title shrinks last, only when it is too long for the line
    with them at their least. End nodes stay whole: an end action that should
    leave a phone's line is a fold entry with at: 'end', which goes into the
-   ⋯ there. The order comes from shrink weights far apart (beside 1e8, search
-   1e6, title 1) on one flex line: the end place lays its parts out on the
-   title line itself (display: contents), from its first part (margin-left:
+   ⋯ there. Fold entries with shrink (an agent's latest words) give way after
+   the search and before the title, with an ellipsis, down to nothing; the
+   rest of the fold never shrinks. The title never goes under its floor,
+   320px or its own width when shorter, while the fold is on the line: when
+   it would, band() sets kit-band-folded on the band (measured, see dom.js)
+   and the fold (an end fold too) goes into the ⋯ as on a phone, until it
+   fits again. The order comes from shrink weights far apart (beside 1e8,
+   search 1e6, a shrink fold entry 1e5, title 1) on one flex line: the fold
+   beside the title and the end place lay their parts out on the title line
+   itself (display: contents), the end from its first part (margin-left:
    auto), 8px apart. */
 /* the last thing beside the title gives way first (a long email on a phone):
    it shrinks with an ellipsis before the title does */
@@ -296,6 +303,12 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .kit-band-fold { display: flex; align-items: center; gap: 12px; }
+:where(.kit-band-line) > .kit-band-fold { display: contents; }
+.kit-band-fold > * { flex: none; }
+.kit-band-line > .kit-band-fold > .kit-band-shrink {
+  flex: 0 100000 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .kit-band-under-end { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .kit-band-end { display: contents; }
 .kit-band-end > * { flex: none; margin-left: -4px; }
@@ -333,9 +346,14 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-band-sort > .kit-sort { margin: 0; flex-wrap: nowrap; }
 .kit-band-sort > .kit-field { margin: 0; width: 112px; }
 .kit-band-sort > .kit-pick-compact { display: none; }
-/* the fold's items show in the ⋯ only on a phone, and a ⋯ that holds only
-   them shows only there */
+/* the fold's items show in the ⋯ only on a phone or while the band is
+   folded (short of room for the title's floor beside the fold), and a ⋯ that
+   holds only them shows only then */
 .kit-row-pop .kit-band-fold-item, .kit-band-more.kit-band-phone { display: none; }
+.kit-band.kit-band-folded .kit-band-fold { display: none; }
+.kit-band.kit-band-folded .kit-band-more.kit-band-phone { display: block; }
+.kit-band.kit-band-folded .kit-band-more .kit-row-pop .kit-band-fold-item { display: block; }
+.kit-band.kit-band-folded .kit-band-end > .kit-band-fold:first-child + * { margin-left: auto; }
 @media (width <= 640px) {
   .kit-band { padding-inline: 12px; }
   .kit-band-fold { display: none; }

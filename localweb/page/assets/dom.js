@@ -302,15 +302,22 @@ function barMore(parts) {
 // actions), search (a field: { placeholder, value, onInput }) and the one ⋯;
 // on the second line, under (a stage track, status pills, a back link), then
 // at its right end underEnd (the needs-you pill) and sort (a list's switch,
-// sortedList's band). fold is [{ node, item, at }]: node shows beside the
-// title on a wide page (with at: 'end', in the title line's end place, before
-// end), and on a phone it hides and item (a rowMenu item, optional) shows in
-// the ⋯. menu is the tool's own ⋯ items, at every width. On a phone the title
-// stays whole while the rest of its line gives way: the last beside node
-// shrinks with an ellipsis, then the search to its 96px floor, then the end
-// nodes; a title too long for the line alone shrinks last. The band
-// draws one ⋯ (rowMenu), only while there is something to put in it. Each
-// setter changes its own part in place; an empty place draws nothing.
+// sortedList's band). fold is [{ node, item, at, shrink }]: node shows beside
+// the title on a wide page (with at: 'end', in the title line's end place,
+// before end), and on a phone it hides and item (a rowMenu item, optional)
+// shows in the ⋯, first. menu is the tool's own ⋯ items, at every width. The
+// title stays whole while the rest of its line gives way: the last beside
+// node shrinks with an ellipsis, then the search to its 96px floor, then the
+// fold entries beside the title with shrink: true (an agent's latest words),
+// with an ellipsis, to nothing; the rest of the fold and the end nodes never
+// shrink. Then the title shrinks, with the fold on the line never under its
+// floor (320px, or its own width when shorter): where it would be, on any
+// width, the band is measured short of room, kit-band-folded, and the fold
+// (an end fold too) goes into the ⋯ as on a phone, back as soon as it fits
+// (a band with fold entries watches its line). A title too long for the line
+// alone shrinks last. The band draws one ⋯ (rowMenu), only while there is
+// something to put in it. Each setter changes its own part in place; an
+// empty place draws nothing.
 export function band(o) {
   const title = h('h1', { class: 'kit-band-title' }, o.title);
   const line = h('div', { class: 'kit-band-line' }, title);
@@ -330,6 +337,7 @@ export function band(o) {
     const anchor = foldEl.parentNode === line ? foldEl : endEl.parentNode === line ? endEl : null;
     for (const n of s.beside) line.insertBefore(typeof n === 'string' ? document.createTextNode(n) : n, anchor);
     const shown = fs => fs.map(f => f.node).filter(n => n !== null && n !== undefined && n !== false);
+    for (const f of s.fold) f.node?.classList?.toggle('kit-band-shrink', !!f.shrink);
     const folds = shown(s.fold.filter(f => f.at !== 'end'));
     const endFolds = shown(s.fold.filter(f => f.at === 'end'));
     if (folds.length) {
@@ -353,6 +361,82 @@ export function band(o) {
     if (more) endEl.append(more);
     if (!endEl.childNodes.length) endEl.remove();
     else if (endEl.parentNode !== line) line.append(endEl);
+    watch();
+  };
+  // Folding by measurement: a band with fold entries on the page watches its
+  // title line's width, and the fold's nodes for a control coming or going
+  // inside them with no setter (a Cancel), and measures again on each
+  // setter. The title's floor is 320px, or its own width when shorter;
+  // whenever the title would be under it with the fold on the line
+  // (everything else on the line already at its least, as the title shrinks
+  // last), the band is kit-band-folded and the fold goes into the ⋯. Each
+  // check lays the line out with the fold on it, so the band folds and
+  // unfolds at the same width and never flickers at the edge. Only the line
+  // is size-observed (folding never changes its size, so the observer never
+  // loops); the fold's nodes are watched for changes (a MutationObserver,
+  // which folding never trips: it changes only the band's own class). A band
+  // that leaves the page stops watching at its next check; one put on the
+  // page watches from its own window, bound a microtask after it was made or
+  // set, or at its next setter.
+  let ro = null;
+  let mo = null;
+  let win = null;
+  const fit = () => {
+    if (!el.isConnected) {
+      unwatch();
+      return;
+    }
+    const short = () => title.clientWidth < Math.min(320, title.scrollWidth);
+    if (!el.classList.contains('kit-band-folded') && !short()) return;
+    el.classList.remove('kit-band-folded');
+    if (short()) el.classList.add('kit-band-folded');
+  };
+  const unwatch = () => {
+    ro?.disconnect();
+    ro = null;
+    mo?.disconnect();
+    mo = null;
+    win?.removeEventListener('resize', fit);
+    win = null;
+  };
+  let pending = false;
+  function watch() {
+    if (!s.fold.length) {
+      unwatch();
+      el.classList.remove('kit-band-folded');
+      return;
+    }
+    // A band made off the page is watched from the window it goes into: the
+    // tool appends it in the same task, so a microtask later it is there.
+    if (!el.isConnected && !pending) {
+      pending = true;
+      queueMicrotask(() => {
+        pending = false;
+        if (s.fold.length) bind();
+      });
+    }
+    if (el.isConnected) bind();
+  }
+  const bind = () => {
+    if (!el.isConnected) return;
+    const w = el.ownerDocument.defaultView;
+    if (!w?.ResizeObserver || !w.MutationObserver) return;
+    if (win !== w) {
+      unwatch();
+      win = w;
+      // made in the band's own window, the one that lays its line out
+      ro = new w.ResizeObserver(fit);
+      ro.observe(line);
+      mo = new w.MutationObserver(fit);
+      // its resize heard too, for a window that draws no frames to deliver
+      // the observer's (the kit's test browser)
+      w.addEventListener('resize', fit);
+    }
+    mo.disconnect();
+    for (const f of s.fold) {
+      if (f.node?.nodeType) mo.observe(f.node, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'class', 'style'] });
+    }
+    fit();
   };
   const drawUnder = () => {
     const tail = [...s.underEnd, s.sort].filter(Boolean);
@@ -369,6 +453,7 @@ export function band(o) {
     get search() { return field; },
     setTitle(t) {
       title.replaceChildren(t);
+      if (ro) fit();
     },
     setBeside(xs) { s.beside = nodes(xs); drawLine(); },
     setFold(fs) { s.fold = [fs || []].flat().filter(Boolean); drawLine(); },

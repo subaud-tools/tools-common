@@ -4,6 +4,15 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.121.0
+
+### Changed
+- kit: the band moves its fold into its ⋯ on any width where the title would go under its floor with the fold on the line, not only on a phone. The floor is 320px, or the title's own width when shorter. A band with fold entries on the page watches its title line (a ResizeObserver, and its window's resize) and its fold's nodes (a MutationObserver, for a control such as Cancel coming or going inside one with no setter), and measures again on each setter; short of room it is `header.kit-band.kit-band-folded`: the fold and an end fold hide, their items show first in the ⋯, and a ⋯ that holds only them shows, as on a phone. It unfolds as soon as the fold fits again, at the same width it folded, so a short title keeps its controls on the line where a long title loses them. A band taken off the page stops watching; one put on the page watches from a microtask after it was made or set, or from its next setter. The phone rules are as they were.
+- kit: `span.kit-band-fold` beside the title is `display: contents`: its nodes are laid out on the title line itself, each whole (`flex: none`), so the fold's box can no longer shrink past what it holds. A tool's own rules on `.kit-band-fold`'s box (`flex`, `min-width`, `margin-left`) no longer apply; put them on its nodes. The end fold keeps its box.
+
+### Added
+- kit: a `band()` fold entry takes `shrink: true`: its node (class `kit-band-shrink`) gives way with an ellipsis, down to nothing, after what is beside the title and the search and before the title. The order things give way on the title line is now: the last beside node, the search to 96px, the shrink fold entries, then the title to its floor.
+
 ## 0.120.0
 
 ### Changed

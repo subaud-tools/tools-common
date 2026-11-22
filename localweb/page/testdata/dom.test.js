@@ -1364,6 +1364,195 @@ test('dom: band with an end fold first keeps the search and ⋯ at the right edg
   }
 });
 
+// The give-way order on a wide page, in fixed widths so no font decides it:
+// a 610px title (the galley plan's) and a 600px fold of four controls that
+// never shrink (diazo's session controls).
+// fixedBox is w px wide in every font: its label is clipped inside it, so a
+// font that sets the label wider (CI's Linux fonts) never widens what holds
+// it. longTitle's label is longer than 610px in any font, so every machine
+// runs the case CI does.
+const fixedBox = (w, label, cls = '') => h('span', { class: cls, style: `display:inline-block; box-sizing:border-box; width:${w}px; overflow:hidden; white-space:nowrap; vertical-align:middle` }, label);
+const longTitle = () => fixedBox(610, 'galley: Share fails after Approve, and some approved reviews won\'t open, and more words past its box');
+const controls = () => [140, 140, 140, 144].map((w, i) => fixedBox(w, `ctl${i}`, 'kit-ctl'));
+const foldOf = (ctls, at) => ctls.map((n, i) => ({ node: n, item: { label: `ctl${i}`, action: `ctl${i}`, run() {} }, ...(at ? { at } : {}) }));
+// The band as a tool draws it: made, then put on the page. The test browser
+// draws no frames, so its ResizeObserver never delivers; the band hears its
+// window's resize too (resized fires it as a real window would).
+const onPage = (doc, title, o) => {
+  const b = band({ title, ...o });
+  doc.body.append(b.el);
+  return b;
+};
+const PARK = [{ label: 'Park…', action: 'park', run() {} }, { label: 'Rename', action: 'rename', run() {} }];
+const menuShown = b => [...b.el.querySelectorAll('[role="menuitem"]')].filter(i => i.ownerDocument.defaultView.getComputedStyle(i).display !== 'none').map(i => i.dataset.action);
+const folded = b => b.el.classList.contains('kit-band-folded');
+const titleW = b => b.el.querySelector('.kit-band-title').getBoundingClientRect().width;
+
+test('dom: band with a long title folds its fold into the ⋯ when the title would go under 320px, and not before', async () => {
+  for (const w of [900, 1100]) {
+    const doc = await bandWindow(w);
+    const ctls = controls();
+    const b = onPage(doc, longTitle(), { beside: [fixedBox(200, 'tools-workspace · galley · feature')], fold: foldOf(ctls), menu: PARK });
+    await resized(doc, w);
+    const t = b.el.querySelector('.kit-band-title');
+    eq(b.el.getBoundingClientRect().height, 104, `${w}: still 104px`);
+    insideBand(b, `${w}`);
+    if (w === 900) {
+      assert(folded(b), '900: folded');
+      eq(ctls.map(shown), [false, false, false, false], '900: the fold is hidden');
+      assert(shown(b.el.querySelector('.kit-band-more .kit-row-more')), '900: the ⋯ shows');
+      eq(menuShown(b), ['ctl0', 'ctl1', 'ctl2', 'ctl3', 'park', 'rename'], '900: the fold\'s items first in the ⋯');
+      assert(whole(t), `900: the title whole (${titleW(b)})`);
+    } else {
+      assert(!folded(b), '1100: not folded');
+      assert(ctls.every(shown), '1100: the controls on the line');
+      assert(!whole(t) && titleW(b) >= 320, `1100: the title cut, no shorter than 320px (${titleW(b)})`);
+      eq(menuShown(b), ['park', 'rename'], '1100: only the tool\'s menu in the ⋯');
+    }
+  }
+});
+
+test('dom: band at 1440 gives way beside the title first and keeps every control whole left of the ⋯', async () => {
+  const doc = await bandWindow(1440);
+  const ctls = controls();
+  const place = fixedBox(300, 'tools-workspace · galley · feature');
+  const b = onPage(doc, longTitle(), { beside: [place], fold: foldOf(ctls), menu: PARK });
+  await resized(doc, 1440);
+  assert(!folded(b), 'not folded');
+  const more = b.el.querySelector('.kit-band-more .kit-row-more').getBoundingClientRect();
+  assert(place.getBoundingClientRect().width < 300, `the place gave way (${place.getBoundingClientRect().width})`);
+  for (const c of ctls) {
+    eq(c.getBoundingClientRect().width, c === ctls[3] ? 144 : 140, 'each control whole');
+    assert(c.getBoundingClientRect().right <= more.left, 'left of the ⋯');
+  }
+  assert(whole(b.el.querySelector('.kit-band-title')) && titleW(b) >= 320, `the title whole (${titleW(b)})`);
+  insideBand(b, '1440');
+});
+
+test('dom: band with a short title keeps its fold on the line where a long title folds it', async () => {
+  const doc = await bandWindow(900);
+  const ctls = controls();
+  const b = onPage(doc, fixedBox(150, 'Short plan'), { fold: foldOf(ctls), menu: PARK });
+  await resized(doc, 900);
+  assert(!folded(b), 'not folded');
+  assert(ctls.every(shown), 'the controls on the line');
+  assert(whole(b.el.querySelector('.kit-band-title')), 'the title whole');
+  insideBand(b, 'short title');
+  b.setTitle(longTitle());
+  assert(folded(b), 'a long title set on it folds it at once');
+  b.setTitle(fixedBox(150, 'Short plan'));
+  assert(!folded(b) && ctls.every(shown), 'and a short one unfolds it');
+});
+
+test('dom: band fold entry with shrink gives way after beside and before the title', async () => {
+  for (const w of [1440, 1200]) {
+    const doc = await bandWindow(w);
+    const place = fixedBox(200, 'tools-workspace · galley · feature');
+    const agent = fixedBox(300, 'The agent is working: testing whether a background tab lets go');
+    const ctls = controls();
+    const b = onPage(doc, longTitle(), { beside: [place], fold: [{ node: agent, shrink: true }, ...foldOf(ctls)], menu: PARK });
+    await resized(doc, w);
+    assert(!folded(b), `${w}: not folded`);
+    assert(place.getBoundingClientRect().width < 0.5, `${w}: beside gave way first (${place.getBoundingClientRect().width})`);
+    assert(ctls.every(c => c.getBoundingClientRect().width >= 140), `${w}: the controls whole`);
+    insideBand(b, `${w}`);
+    if (w === 1440) {
+      const aw = agent.getBoundingClientRect().width;
+      assert(aw > 50 && aw < 300, `1440: the agent's line gives way (${aw})`);
+      assert(whole(b.el.querySelector('.kit-band-title')), `1440: the title has lost nothing (${titleW(b)})`);
+      eq(getComputedStyle(agent).textOverflow, 'ellipsis', 'with an ellipsis');
+    } else {
+      assert(agent.getBoundingClientRect().width < 0.5, `1200: the agent's line is gone (${agent.getBoundingClientRect().width})`);
+      assert(titleW(b) >= 320 && titleW(b) < 610, `1200: then the title (${titleW(b)})`);
+    }
+  }
+});
+
+test('dom: band folds and unfolds as its window narrows and widens, at one height', async () => {
+  const doc = await bandWindow(1440);
+  const ctls = controls();
+  const b = onPage(doc, longTitle(), { fold: foldOf(ctls), menu: PARK });
+  for (const [w, want] of [[1440, false], [900, true], [1440, false], [900, true], [1440, false]]) {
+    await resized(doc, w);
+    eq(folded(b), want, `${w}: folded ${want}`);
+    eq(ctls.every(shown), !want, `${w}: the controls ${want ? 'hidden' : 'shown'}`);
+    eq(b.el.getBoundingClientRect().height, 104, `${w}: 104px`);
+    insideBand(b, `${w}`);
+  }
+});
+
+test('dom: band end fold folds into the ⋯ the same way', async () => {
+  for (const w of [900, 1440]) {
+    const doc = await bandWindow(w);
+    const ctls = controls();
+    const b = onPage(doc, longTitle(), { fold: foldOf(ctls, 'end') });
+    await resized(doc, w);
+    const more = b.el.querySelector('.kit-band-more .kit-row-more');
+    insideBand(b, `${w}`);
+    if (w === 900) {
+      assert(folded(b), '900: folded');
+      eq(ctls.map(shown), [false, false, false, false], '900: the end fold hidden');
+      assert(shown(more), '900: a ⋯ of the fold\'s items shows');
+      eq(menuShown(b), ['ctl0', 'ctl1', 'ctl2', 'ctl3']);
+      assert(Math.abs(more.getBoundingClientRect().right - contentRight(b)) < 1, '900: the ⋯ at the right edge');
+    } else {
+      assert(!folded(b), '1440: not folded');
+      assert(ctls.every(shown), '1440: the end fold on the line');
+      assert(!shown(more), '1440: no ⋯');
+      assert(Math.abs(ctls[3].getBoundingClientRect().right - contentRight(b)) < 1, '1440: at the right edge');
+    }
+  }
+});
+
+test('dom: band leaves no observer or resize listener behind when replaced, even before it is watched', async () => {
+  const doc = await bandWindow(1440);
+  const win = doc.defaultView;
+  const observing = new Set(), hearing = new Set();
+  const RO = win.ResizeObserver;
+  win.ResizeObserver = class extends RO {
+    observe(t) { observing.add(this); super.observe(t); }
+    disconnect() { observing.delete(this); super.disconnect(); }
+  };
+  const add = win.addEventListener, remove = win.removeEventListener;
+  win.addEventListener = function (t, f, o) { if (t === 'resize') hearing.add(f); return add.call(this, t, f, o); };
+  win.removeEventListener = function (t, f, o) { if (t === 'resize') hearing.delete(f); return remove.call(this, t, f, o); };
+  const make = () => band({ title: longTitle(), fold: foldOf(controls()), menu: PARK });
+  try {
+    for (let i = 0; i < 4; i++) {
+      // made and replaced in one task, before its watch is bound
+      doc.body.replaceChildren(make().el);
+      doc.body.replaceChildren(make().el);
+      await new Promise(r => setTimeout(r, 10));
+      // and replaced a task later, once watched
+      doc.body.replaceChildren(make().el);
+      await new Promise(r => setTimeout(r, 10));
+    }
+    await resized(doc, 1440);
+    eq([observing.size, hearing.size], [1, 1], 'only the band on the page watches');
+    doc.body.replaceChildren();
+    await resized(doc, 1440);
+    eq([observing.size, hearing.size], [0, 0], 'and none once it is gone');
+  } finally {
+    win.ResizeObserver = RO;
+    win.addEventListener = add;
+    win.removeEventListener = remove;
+  }
+});
+
+test('dom: band folds when a control comes into a fold node with no setter', async () => {
+  const doc = await bandWindow(1060);
+  const group = h('span', { style: 'display:inline-flex; gap:8px' }, fixedBox(140, 'Open in Terminal'));
+  const b = onPage(doc, longTitle(), { fold: [{ node: group }, ...foldOf(controls().slice(1))], menu: PARK });
+  await resized(doc, 1060);
+  assert(!folded(b) && titleW(b) >= 320, `it fits unfolded to start with (${titleW(b)})`);
+  group.append(h('button', { type: 'button', style: 'box-sizing:border-box; width:70px' }, 'Cancel'));
+  await new Promise(r => setTimeout(r, 50));
+  assert(folded(b), `folded once Cancel came (${titleW(b)})`);
+  group.lastChild.remove();
+  await new Promise(r => setTimeout(r, 50));
+  assert(!folded(b) && titleW(b) >= 320, `unfolded once it went (${titleW(b)})`);
+});
+
 test('dom: band setters keep an end fold in its place', () => {
   const b = band({ title: 'A doc', end: [h('button', { type: 'button' }, 'Open')], search: { placeholder: 'Find' } });
   b.setFold([{ node: h('span', null, 'History'), at: 'end' }, { node: h('span', null, 'opus') }]);

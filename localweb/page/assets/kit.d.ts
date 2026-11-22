@@ -300,11 +300,12 @@ export interface BandSearch {
   onInput?(value: string): void;
 }
 
-/** A node beside the title (span.kit-band-fold) that moves into the band's ⋯ on a phone (640 wide or less): there node hides and item, when given, shows in the ⋯, before the tool's menu items. With at: 'end' the node sits in the title line's end place instead (span.kit-band-fold-end, before end), as galley's History and HTML preview do, and folds the same way on a phone: the way to give an end action that leaves a phone's line. */
+/** A node beside the title (in span.kit-band-fold, which lays its nodes out on the title line itself) that moves into the band's ⋯ on a phone (640 wide or less) and on any width where the title would go under its floor (320px, or its own width when shorter) with the fold on the line: the band is then header.kit-band.kit-band-folded, node hides and item, when given, shows in the ⋯, before the tool's menu items; the band measures its line and unfolds as soon as the fold fits again. With at: 'end' the node sits in the title line's end place instead (span.kit-band-fold-end, before end), as galley's History and HTML preview do, and folds the same way: the way to give an end action that leaves a phone's line. With shrink: true (beside the title, not at the end) node gives way with an ellipsis, down to nothing, after what is beside the title and the search and before the title (it gets class kit-band-shrink); without it a fold node never shrinks. */
 export interface BandFold {
   node: Node;
   item?: RowMenuItem;
   at?: 'end';
+  shrink?: boolean;
 }
 
 /**
@@ -320,13 +321,16 @@ export interface BandFold {
  * at its right end (div.kit-band-under-end) underEnd (the needs-you pill) then
  * sort (a list's sort: pass the band to sortedList). The second line is one
  * line at every width: a track or pills too long scroll sideways. The ⋯ holds
- * the fold's items (on a phone only) and menu (the tool's, at every width);
+ * the fold's items (on a phone, or while the band is folded) and menu (the tool's, at every width);
  * it is drawn only when there is something for it, so a page never has two.
  * No place given, no empty container. The title stays whole while the rest of
  * its line gives way: the last thing beside it shrinks first, with an ellipsis
- * (a long email on a phone), then the search down to 96px; end nodes stay
- * whole, and a title too long for the line with them at their least shrinks
- * last, with an ellipsis.
+ * (a long email on a phone), then the search down to 96px, then the fold
+ * entries with shrink; end nodes and the rest of the fold stay whole. The
+ * title then shrinks, with an ellipsis, never under its floor (320px, or its
+ * own width when shorter) while the fold is on the line: short of that room
+ * the fold goes into the ⋯ (BandFold). A title too long for the line alone
+ * shrinks last.
  * Search and sort go only through the band: nothing sits between the band and
  * the columns.
  */

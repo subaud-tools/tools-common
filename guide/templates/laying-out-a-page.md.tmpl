@@ -30,7 +30,7 @@ Every tool's page has one layout, the same on its front page and its item pages 
 |---|---|---|
 | Bar | Brand, the tool's sections, status, other open work, live, Guide, theme, one primary action on the far right | `bar` |
 | Band | The page's title strip, 104px at every width, a phone included, with or without its second line | `band` |
-| Title line | The title, then `beside` (its place, its state), then `fold` (beside nodes that go into the ⋯ on a phone) | `band`'s `title`, `beside`, `fold` |
+| Title line | The title, then `beside` (its place, its state), then `fold` (beside nodes that go into the ⋯ on a phone, and on any width where the title would go under 320px beside them; an entry with `shrink` gives way first, with an ellipsis) | `band`'s `title`, `beside`, `fold` |
 | Title line's end | `fold` entries with `at: 'end'` (actions that go into the ⋯ on a phone, as galley's History), then `end` (the page's actions), then `search` (a front page's search field, 240px when there is room), then the one ⋯ (`menu`, and the fold's items on a phone) | `band`'s `fold`, `end`, `search`, `menu` |
 | Second line | The stage track on an item page, the status pills on a front page; one line that scrolls sideways when too long | `band`'s `under`, with `stageTrack` or `statusPills` |
 | Second line's end | `underEnd` (the needs-you pill on an item page), then `sort` (a front page's sort: recent, stage, name; a compact picker on a phone) | `band`'s `underEnd`, `sortedList`'s `band` |
