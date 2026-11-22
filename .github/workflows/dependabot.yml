@@ -27,7 +27,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: subaud-tools/tools-actions/dependabot-automerge@v0.15.1
+      - uses: subaud-tools/tools-actions/dependabot-automerge@v0.17.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           target-branch: main
@@ -43,7 +43,7 @@ jobs:
       pull-requests: read
       issues: write
     steps:
-      - uses: subaud-tools/tools-actions/dependabot-stale@v0.15.1
+      - uses: subaud-tools/tools-actions/dependabot-stale@v0.17.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           stale-days: "14"
