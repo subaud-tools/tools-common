@@ -667,3 +667,76 @@ await fire('turn.complete', { turnId: 'x', agentId: 'a1' })
 		t.Fatalf("reports %+v", r.Reports)
 	}
 }
+
+// TestAPluginWithItsModRendersAsItDid: testdata/galley-plugin is the galley
+// spec's plugin as rendered before Spec had NoMod. A spec without NoMod must
+// still render it byte for byte. After a deliberate change to the template,
+// regenerate with CLAUDEPLUGIN_UPDATE=1 go test -run '^TestAPluginWithItsModRendersAsItDid$' ./claudeplugin/
+func TestAPluginWithItsModRendersAsItDid(t *testing.T) {
+	AssertCurrent(t, filepath.Join("testdata", "galley-plugin"), galley)
+	files, err := Render(galley)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{".claude-plugin/plugin.json", ".mcp.json", "hooks/hooks.json", "hooks/register.js"}
+	if got := files.paths(); !slices.Equal(got, want) {
+		t.Fatalf("files: %v, want %v", got, want)
+	}
+}
+
+// TestNoModRendersNoHooksFiles: a tool with no page and no events gets the
+// manifest and the tool server, the same bytes as with a mod, and nothing
+// under hooks/.
+func TestNoModRendersNoHooksFiles(t *testing.T) {
+	with, err := Render(galley)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := galley
+	s.NoMod = true
+	files, err := Render(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{".claude-plugin/plugin.json", ".mcp.json"}
+	if got := files.paths(); !slices.Equal(got, want) {
+		t.Fatalf("files: %v, want %v", got, want)
+	}
+	for _, p := range want {
+		if !bytes.Equal(files[p], with[p]) {
+			t.Errorf("%s differs from the same spec's with a mod:\n%s", p, files[p])
+		}
+	}
+	dir := t.TempDir()
+	if err := Write(dir, s); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "hooks")); !os.IsNotExist(err) {
+		t.Fatalf("Write made a hooks directory: %v", err)
+	}
+}
+
+// TestAssertCurrentCatchesAModLeftInANoModPlugin: a hooks directory in a
+// committed NoMod plugin would load as a mod, so it is drift.
+func TestAssertCurrentCatchesAModLeftInANoModPlugin(t *testing.T) {
+	t.Setenv(UpdateEnv, "")
+	dir := t.TempDir()
+	if err := Write(dir, galley); err != nil {
+		t.Fatal(err)
+	}
+	s := galley
+	s.NoMod = true
+	r := &recorder{TB: t}
+	AssertCurrent(r, dir, s)
+	if all := strings.Join(r.errs, "\n"); !strings.Contains(all, "hooks") {
+		t.Fatalf("a hooks directory in a NoMod plugin was not reported: %q", all)
+	}
+	if err := os.RemoveAll(filepath.Join(dir, "hooks")); err != nil {
+		t.Fatal(err)
+	}
+	r = &recorder{TB: t}
+	AssertCurrent(r, dir, s)
+	if len(r.errs) != 0 {
+		t.Fatalf("a NoMod plugin with no hooks directory reported drift: %v", r.errs)
+	}
+}
