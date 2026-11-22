@@ -222,7 +222,7 @@ export interface BarHandle {
   themeControl: HTMLElement;
   /** The Guide button every page's bar has, left of the theme control: it opens openGuide(). */
   guideControl: HTMLElement;
-  /** The bar's ⋯, shown only at 640px wide or less, where the bar stays one 52px line: the brand, the section buttons (which shrink with an ellipsis first) and the primary stay, and the status, the also-open switcher, the live pill, Guide and themeControl go into its tray. They are the same elements, moved there while the tray is open and back when it closes, so each keeps working. themeControl carries the class kit-bar-theme for it. */
+  /** The bar's ⋯, shown only at 640px wide or less, where the bar stays one 52px line: the brand, the section buttons and the primary stay, and the status, the also-open switcher, the live pill, Guide and themeControl go into its tray. They are the same elements, moved there while the tray is open and back whenever it closes, so each keeps working. themeControl carries the class kit-bar-theme for it. The section buttons sit in span.kit-bar-sections (display: contents wider than a phone); on a phone they keep their whole labels and that span scrolls sideways when they don't fit. */
   moreControl: HTMLElement;
   setSection(id: string): void;
   /** Show or hide every section button, for one bar kept across pages. */
@@ -537,7 +537,7 @@ export function chipPick(o: { label: string; chips: PickChip[]; chosen: string[]
 /**
  * The open and close of a button's pop-out, as rowMenu and pickField use it: show opens pop (closing whichever pop-out was open on the page), and a press outside wrap or Esc closes it. onToggle hears it open and close unless the call was quiet. It listens on the document wrap lives in. A pop with the popover attribute shows in the top layer, adding nothing to the page's size; place puts it where it belongs (placePop): called once it shows, and again when the window is resized or anything but the pop scrolls. A pop opened before it is in the page shows once it is.
  */
-export function popOut(o: { wrap: HTMLElement; btn: HTMLElement; pop: HTMLElement; onToggle?(open: boolean): void; place?(e?: Event): void }): { show(quiet?: boolean): void; close(quiet?: boolean): void; readonly open: boolean };
+export function popOut(o: { wrap: HTMLElement; btn: HTMLElement; pop: HTMLElement; onToggle?(open: boolean): void; place?(e?: Event): void; /** Hears every close, quiet ones included (onToggle doesn't hear a quiet one). */ onClose?(): void }): { show(quiet?: boolean): void; close(quiet?: boolean): void; readonly open: boolean };
 
 /** Puts a top-layer pop (one with the popover attribute, position fixed) at its button, as pickField and rowMenu do: 4px below the button when it fits there or there is more room below than above, else 4px above it; never taller than the room, scrolling inside itself. Across, the default is pickField's: on the button's left edge when it fits within the nearest card or sheet and the window, else its right edge when it fits from that, else the left edge wrapped to the room, never narrower than the button. right is a row menu's: on the button's right edge when it fits within the window, else its left edge, else the edge with more room, wrapped to it. Give it to popOut as place. */
 export function placePop(btn: HTMLElement, pop: HTMLElement, o?: { right?: boolean }): void;

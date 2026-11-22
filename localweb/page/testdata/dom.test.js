@@ -88,7 +88,8 @@ test('dom: bar setSections redraws the sections in place', () => {
   eq(plans.isConnected, false);
   eq(el.querySelectorAll('.kit-ctl[data-id]').length, 2);
   const ids = [...el.children].map(n => n.dataset.id || n.className);
-  eq(ids.slice(0, 4), ['kit-brand', 'plan', 'record', 'kit-status']);
+  eq(ids.slice(0, 3), ['kit-brand', 'kit-bar-sections', 'kit-status']);
+  eq([...el.querySelector('.kit-bar-sections').children].map(n => n.dataset.id), ['plan', 'record'], 'the sections, in the place they had');
   const rec = el.querySelector('.kit-ctl[data-id="record"]');
   eq(rec.textContent, 'Record2');
   assert(rec.classList.contains('on') && rec.getAttribute('aria-current') === 'page', 'active given is on');
@@ -1047,12 +1048,101 @@ test('dom: the bar fits a phone: brand, a menu of the tool\'s and the primary on
 function insideWindow(doc, root, what) {
   const edge = doc.documentElement.clientWidth;
   for (const n of root.querySelectorAll('*')) {
+    // what a sideways-scrolling sections region holds is clipped to it: the
+    // region itself is what must end inside
+    if (n.parentElement?.closest('.kit-bar-sections')) continue;
     const r = n.getBoundingClientRect();
     if (!r.width) continue;
     assert(r.right <= edge + 0.5, `${what}: ${n.className || n.tagName} ends at ${r.right}, past ${edge}`);
   }
 }
 const shown = n => n.getBoundingClientRect().width > 0;
+const resized = async (doc, w) => {
+  doc.defaultView.frameElement.style.width = `${w}px`;
+  await new Promise(r => setTimeout(r, 50));
+  // the test browser runs on virtual time and draws no frames, so it never
+  // fires the resize a real window does: fire it as the browser would
+  doc.defaultView.dispatchEvent(new Event('resize'));
+};
+const MOVED = b => [b.el.querySelector('.kit-status'), b.el.querySelector('.kit-also'), b.el.querySelector('.kit-live'), b.guideControl, b.themeControl];
+
+test('dom: bar setSections while its ⋯ is open puts the sections on the bar, once each, working', async () => {
+  const doc = await bandWindow(390);
+  const pressed = [];
+  const b = bar({ brand: { name: 'diazo' }, status: 'synced', sections: [{ id: 'plans', label: 'Plans' }], onSection: id => pressed.push(id), primary: { label: 'Go', run() {} } });
+  doc.body.append(b.el);
+  try {
+    b.moreControl.click();
+    b.setSections([{ id: 'plan', label: 'Plan' }, { id: 'record', label: 'Record', count: 2 }], 'record');
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    b.moreControl.click();
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await resized(doc, 1280);
+    const tray = b.el.querySelector('.kit-bar-tray');
+    for (const id of ['plan', 'record']) {
+      const els = b.el.querySelectorAll(`.kit-ctl[data-id="${id}"]`);
+      eq(els.length, 1, `${id} once`);
+      assert(!tray.contains(els[0]) && shown(els[0]), `${id} is on the bar`);
+      els[0].click();
+    }
+    eq(pressed, ['plan', 'record'], 'and each works');
+    eq(b.el.querySelectorAll('.kit-ctl[data-id]').length, 2, 'nothing else');
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: bar removed while its ⋯ is open and put back has its parts on the bar again', async () => {
+  const doc = await bandWindow(390);
+  const b = bar({ brand: { name: 'diazo' }, status: 'synced', primary: { label: 'Go', run() {} } });
+  b.setElsewhere([{ label: 'one', onClick() {} }]);
+  b.setLive('live');
+  doc.body.append(b.el);
+  try {
+    b.moreControl.click();
+    const tray = b.el.querySelector('.kit-bar-tray');
+    b.el.remove();
+    await new Promise(r => setTimeout(r, 20));
+    doc.body.append(b.el);
+    await new Promise(r => setTimeout(r, 20));
+    for (const p of MOVED(b)) assert(p.parentNode === b.el && !tray.contains(p), `${p.className} is back on the bar`);
+    assert(!tray.matches(':popover-open'), 'the tray is closed');
+    await resized(doc, 1280);
+    for (const p of MOVED(b)) assert(shown(p), `${p.className} shows above 640px`);
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: bar ⋯ open when the window grows past 640px puts its parts back on the bar', async () => {
+  const doc = await bandWindow(390);
+  const b = bar({ brand: { name: 'diazo' }, status: 'synced', primary: { label: 'Go', run() {} } });
+  b.setElsewhere([{ label: 'one', onClick() {} }]);
+  b.setLive('live');
+  doc.body.append(b.el);
+  try {
+    b.moreControl.click();
+    await resized(doc, 1280);
+    assert(!b.el.querySelector('.kit-bar-tray').matches(':popover-open'), 'the tray closed');
+    for (const p of MOVED(b)) assert(p.parentNode === b.el && shown(p), `${p.className} is on the bar`);
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: the bar on a phone with casebook\'s three sections and a primary: each label whole, 52px, nothing past the edge', async () => {
+  const doc = await bandWindow(390);
+  const b = bar({
+    brand: { name: 'casebook' },
+    sections: [{ id: 'decide', label: 'decide', count: 1516 }, { id: 'review', label: 'review', count: 12 }, { id: 'run', label: 'run', count: 3 }],
+    active: 'decide', primary: { label: 'Next unlabeled', run() {} },
+  });
+  doc.body.append(b.el);
+  try {
+    eq(b.el.getBoundingClientRect().height, 52, 'the bar stays 52px');
+    insideWindow(doc, b.el, 'casebook');
+    for (const s of b.el.querySelectorAll('.kit-ctl[data-id]')) {
+      assert(s.scrollWidth <= s.clientWidth, `${s.dataset.id} reads in full (${s.scrollWidth} in ${s.clientWidth})`);
+      eq(Math.round(s.getBoundingClientRect().height) <= 40, true, `${s.dataset.id} is one line`);
+    }
+    const prim = b.el.querySelector('.kit-primary');
+    assert(shown(prim) && prim.scrollWidth <= prim.clientWidth, 'the primary is whole');
+  } finally { fixture().replaceChildren(); }
+});
 
 test('dom: the bar on a phone with diazo\'s parts: 52px, one line, the rest in its ⋯, each still working', async () => {
   const doc = await bandWindow(390);
@@ -1170,9 +1260,9 @@ function insideBand(b, what) {
   }
 }
 const whole = el => el.scrollWidth <= el.clientWidth;
-// 204px in the kit's 18px bold sans on macOS. A wider sans (Linux's) may
-// leave it too long for the line alone; then the title may shrink only once
-// beside is gone and the search is at its floor.
+// 204px in the kit's 18px bold sans on macOS; other fonts differ, so the
+// tests assert the order things give way in, never the font's widths: the
+// title may be cut only once beside is gone and the search is at its floor.
 const TITLE30 = 'fix: lint the kit in its tests';
 function titleLast(b, beside, what) {
   const t = b.el.querySelector('.kit-band-title');
@@ -1194,7 +1284,6 @@ test('dom: band on a phone: a 30-character title stays whole, beside gives way, 
     fold: [{ node: hist, item: { label: 'History', action: 'history', run() {} }, at: 'end' }],
   });
   doc.body.append(b.el);
-  if (navigator.platform.startsWith('Mac')) assert(whole(b.el.querySelector('.kit-band-title')), 'the title is whole');
   titleLast(b, beside, '390');
   eq(cs(beside).textOverflow, 'ellipsis', 'beside gives way with an ellipsis');
   assert(!shown(hist) && shown(b.el.querySelector('.kit-band-more .kit-row-more')), 'the end fold is in the ⋯');
@@ -1257,6 +1346,21 @@ test('dom: band fold entries at the end sit in the title line\'s end place on a 
       eq(items(), ['model', 'history'], 'their items in the ⋯');
       insideBand(b, '390');
     }
+  }
+});
+
+test('dom: band with an end fold first keeps the search and ⋯ at the right edge, on a phone and a wide page', async () => {
+  for (const w of [390, 1655]) {
+    const doc = await bandWindow(w);
+    const b = band({
+      title: 'Doc', search: { placeholder: 'Search' }, menu: [{ label: 'Delete', run() {} }],
+      fold: [{ node: h('button', { class: 'kit-ctl', type: 'button' }, 'History'), item: { label: 'History', run() {} }, at: 'end' }],
+    });
+    doc.body.append(b.el);
+    const more = b.el.querySelector('.kit-band-more .kit-row-more');
+    assert(Math.abs(more.getBoundingClientRect().right - contentRight(b)) < 1, `${w}: the ⋯ ends at the right padding (${more.getBoundingClientRect().right} vs ${contentRight(b)})`);
+    const gap = more.getBoundingClientRect().left - b.search.getBoundingClientRect().right;
+    assert(gap > 0 && gap < 12, `${w}: the search ends just before the ⋯ (${gap})`);
   }
 });
 

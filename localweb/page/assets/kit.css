@@ -190,6 +190,8 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   border: 0; border-radius: 6px; padding: 7px 26px; cursor: pointer;
 }
 .kit-primary[hidden] { display: none; }
+/* the section buttons' span: no box of its own above 640px */
+.kit-bar-sections { display: contents; }
 /* the bar's ⋯ (dom.js barMore): shown only on a phone, where it holds the
    status, the also-open switcher, the live pill, Guide and theme in its tray,
    a top-layer pop placed under it */
@@ -207,8 +209,9 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-bar-tray > .kit-status { margin-left: 0; overflow-wrap: anywhere; }
 /* the bar on a phone: one 52px line in every tool. The brand, the section
    buttons, the ⋯ and the primary stay; the status, the also-open switcher,
-   the live pill, Guide and theme go into the ⋯. The section buttons give way
-   first, with an ellipsis, so nothing ends past the window's right edge. */
+   the live pill, Guide and theme go into the ⋯. The section buttons keep
+   their whole labels (tighter padding first); when they still don't fit,
+   their line scrolls sideways, so nothing ends past the window's right edge. */
 @media (width <= 640px) {
   .kit-bar { gap: 6px; padding: 0 12px; }
   .kit-bar .kit-ctl { padding: 4px 8px; }
@@ -216,7 +219,13 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   .kit-primary { flex: none; padding: 7px 12px; white-space: nowrap; }
   .kit-bar > :is(.kit-status, .kit-also, .kit-live, .kit-guide-btn, .kit-bar-theme) { display: none; }
   .kit-bar > .kit-bar-more { display: block; }
-  .kit-bar > .kit-ctl[data-id] { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kit-bar > .kit-bar-sections {
+    display: flex; gap: 4px; flex: 0 1 auto; min-width: 0;
+    overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+  }
+  .kit-bar > .kit-bar-sections:not(:has(> :not([hidden]))) { display: none; }
+  .kit-bar-sections > .kit-ctl { flex: none; padding: 4px 6px; white-space: nowrap; }
+  .kit-bar-sections > .kit-ctl .kit-n { margin-left: 4px; }
   .kit-bar > .kit-brand { flex: none; }
 }
 /* the bar's "also open" area: other work a click away, before the live pill.
@@ -291,6 +300,10 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-band-end { display: contents; }
 .kit-band-end > * { flex: none; margin-left: -4px; }
 .kit-band-end > :first-child { margin-left: auto; }
+/* an end fold first has no box on a phone: the next part takes the push */
+@media (width <= 640px) {
+  .kit-band-end > .kit-band-fold:first-child + * { margin-left: auto; }
+}
 .kit-band .kit-band-search {
   flex: 0 1000000 240px; width: 240px; min-width: 96px; height: 28px; padding-block: 0;
   font: 13px var(--kit-mono);

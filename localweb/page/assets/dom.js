@@ -98,8 +98,11 @@ export function bar(o) {
   let sectionsShown = true;
   const sectionButton = s => h('button', { class: 'kit-ctl', type: 'button', hidden: !sectionsShown, dataset: { id: s.id }, onclick: () => o.onSection && o.onSection(s.id) }, s.label, count(s.count));
   for (const s of o.sections || []) ctls.set(s.id, sectionButton(s));
-  // The section buttons sit between the brand and the status text; a
-  // redraw (setSections) puts the new ones in the same place.
+  // The section buttons sit between the brand and the status text, in their
+  // own span (display: contents above 640px, so they draw as the bar's own
+  // children; on a phone a line that scrolls sideways when they don't fit).
+  // A redraw (setSections) puts the new ones in it.
+  const sectionsEl = h('span', { class: 'kit-bar-sections' }, ...ctls.values());
   const status = h('span', { class: 'kit-status' }, o.status || '');
   const also = alsoOpen();
   const pill = h('span', { class: 'kit-live', hidden: true, role: 'status' });
@@ -180,7 +183,7 @@ export function bar(o) {
     beta,
     el: h('header', { class: 'kit-bar' },
       brand,
-      ...ctls.values(), status, h('span', { class: 'kit-sp' }), also.el, pill, guideControl, themeControl, more.el, primary),
+      sectionsEl, status, h('span', { class: 'kit-sp' }), also.el, pill, guideControl, themeControl, more.el, primary),
     themeControl,
     guideControl,
     moreControl: more.button,
@@ -199,10 +202,9 @@ export function bar(o) {
     // same look and onSection, for one bar kept across pages. They keep
     // setSectionsShown's state; active (or none) is the one on.
     setSections(sections, active) {
-      for (const el of ctls.values()) el.remove();
       ctls.clear();
       for (const s of sections || []) ctls.set(s.id, sectionButton(s));
-      status.before(...ctls.values());
+      sectionsEl.replaceChildren(...ctls.values());
       handle.setSection(active);
     },
     setCount(id, n) {
@@ -267,7 +269,9 @@ function barMore(parts) {
   };
   const pop = popOut({
     wrap: el, btn: button, pop: tray,
-    onToggle: open => { if (!open) putBack(); },
+    // every close puts the parts back, a quiet one too (the bar left the
+    // page while open, another pop opened)
+    onClose: putBack,
     place: () => {
       // the window grew past a phone's width: the parts go back on the bar
       if (!button.getClientRects().length) { pop.close(); return; }
@@ -693,14 +697,14 @@ let popOpen = null;
 // popOut is the open and close of a button's pop-out, shared by rowMenu and
 // pickField: show opens pop and closes whichever was open; a press outside
 // wrap, or Esc, closes it. onToggle hears it open and close unless the call
-// was quiet. It listens on the document wrap lives in. A pop with the popover
+// was quiet; onClose hears every close, quiet ones too. It listens on the document wrap lives in. A pop with the popover
 // attribute shows in the top layer, over any card or sheet that would clip it,
 // so it adds nothing to the page's size. place, when given, puts the pop where
 // it belongs (placePop): called once it shows, and again when the window is
 // resized or anything but the pop itself scrolls, so it stays at its button.
 // A pop opened before it is in the page, or taken out of the top layer by the
 // browser when its row is moved, shows there once it is in the page.
-export function popOut({ wrap, btn, pop, onToggle, place }) {
+export function popOut({ wrap, btn, pop, onToggle, place, onClose }) {
   let doc = null, win = null, watch = null, was = false, kind = null;
   const moved = e => {
     if (e.target !== pop) place(e);
@@ -774,6 +778,7 @@ export function popOut({ wrap, btn, pop, onToggle, place }) {
     doc?.removeEventListener('keydown', esc);
     if (popOpen === close) popOpen = null;
     if (!quiet) onToggle?.(false);
+    onClose?.();
   }
   function show(quiet) {
     popOpen?.(quiet);
