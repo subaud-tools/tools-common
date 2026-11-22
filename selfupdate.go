@@ -1,9 +1,6 @@
 package tools
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -36,13 +33,14 @@ import (
 //  5. Download <asset>.receipt and <asset>.receipt.sig; the receipt must be
 //     signed by a key the family trusts and name this tool, this version,
 //     this asset and its sha256 (receipt.Check).
-//  6. Extract the <Name> file from the tar.gz and stage it beside the
-//     running binary (.<Name>.new.<pid>).
+//  6. Extract the binary from the tar.gz (receipt.Extract: only a regular,
+//     non-empty file named exactly <Name>) and stage it beside the running
+//     binary (.<Name>.new.<pid>).
 //  7. On macOS, the staged file must be signed by the family's Developer ID
 //     (receipt.CheckSigner).
 //  8. Atomically replace the running binary (rename the staged file).
 //
-// A failure of 5 or 7 is an error starting "update refused: " that names
+// A failure of 5, 6 or 7 is an error starting "update refused: " that names
 // the check; the running binary is untouched. Nothing skips a check: no flag,
 // environment variable or config. The sidecar check (4) is kept though the
 // receipt covers it: it costs one small request and has always been there.
@@ -90,9 +88,9 @@ func (a *App) SelfUpdate(out, errw io.Writer) (updated bool, newVersion string, 
 		return false, "", fmt.Errorf("update refused: %w", err)
 	}
 
-	binBytes, err := extractBinary(assetBytes, a.name)
+	binBytes, err := receipt.Extract(assetBytes, a.name)
 	if err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("update refused: %w", err)
 	}
 
 	exe, err := a.exePath()
@@ -202,33 +200,6 @@ func firstField(s string) string {
 		return ""
 	}
 	return fields[0]
-}
-
-// extractBinary decompresses the tar.gz asset and returns the bytes of the tar
-// entry whose base name is bin.
-func extractBinary(assetBytes []byte, bin string) ([]byte, error) {
-	gz, err := gzip.NewReader(bytes.NewReader(assetBytes))
-	if err != nil {
-		return nil, fmt.Errorf("gzip: %w", err)
-	}
-	defer func() { _ = gz.Close() }()
-	tr := tar.NewReader(gz)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("tar: %w", err)
-		}
-		if hdr.FileInfo().IsDir() {
-			continue
-		}
-		if filepath.Base(hdr.Name) == bin {
-			return io.ReadAll(tr)
-		}
-	}
-	return nil, fmt.Errorf("%s not found in asset", bin)
 }
 
 // stageAndRename writes data to .<bin>.new.<pid> beside final (0755), has

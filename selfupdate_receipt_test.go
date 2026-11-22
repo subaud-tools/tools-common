@@ -1,7 +1,9 @@
 package tools
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"crypto/ed25519"
 	"errors"
 	"fmt"
@@ -12,6 +14,28 @@ import (
 	"path/filepath"
 	"testing"
 )
+
+// tarOf is a .tar.gz holding one entry.
+func tarOf(t *testing.T, hdr tar.Header, body string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+	hdr.Mode, hdr.Size = 0o755, int64(len(body))
+	if err := tw.WriteHeader(&hdr); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write([]byte(body)); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
 
 // filesServer serves files (path under /dl → body); anything else is a 404.
 func filesServer(t *testing.T, files map[string][]byte) *httptest.Server {
@@ -77,6 +101,13 @@ func TestUpdateInstallsOnlyWhatItsReceiptCovers(t *testing.T) {
 			want: fmt.Sprintf("update refused: no receipt for %s: GET SERVER/dl/kempt/0.2.0/%s.receipt: 404 Not Found", asset, asset)},
 		{what: "no signature", absent: ".receipt.sig",
 			want: fmt.Sprintf("update refused: no receipt signature for %s: GET SERVER/dl/kempt/0.2.0/%s.receipt.sig: 404 Not Found", asset, asset)},
+		// Validly receipted, wrongly packed: never installed over the binary.
+		{what: "a release with the binary only in a directory", file: tarOf(t, tar.Header{Name: "docs/kempt", Typeflag: tar.TypeReg}, "notes"),
+			want: `update refused: the download holds no regular file named "kempt"`},
+		{what: "a release whose binary is a link", file: tarOf(t, tar.Header{Name: "kempt", Typeflag: tar.TypeSymlink, Linkname: "/bin/sh"}, ""),
+			want: `update refused: the download holds no regular file named "kempt"`},
+		{what: "a release whose binary is empty", file: tarOf(t, tar.Header{Name: "kempt", Typeflag: tar.TypeReg}, ""),
+			want: `update refused: the file "kempt" in the download is empty`},
 		{what: "a binary the signer check refuses", signer: refuseSigner,
 			want: "update refused: the binary is not signed by the subaud tools' Apple Developer ID"},
 	} {

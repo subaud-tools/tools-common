@@ -148,15 +148,17 @@ different command; re-registering a `Name` replaces its aliases.
    signed with Ed25519 by the release; it must verify against one of the two
    public keys in `receipt` (the release key, or the offline backup key) and
    name this tool, this version, this file and its sha256 (`receipt.Check`).
-6. Extract the `<tool>` binary from the tar.gz and stage it beside the
-   running binary (`.<tool>.new.<pid>`).
+6. Extract the `<tool>` binary from the tar.gz (`receipt.Extract`: only a
+   regular, non-empty file named exactly `<tool>`, as every release packs it;
+   a file of that name in a directory or a link is not taken) and stage it
+   beside the running binary (`.<tool>.new.<pid>`).
 7. On macOS, the staged file must carry a valid signature by the family's
    Apple Developer ID team (`receipt.CheckSigner`, which runs
    `/usr/bin/codesign`). Linux has no such check.
 8. Atomically replace the running binary (`os.Rename`), so a running process
    keeps its inode.
 
-When 5 or 7 fails, `update` prints one line,
+When 5, 6 or 7 fails, `update` prints one line,
 `<tool> update: update refused: <which check failed>`, exits 1 and leaves the
 running binary as it was. No flag, environment variable or config skips a
 check.
