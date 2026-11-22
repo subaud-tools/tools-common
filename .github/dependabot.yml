@@ -1,6 +1,21 @@
+# The family's Dependabot file. The copy in tools-ops templates/family/ is the
+# source; the family check fails a repo whose file differs.
+#
+# Dependabot proposes the shared CI and release actions only. tools-common is
+# not here: a tool takes a new tools-common in the change that needs it.
+# Dependabot labels each bump; tools-common has no version-guard and releases
+# by tag, so the label is only for filtering.
+#
+# The differences the check allows, and no others (it ignores comment lines):
+# - a tool promoted from dev (muster, galley) has `target-branch: dev` on the
+#   line after each `directory: /`;
+# - muda ends with the entry in templates/family/dependabot-muda.yml, for its
+#   Go libraries that are not the family's.
+# A repo the check does not cover and that takes every action's releases
+# (tools-ops, tools-actions, starter, pi-extensions) carries this file without
+# the `allow:` block.
 version: 2
 updates:
-  # The family CI actions: take each tools-actions release as a PR.
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -9,3 +24,6 @@ updates:
       default-days: 3
     allow:
       - dependency-name: "subaud-tools/tools-actions"
+    labels:
+      - dependencies
+      - no-release
