@@ -2,6 +2,7 @@ import { createSelection } from './selection.js';
 import { MESSAGE_STATES } from './msgstate.js';
 import { submitOnEnter } from './enter.js';
 import { openGuide, badgeIfBeta } from './guide.js';
+import { rowMenu } from './frontpage.js';
 
 // DOM builders for the kit's components. Each returns plain elements styled by
 // kit.css; the CSS classes are the contract and also work from static HTML.
@@ -240,38 +241,98 @@ export function bar(o) {
   return handle;
 }
 
-// band is the strip under the bar with the page's title: beside is nodes on
-// the title's line (a state pill, a size, an email), under is a row below it
-// (a stage track, filter pills, a back link). Each setter changes its own part
-// in place; an empty beside or under draws nothing.
+// band is the strip under the bar with the page's title, one height (104px)
+// at every width. Its places, the same on every page: on the title line, the
+// title, beside (a state pill, a size, an email), fold (beside nodes that move
+// into the band's ⋯ on a phone), then at the line's right end end (the page's
+// actions), search (a field: { placeholder, value, onInput }) and the one ⋯;
+// on the second line, under (a stage track, status pills, a back link), then
+// at its right end underEnd (the needs-you pill) and sort (a list's switch,
+// sortedList's band). fold is [{ node, item }]: node shows beside the title on
+// a wide page, and on a phone it hides and item (a rowMenu item, optional)
+// shows in the ⋯. menu is the tool's own ⋯ items, at every width. The band
+// draws one ⋯ (rowMenu), only while there is something to put in it. Each
+// setter changes its own part in place; an empty place draws nothing.
 export function band(o) {
   const title = h('h1', { class: 'kit-band-title' }, o.title);
   const line = h('div', { class: 'kit-band-line' }, title);
   const el = h('header', { class: 'kit-band' }, line);
-  let under = null;
   const nodes = xs => [xs || []].flat().filter(x => x !== null && x !== undefined && x !== false);
+  const s = { beside: [], fold: [], end: [], search: null, menu: [], under: [], underEnd: [], sort: null };
+  let under = null;
+  let field = null;
+  // The title line's parts are kept and changed in place, never rebuilt: the
+  // search field is never moved, so a setter called while the reader types in
+  // it leaves it focused with its caret and selection.
+  const foldEl = h('span', { class: 'kit-band-fold' });
+  const endEl = h('div', { class: 'kit-band-end' });
+  const drawLine = () => {
+    for (const c of [...line.childNodes]) if (c !== title && c !== foldEl && c !== endEl) c.remove();
+    const anchor = foldEl.parentNode === line ? foldEl : endEl.parentNode === line ? endEl : null;
+    for (const n of s.beside) line.insertBefore(typeof n === 'string' ? document.createTextNode(n) : n, anchor);
+    const folds = s.fold.map(f => f.node).filter(n => n !== null && n !== undefined && n !== false);
+    if (folds.length) {
+      foldEl.replaceChildren(...folds);
+      if (foldEl.parentNode !== line) line.insertBefore(foldEl, endEl.parentNode === line ? endEl : null);
+    } else foldEl.remove();
+    const items = s.fold.filter(f => f.item);
+    let more = null;
+    if (items.length || s.menu.length) {
+      const m = rowMenu({ label: 'More', buttonClass: 'kit-row-more', items: [...items.map(f => f.item), ...s.menu] });
+      // the fold's items show only on a phone, where their nodes are hidden
+      m.querySelectorAll('.kit-row-pop > *').forEach((it, i) => { if (i < items.length) it.classList.add('kit-band-fold-item'); });
+      more = h('div', { class: `kit-band-more${s.menu.length ? '' : ' kit-band-phone'}` }, m);
+    }
+    for (const c of [...endEl.childNodes]) if (c !== field) c.remove();
+    if (field && field.parentNode !== endEl) endEl.append(field);
+    if (field) field.before(...s.end);
+    else endEl.append(...s.end);
+    if (more) endEl.append(more);
+    if (!endEl.childNodes.length) endEl.remove();
+    else if (endEl.parentNode !== line) line.append(endEl);
+  };
+  const drawUnder = () => {
+    const tail = [...s.underEnd, s.sort].filter(Boolean);
+    if (!s.under.length && !tail.length) {
+      under?.remove();
+      under = null;
+      return;
+    }
+    if (!under) el.append(under = h('div', { class: 'kit-band-under' }));
+    under.replaceChildren(...s.under, ...(tail.length ? [h('div', { class: 'kit-band-under-end' }, tail)] : []));
+  };
   const handle = {
     el,
+    get search() { return field; },
     setTitle(t) {
       title.replaceChildren(t);
     },
-    setBeside(xs) {
-      while (line.lastChild !== title) line.lastChild.remove();
-      line.append(...nodes(xs));
+    setBeside(xs) { s.beside = nodes(xs); drawLine(); },
+    setFold(fs) { s.fold = [fs || []].flat().filter(Boolean); drawLine(); },
+    setEnd(xs) { s.end = nodes(xs); drawLine(); },
+    setMenu(items) { s.menu = items || []; drawLine(); },
+    setSearch(q) {
+      field = q ? h('input', {
+        class: 'kit-input kit-band-search', type: 'search', name: 'search',
+        placeholder: q.placeholder || 'Search', 'aria-label': q.label || q.placeholder || 'Search',
+        oninput: e => q.onInput && q.onInput(e.target.value),
+      }) : null;
+      if (field) field.value = q.value || '';
+      drawLine();
     },
-    setUnder(xs) {
-      const got = nodes(xs);
-      if (!got.length) {
-        under?.remove();
-        under = null;
-        return;
-      }
-      if (!under) el.append(under = h('div', { class: 'kit-band-under' }));
-      under.replaceChildren(...got);
-    },
+    setUnder(xs) { s.under = nodes(xs); drawUnder(); },
+    setUnderEnd(xs) { s.underEnd = nodes(xs); drawUnder(); },
+    setSort(node) { s.sort = node || null; drawUnder(); },
   };
-  handle.setBeside(o.beside);
-  handle.setUnder(o.under);
+  s.beside = nodes(o.beside);
+  s.fold = [o.fold || []].flat().filter(Boolean);
+  s.end = nodes(o.end);
+  s.menu = o.menu || [];
+  s.under = nodes(o.under);
+  s.underEnd = nodes(o.underEnd);
+  s.sort = o.sort || null;
+  handle.setSearch(o.search || null);
+  drawUnder();
   return handle;
 }
 

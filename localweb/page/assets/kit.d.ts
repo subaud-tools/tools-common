@@ -268,23 +268,71 @@ export function bar(o: {
 export interface BandHandle {
   /** header.kit-band: on the app grid it spans every column in row 2, between the bar and the columns, wherever it is appended. */
   el: HTMLElement;
+  /** input.kit-input.kit-band-search, the band's search field, or null with none. */
+  readonly search: HTMLInputElement | null;
   /** The title's words, in place: the h1 stays the same element. */
   setTitle(title: string | Node): void;
-  /** Replaces the nodes on the title's line; the title and the row under stay. */
+  /** Replaces the nodes on the title's line beside the title; the title, the fold, the end and the second line stay. */
   setBeside(nodes?: Array<Node | string> | null): void;
-  /** Replaces the row under the title; empty or null takes the row away. */
+  /** Replaces the fold (see BandFold); the ⋯ follows. */
+  setFold(fold?: BandFold[] | null): void;
+  /** Replaces the nodes at the title line's right end (the page's actions), before the search and the ⋯. */
+  setEnd(nodes?: Array<Node | string> | null): void;
+  /** Draws the search field at the title line's end, or takes it away with null. */
+  setSearch(search?: BandSearch | null): void;
+  /** Replaces the tool's own ⋯ items. */
+  setMenu(items?: RowMenuItem[] | null): void;
+  /** Replaces the start of the second line (the track, the status pills, a back link); the end stays. Empty with no end takes the line away. */
   setUnder(nodes?: Array<Node | string> | null): void;
+  /** Replaces the nodes at the second line's right end (the needs-you pill), before the sort. */
+  setUnderEnd(nodes?: Array<Node | string> | null): void;
+  /** Puts node (a list's sort; sortedList's band does this) last on the second line, or takes it away with null. */
+  setSort(node?: Node | null): void;
+}
+
+/** The band's search: a field at the title line's end. onInput hears its value on every input. label names it to a screen reader (default placeholder). */
+export interface BandSearch {
+  placeholder?: string;
+  value?: string;
+  label?: string;
+  onInput?(value: string): void;
+}
+
+/** A node beside the title (span.kit-band-fold) that moves into the band's ⋯ on a phone (640 wide or less): there node hides and item, when given, shows in the ⋯, before the tool's menu items. */
+export interface BandFold {
+  node: Node;
+  item?: RowMenuItem;
 }
 
 /**
- * The strip under the bar with the page's title, measured from diazo's: an
- * 18px bold title, beside it on its line a state pill, a size or an email, and
- * under it a row (a stage track, filter pills, a back link). With a row under
- * it the band is 104px high. No beside or under, no empty container. The last
- * thing beside the title shrinks first, with an ellipsis, so a long email on a
- * phone keeps the title whole and stays inside the band.
+ * The strip under the bar with the page's title, measured from diazo's: 104px
+ * high at every width, a phone included, with or without its second line, so a
+ * tool sets no height of its own. An 18px bold title, then on its line beside
+ * (a state pill, a size, an email), fold, and at the line's right end
+ * (div.kit-band-end) end (the page's actions), search (input.kit-band-search,
+ * 240px, still a field on a phone) and the one ⋯ (rowMenu). The second line
+ * (div.kit-band-under): under (a stage track, status pills, a back link), and
+ * at its right end (div.kit-band-under-end) underEnd (the needs-you pill) then
+ * sort (a list's sort: pass the band to sortedList). The second line is one
+ * line at every width: a track or pills too long scroll sideways. The ⋯ holds
+ * the fold's items (on a phone only) and menu (the tool's, at every width);
+ * it is drawn only when there is something for it, so a page never has two.
+ * No place given, no empty container. The last thing beside the title shrinks
+ * first, with an ellipsis, so a long email on a phone keeps the title whole.
+ * Search and sort go only through the band: nothing sits between the band and
+ * the columns.
  */
-export function band(o: { title: string | Node; beside?: Array<Node | string>; under?: Array<Node | string> }): BandHandle;
+export function band(o: {
+  title: string | Node;
+  beside?: Array<Node | string>;
+  under?: Array<Node | string>;
+  end?: Array<Node | string>;
+  search?: BandSearch | null;
+  underEnd?: Array<Node | string>;
+  sort?: Node | null;
+  fold?: BandFold[];
+  menu?: RowMenuItem[];
+}): BandHandle;
 
 export interface Chip {
   id: string;
@@ -641,9 +689,16 @@ export interface Frame {
   rightBody: HTMLElement | null;
   /** Locks node (a sendBar) to the centre's bottom edge: a kit-sendfoot, full width, made the centre's last child, so call it after drawing the centre. null takes it away. The band spans the kit's 24px side padding, so keep it. */
   foot(node: Node | null): void;
+  /** The wide view (a system design's topic chat): true runs the centre over the right column's space, the right column hidden, and lifts the 1100px cap on its cards; the band, the left column and the centre's left edge and first item stay where they are. On a narrow page (narrowMode's kit-narrow) it changes nothing: one column shows at a time there, the right one included. false puts it back. */
+  wide(on: boolean): void;
 }
 
-/** The three columns of a .kit-app grid; the caller appends left, centre and right after its bar. */
+/**
+ * The three columns of a .kit-app grid; the caller appends left, centre and right after its bar (and band).
+ * Where they start: the centre's first card 24px under the band, a side column's first label (an index section's or a filter row's, the thread's) 16px under it; the left column is 288px.
+ * Every card in the centre (.kit-mid .kit-card; an empty-state card, emptyCard, keeps its own 26px by 10px padding) has the kit's shape, 14px by 16px padding and an 8px corner, and fills the centre up to 1100px, left-aligned, whatever a tool's own card class says.
+ * With no right (a front page), the centre runs to the window's edge, its cards still stopping at the cap.
+ */
 export function frame(o: FrameOptions): Frame;
 
 /** A side of the frame, or null for the centre. */
@@ -997,7 +1052,7 @@ export interface SortOrder {
   label: string;
 }
 
-/** The line over a list that orders it (div.kit-sort): a muted span.kit-sort-label reading label (default sort), then one button.kit-chip per order, the chosen one on with aria-pressed="true". onPick hears the order pressed; the caller keeps it (with remembered) and redraws. Placed directly over its list, never in the left column or the band. When the press had the focus in the switch and onPick redraws it at once, the new switch's chosen chip gets the focus. */
+/** The line over a list that orders it (div.kit-sort): a muted span.kit-sort-label reading label (default sort), then one button.kit-chip per order, the chosen one on with aria-pressed="true". onPick hears the order pressed; the caller keeps it (with remembered) and redraws. Placed directly over its list, never in the left column; a list whose page has a band passes the band to sortedList, which puts its switch in the band's sort place. When the press had the focus in the switch and onPick redraws it at once, the new switch's chosen chip gets the focus. */
 export function sortSwitch(o: { orders: SortOrder[]; chosen: string; onPick(value: string): void; label?: string }): HTMLElement;
 
 /** An order a sorted list offers: a sort switch's chip, and how it compares two items (as Array.prototype.sort's). */
@@ -1006,7 +1061,7 @@ export interface SortedOrder<T> extends SortOrder {
 }
 
 export interface SortedList<T> {
-  /** div.kit-sorted: the sort switch, then one section.kit-card, or with groups one section.kit-card.kit-group per group that has rows. */
+  /** div.kit-sorted: the sort switch (none when given a band), then one section.kit-card, or with groups one section.kit-card.kit-group per group that has rows. */
   el: HTMLElement;
   /** Redraw with new items, in the order chosen; groups, when given, replaces the grouping (another grouping draws its own kept order). With no groups it keeps the current grouping: a grouped list stays grouped. A page that wants the plain list again builds a new sortedList. */
   set(items: T[], groups?: SortedGroups<T>): void;
@@ -1037,8 +1092,8 @@ export interface SortedGroups<T> {
   folded?: string[];
 }
 
-/** One list in the order chosen on its sort switch (div.kit-sorted): the switch, then one section.kit-card holding ul.kit-group-rows with row(item) for each item in that order, or p.kit-empty reading empty when there are none. With groups (SortedGroups), the switch is followed instead by one folding section.kit-card.kit-group per group that has rows, each with its ul.kit-group-rows in the chosen order, and title is not drawn; with no items, the one card with the empty line. Without groups it draws exactly as before. The choice is remembered under <name>.sort; with none, or one no order has, the first order. A press re-sorts and redraws in place; the items given are not reordered. label replaces the switch's sort. title, when given, opens the card with div.kit-label.kit-group-head reading title(n) for the n rows shown, redrawn on every press and set (it doesn't fold). After a press with the focus in the switch, the chosen chip has it. */
-export function sortedList<T>(o: { name: string; orders: SortedOrder<T>[]; items: T[]; row(item: T): HTMLElement; empty: string; label?: string; title?(n: number): string; groups?: SortedGroups<T> }): SortedList<T>;
+/** One list in the order chosen on its sort switch (div.kit-sorted): the switch, then one section.kit-card holding ul.kit-group-rows with row(item) for each item in that order, or p.kit-empty reading empty when there are none. With groups (SortedGroups), the switch is followed instead by one folding section.kit-card.kit-group per group that has rows, each with its ul.kit-group-rows in the chosen order, and title is not drawn; with no items, the one card with the empty line. Without groups it draws exactly as before. The choice is remembered under <name>.sort; with none, or one no order has, the first order. A press re-sorts and redraws in place; the items given are not reordered. label replaces the switch's sort. title, when given, opens the card with div.kit-label.kit-group-head reading title(n) for the n rows shown, redrawn on every press and set (it doesn't fold). After a press with the focus in the switch, the chosen chip has it. band, a band's handle, puts the switch in the band's sort place (band.setSort) instead of over the cards, so el holds the cards alone: a div.kit-band-sort holding the switch and a compact pickField (labelled label, default sort) that takes the switch's place on a phone (640 wide or less); a pick on either re-sorts, and the picker stays in place, keeping the focus. */
+export function sortedList<T>(o: { name: string; orders: SortedOrder<T>[]; items: T[]; row(item: T): HTMLElement; empty: string; label?: string; title?(n: number): string; groups?: SortedGroups<T>; band?: BandHandle }): SortedList<T>;
 
 export interface ListGroup {
   key: string;

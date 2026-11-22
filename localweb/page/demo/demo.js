@@ -223,7 +223,10 @@ function parts(tabbed) {
     indexSection({ name: 'Later', rows: [], empty: 'Nothing for later.' }),
     indexSection({ name: 'Artifacts', open() {}, empty: 'No files yet.', rows: [],
       action: h('button', { class: 'kit-chip', type: 'button', onclick() {} }, '+ Add') }));
-  frontPage(f);
+  // A front page's band: the search at the title line's end, the status pills
+  // on the second line and the grouped list's sort at its end (frontPage).
+  f.band = band({ title: 'Reviews', beside: [h('span', { class: 'kit-meta' }, '4 open')], search: { placeholder: 'Search reviews', onInput() {} } });
+  frontPage(f, f.band);
   needsDemo(f);
   proseDemo(f);
   f.foot(sendBar({ count: '1 of 2 answered', sends: 1, hint: 'Unanswered ones stay open.', discard() {}, send() {} }));
@@ -327,7 +330,7 @@ function decisionDemo() {
 }
 
 // Which ones are chosen is the tool's own, and so is the redraw after a press.
-function frontPage(f) {
+function frontPage(f, top) {
   const slot = h('div');
   const left = h('div');
   let projects = [];
@@ -365,6 +368,7 @@ function frontPage(f) {
     items: [...reviews, { name: 'old-notes.md', place: 'tools-ops · docs', meta: 'approved Nov 2', at: 0, done: true }],
     row: r => indexRow({ id: r.name, title: r.name, place: r.place, meta: r.meta, attention: r.you, select() {} }),
     empty: 'No reviews.',
+    band: top,
     groups: {
       name: 'status',
       key: r => (r.you ? { key: 'needs', label: 'Needs you' } : r.done ? { key: 'done', label: 'Completed' } : { key: 'open', label: 'Open' }),
@@ -385,12 +389,15 @@ function frontPage(f) {
       chosen: projects,
       onToggle: v => { projects = toggled(projects, v); draw(); },
     }));
+    const pills = statusPills({
+      pills: [{ value: '', label: 'All', count: 4 }, { value: 'needs', label: 'Needs you', count: 1 }, { value: 'built', label: 'Built', count: 3 }, { value: 'parked', label: 'Parked', count: 0 }],
+      chosen: statuses,
+      onToggle: v => { statuses = toggled(statuses, v); draw(); },
+    });
+    // with a band the pills are its second line, as a front page has them
+    if (top) top.setUnder([pills]);
     slot.replaceChildren(
-      statusPills({
-        pills: [{ value: '', label: 'All', count: 4 }, { value: 'needs', label: 'Needs you', count: 1 }, { value: 'built', label: 'Built', count: 3 }, { value: 'parked', label: 'Parked', count: 0 }],
-        chosen: statuses,
-        onToggle: v => { statuses = toggled(statuses, v); draw(); },
-      }),
+      ...(top ? [] : [pills]),
       groupList({
         groups: [
           { key: 'needs', title: 'Needs you', edge: 'signal', rows: [line('Cache misses on every build')], empty: 'Nothing is waiting on you.' },
@@ -405,7 +412,7 @@ function frontPage(f) {
   };
   draw();
   f.leftBody.append(left);
-  f.centre.append(h('div', { class: 'kit-label' }, 'the front page: filter rows, status pills and groups that fold'), slot,
+  f.centre.append(h('div', { class: 'kit-label' }, 'the front page: filter rows and groups that fold (its status pills, search and sort are in the band)'), slot,
     h('div', { class: 'kit-label' }, 'or one sorted list: the sort switch over one card, each row naming its place'), sorted.el,
     h('div', { class: 'kit-label' }, 'or groups that fold and move, the rows sorted inside each'), groupedReviews.el);
 }
@@ -574,7 +581,7 @@ if (view === 'parts' || view === 'tabs') {
   // The three columns: ?view=parts, or ?view=tabs with tabs in the right one.
   app.className = 'kit-app';
   const f = parts(view === 'tabs');
-  app.append(b.el, f.left, f.centre, f.right);
+  app.append(b.el, f.band.el, f.left, f.centre, f.right);
 } else if (view === 'sendshort' || view === 'sendlong') {
   app.className = 'kit-app';
   const f = sendPage(view === 'sendlong');

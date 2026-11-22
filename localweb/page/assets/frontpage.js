@@ -1,7 +1,7 @@
 // frontpage.js: a front page's list, moved from diazo's. The parts take plain
 // values: a tool works out its own rows, counts and groups, keeps what is
 // chosen and redraws on a press.
-import { h, popOut, placePop } from './dom.js';
+import { h, popOut, placePop, pickField } from './dom.js';
 import { remembered } from './remembered.js';
 
 // filterRow is a section of the left column: All with the total, then one row
@@ -92,22 +92,38 @@ export function sortSwitch({ orders, chosen, onPick, label = 'sort' }) {
 // With groups, the switch is followed by one folding card per group that has
 // rows, each with its rows in the chosen order: see sortedGroups below.
 // set(items, groups) redraws with new items and, when given, another grouping.
-export function sortedList({ name, orders, items, row, empty, label, title, groups }) {
+//
+// band, a band's handle, puts the switch in the band's sort place instead of
+// over the cards: a div.kit-band-sort holding the switch, and a compact
+// picker (pickField) that takes its place on a phone.
+export function sortedList({ name, orders, items, row, empty, label, title, groups, band }) {
   const key = `${name}.sort`;
   const known = v => orders.some(o => o.value === v);
   let chosen = known(remembered.get(key)) ? remembered.get(key) : orders[0].value;
   let now = items;
   let by = groups;
   const el = h('div', { class: 'kit-sorted' });
+  const choose = v => { chosen = v; remembered.set(key, v); draw(); };
+  const picker = band ? pickField({ label: label || 'sort', labelHidden: true, size: 'compact', choices: orders.map(o => ({ value: o.value, label: o.label })), value: chosen, onPick: choose }) : null;
+  const place = band ? h('div', { class: 'kit-band-sort' }) : null;
+  if (band) band.setSort(place);
   const draw = () => {
     const { compare } = orders.find(o => o.value === chosen);
-    const sw = sortSwitch({ orders, chosen, label, onPick: v => { chosen = v; remembered.set(key, v); draw(); } });
+    const made = sortSwitch({ orders, chosen, label, onPick: choose });
+    let sw = made;
+    if (band) {
+      picker.set(chosen);
+      // only the chips are redrawn: the picker stays, and keeps the focus
+      if (place.firstChild) place.firstChild.replaceWith(made);
+      else place.append(made, picker.el);
+      sw = null;
+    }
     if (by && now.length) {
-      el.replaceChildren(sw, ...sortedGroups({ name, groups: by, items: now, compare, row, redraw: draw }));
+      el.replaceChildren(...[sw].filter(Boolean), ...sortedGroups({ name, groups: by, items: now, compare, row, redraw: draw }));
       return;
     }
     const rows = [...now].sort(compare).map(row);
-    el.replaceChildren(sw,
+    el.replaceChildren(...[sw].filter(Boolean),
       h('section', { class: 'kit-card' },
         title && !by ? h('div', { class: 'kit-label kit-group-head' }, title(rows.length)) : null,
         rows.length ? h('ul', { class: 'kit-group-rows' }, rows) : h('p', { class: 'kit-empty' }, empty)));

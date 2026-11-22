@@ -14,7 +14,7 @@ import (
 )
 
 // manifest is every file the kit ships; each task that adds an asset adds it here.
-var manifest = []string{"kit.css", "kit.js", "kit.d.ts", "boot.js", "theme.js", "keys.js", "api.js", "live.js", "dom.js", "selection.js", "sheet.js", "share.js", "share.css", "msgstate.js", "tip.js", "frame.js", "index.js", "thread.js", "track.js", "drafts.js", "elsewhere.js", "frontpage.js", "tabs.js", "draftlist.js", "remembered.js", "prose.js", "decision.js", "record.js", "tour.js", "spotlight.js", "guide.js", "guide/index.html", "vendor/marked.esm.js", "vendor/LICENSE.marked"}
+var manifest = []string{"kit.css", "kit.js", "kit.d.ts", "boot.js", "theme.js", "keys.js", "api.js", "live.js", "dom.js", "selection.js", "sheet.js", "share.js", "share.css", "msgstate.js", "tip.js", "frame.js", "index.js", "thread.js", "track.js", "drafts.js", "elsewhere.js", "frontpage.js", "tabs.js", "draftlist.js", "remembered.js", "prose.js", "decision.js", "record.js", "tour.js", "spotlight.js", "guide.js", "guide/index.html", "layout/index.html", "vendor/marked.esm.js", "vendor/LICENSE.marked"}
 
 func TestFSEmbedsAssets(t *testing.T) {
 	for _, name := range manifest {
@@ -160,3 +160,19 @@ func TestWithSurfacesToolReadDirErrors(t *testing.T) {
 type brokenFS struct{}
 
 func (brokenFS) Open(string) (fs.File, error) { return nil, fs.ErrPermission }
+
+// The mockup starter is served with the kit at /_kit/layout/, drawn with the
+// kit's own stylesheet and classes, each place labelled.
+func TestLayoutStarterServed(t *testing.T) {
+	srv := httptest.NewServer(http.FileServerFS(With(nil)))
+	defer srv.Close()
+	code, body, ctype := get(t, srv.URL+"/_kit/layout/")
+	if code != 200 || !strings.HasPrefix(ctype, "text/html") {
+		t.Fatalf("/_kit/layout/: %d %s", code, ctype)
+	}
+	for _, want := range []string{`href="/_kit/kit.css"`, `class="kit-app`, `class="kit-band`, `kit-band-line`, `kit-band-under`, `kit-left-col`, `kit-mid`, `kit-right-col`, `kit-card`, "Front page", "Item page"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the starter has no %s", want)
+		}
+	}
+}

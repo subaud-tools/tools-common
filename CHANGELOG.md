@@ -4,6 +4,19 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.117.0
+
+### Added
+- kit: one page layout for every tool, so changing screens moves nothing. `band()` is 104px at every width, a phone included, and gains named places: `end` (the title line's right end), `search` (a field there), `underEnd` and `sort` (the second line's right end), `fold` (title-line nodes that move into the band's one ⋯ on a phone, each with the menu item it becomes) and `menu`, with setters to match. A band given none of them draws what it drew before.
+- kit: `sortedList({ band })` puts its sort switch in the band's sort place, a compact picker on a phone, instead of over its cards.
+- kit: `frame()`'s handle has `wide(on)`: the middle column runs over the right column's space, the band and the left column unchanged.
+- kit: the mockup starter at `/_kit/layout/`: the bar, the band and the columns drawn with the kit's classes, each place labelled, as a front page (`?page=front`) or an item page.
+- guide: a third family skill, `laying-out-a-page`, installed by every tool: where each thing on a page goes and the kit part that puts it there.
+- PAGE-STANDARD.md: the layout's rules, and a Layout column in Where each server stands.
+
+### Changed
+- kit: every middle-column card has the kit's shape (14px by 16px padding, 8px corner) and one cap, 1100px, left-aligned; the two separate 1100px rules are one. A side column's first label sits 16px under the band (the thread's moves from 14px). `.kit-band` keeps its height with `overflow: hidden`.
+
 ## 0.116.1
 
 ### Fixed

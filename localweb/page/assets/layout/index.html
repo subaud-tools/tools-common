@@ -1,0 +1,122 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup starter: the page layout</title>
+<link rel="stylesheet" href="/_kit/kit.css">
+<script src="/_kit/boot.js"></script>
+<!--
+  The mockup starter (tools-common's page kit, served at /_kit/layout/): the
+  bar, the band and the three columns drawn with the kit's own stylesheet and
+  classes, each place labelled. ?page=item (the default) is an item page,
+  ?page=front a front page; open it at desktop width and at phone width (390px)
+  to see both. Copy it for a look round's mockups and replace each labelled
+  place with what the screen holds. The one rule below is the labels' look: it
+  sets no size, so the kit alone places everything. PAGE-STANDARD.md and the
+  laying-out-a-page skill say what goes where.
+-->
+<style>
+.mk-place { border: 1.5px dashed #3b6aa8; color: #3b6aa8; background: rgb(59 106 168 / 8%); border-radius: 6px; font: 12px var(--kit-mono); }
+</style>
+<body>
+
+<!-- An item page: the thread on the right, the stage track on the band's second line. -->
+<div class="kit-app" id="item" aria-label="Item page">
+  <header class="kit-bar">
+    <span class="kit-brand">tool</span>
+    <button class="kit-ctl" type="button" onclick="location.search = '?page=front'">front</button>
+    <button class="kit-ctl on" type="button" aria-current="page">item</button>
+    <span class="kit-sp"></span>
+    <button class="kit-ctl kit-guide-btn" type="button">Guide</button>
+    <button class="kit-primary" type="button">Primary</button>
+  </header>
+  <header class="kit-band">
+    <div class="kit-band-line">
+      <h1 class="kit-band-title">Item page title</h1>
+      <span class="kit-pill mk-place">beside: place · state</span>
+      <span class="kit-band-fold"><span class="kit-pill mk-place">fold: on a phone, in the ⋯</span></span>
+      <div class="kit-band-end">
+        <span class="kit-pill mk-place">end: actions</span>
+        <div class="kit-band-more"><div class="kit-row-menu"><button class="kit-row-more" type="button" aria-label="More" aria-haspopup="menu" aria-expanded="false">⋯</button></div></div>
+      </div>
+    </div>
+    <div class="kit-band-under">
+      <nav class="kit-stages" aria-label="under: the stage track"><span class="kit-stages-bar"><span class="kit-stage mk-place">under: the stage track, one line that scrolls</span></span></nav>
+      <div class="kit-band-under-end"><span class="kit-pill mk-place">underEnd: needs you</span></div>
+    </div>
+  </header>
+  <aside class="kit-list kit-col kit-left-col" aria-label="Left column">
+    <button class="kit-col-toggle" type="button" title="Hide the left column" aria-expanded="true">‹</button>
+    <div class="kit-col-body">
+      <section class="kit-index-section">
+        <div class="kit-label mk-place">left: first label</div>
+        <ul class="kit-index-rows"><li class="kit-index-row"><span class="kit-index-main"><span class="kit-index-title mk-place">rows: the page's own; the label 16px under the band, the column 288px wide</span></span></li></ul>
+      </section>
+    </div>
+  </aside>
+  <main class="kit-read kit-col kit-mid" aria-label="Middle column">
+    <section class="kit-card"><div class="mk-place">middle: a card, its top 24px under the band; 14px by 16px padding, 8px corner; up to 1100px, left-aligned</div></section>
+    <section class="kit-card"><div class="mk-place">middle: the next card</div></section>
+  </main>
+  <aside class="kit-rail kit-col kit-right-col" aria-label="Right column">
+    <button class="kit-col-toggle" type="button" title="Hide the right column" aria-expanded="true">›</button>
+    <div class="kit-col-body">
+      <div class="kit-thread">
+        <div class="kit-label mk-place">right: first label</div>
+        <p class="mk-place">the thread, or tabs with counts; the label 16px under the band</p>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- A front page: search and sort in the band, no right column; the middle runs to the window's edge. -->
+<div class="kit-app" id="front" aria-label="Front page">
+  <header class="kit-bar">
+    <span class="kit-brand">tool</span>
+    <button class="kit-ctl on" type="button" aria-current="page">front</button>
+    <button class="kit-ctl" type="button" onclick="location.search = '?page=item'">item</button>
+    <span class="kit-sp"></span>
+    <button class="kit-ctl kit-guide-btn" type="button">Guide</button>
+    <button class="kit-primary" type="button">Primary</button>
+  </header>
+  <header class="kit-band">
+    <div class="kit-band-line">
+      <h1 class="kit-band-title">Front page</h1>
+      <div class="kit-band-end">
+        <input class="kit-input kit-band-search mk-place" type="search" name="search" placeholder="search: always a field" aria-label="search: always a field">
+      </div>
+    </div>
+    <div class="kit-band-under">
+      <nav class="kit-stages" aria-label="under: the status pills"><span class="kit-stages-bar"><span class="kit-stage now">All</span><span class="kit-stage mk-place">under: status pills, one line that scrolls</span></span></nav>
+      <div class="kit-band-under-end">
+        <div class="kit-band-sort">
+          <div class="kit-sort mk-place"><span class="kit-sort-label">sort</span><button class="kit-chip on" type="button">recent</button><button class="kit-chip" type="button">name</button></div>
+          <div class="kit-field kit-pick-compact"><label class="kit-field-label kit-label-hidden" for="mk-sort">sort</label><div class="kit-pick"><button class="kit-input kit-pick-btn mk-place" id="mk-sort" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="kit-pick-label">sort: recent</span></button></div></div>
+        </div>
+      </div>
+    </div>
+  </header>
+  <aside class="kit-list kit-col kit-left-col" aria-label="Left column">
+    <button class="kit-col-toggle" type="button" title="Hide the left column" aria-expanded="true">‹</button>
+    <div class="kit-col-body">
+      <section class="kit-index-section kit-filter-row">
+        <div class="kit-label mk-place">left: first label</div>
+        <ul class="kit-index-rows"><li class="kit-index-row"><span class="kit-index-main"><span class="kit-index-title mk-place">filters: the page's own; the label 16px under the band, the column 288px wide</span></span></li></ul>
+      </section>
+    </div>
+  </aside>
+  <main class="kit-read kit-col kit-mid" aria-label="Middle column">
+    <section class="kit-card"><div class="mk-place">middle: the list's first card, 24px under the band; up to 1100px, left-aligned; no right column, so the middle runs to the window's edge</div></section>
+    <section class="kit-card"><div class="mk-place">middle: the next group</div></section>
+  </main>
+</div>
+
+<script>
+// ?page=front shows the front page; at 1080 wide or less one column shows at
+// a time (narrowMode's kit-narrow), the sides as strips.
+const page = new URLSearchParams(location.search).get('page') === 'front' ? 'front' : 'item';
+document.getElementById(page === 'front' ? 'item' : 'front').style.display = 'none';
+const narrow = matchMedia('(width <= 1080px)');
+const follow = () => document.querySelectorAll('.kit-app').forEach(a => a.classList.toggle('kit-narrow', narrow.matches));
+narrow.addEventListener('change', follow);
+follow();
+</script>
