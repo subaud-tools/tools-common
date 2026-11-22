@@ -1614,3 +1614,62 @@ export function viewer(el: Element, caption: string, back?: HTMLElement | null):
  * Returns the mark: hide it with mark.hidden, or take it off and append it to holder again, to show it only while it is wanted.
  */
 export function zoomable(holder: HTMLElement, pic: () => Element | null, caption: string, opts?: ZoomableOptions): HTMLButtonElement;
+
+// ---- diff.js
+
+export type DiffOp = 'same' | 'del' | 'add';
+
+/** One line of a hunk, with its line number in the old text (same and del) and in the new one (same and add). */
+export interface DiffLine {
+  op: DiffOp;
+  text: string;
+  old?: number;
+  new?: number;
+}
+
+/** One run of changes with its context. */
+export interface DiffHunk {
+  /** The heading the change is under ('' for none). */
+  section: string;
+  /** Unchanged lines folded before it. */
+  before: number;
+  lines: DiffLine[];
+}
+
+export interface LineDiff {
+  added: number;
+  removed: number;
+  hunks: DiffHunk[];
+  /** Unchanged lines folded after the last hunk (every line when nothing changed). */
+  after: number;
+}
+
+export interface LineDiffOptions {
+  /** Unchanged lines shown on each side of a change. Default 3. */
+  context?: number;
+  /** How a line names a section: markdown headings by default (the text after its #s); false names none; a function returns a line's section, or null when the line names none. A hunk's section is the nearest one above its change; a removed line names none. */
+  sections?: false | ((line: string) => string | null | undefined);
+}
+
+/** The line diff of b against a (a port of diazo's LineDiff): the longest common subsequence kept, the rest removed then added; a change too big to table (old × new lines past 4,000,000) is every line removed and added. */
+export function lineDiff(a: string, b: string, o?: LineDiffOptions): LineDiff;
+
+export interface DiffBoxOptions {
+  /** The tool's heading (.kit-diff-head), and the box's aria-label when a string. */
+  head?: string | Node;
+  /** The tool's Why line (.kit-diff-why), drawn as given. */
+  why?: string | Node;
+  /** A diff already computed; otherwise a and b are diffed with the defaults. */
+  diff?: LineDiff;
+  a?: string;
+  b?: string;
+  /** Draw the old and new line numbers (.kit-diff.numbered), and give each section line the lines it spans ("@@ lines 3–6 · Git"). */
+  numbers?: boolean;
+  /** Old line numbers to mark: a removed line among them is .kit-dl.mark, a darker tint with ! for its sign. */
+  marks?: Set<number>;
+  /** The tool's words when nothing changed (.kit-diff-none). */
+  none?: string;
+}
+
+/** The diff drawn (section.kit-diff): head, why, then each hunk under its section (.kit-diff-section) as .kit-dl rows (same, del struck on red, add on green), unchanged lines counted in .kit-fold ("11 lines unchanged"). With no change: the box with the none words, or null without them. */
+export function diffBox(o: DiffBoxOptions): HTMLElement | null;

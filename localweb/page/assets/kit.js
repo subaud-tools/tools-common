@@ -30,3 +30,4 @@ export * from './tour.js';
 export * from './spotlight.js';
 export * from './guide.js';
 export * from './viewer.js';
+export * from './diff.js';

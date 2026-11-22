@@ -1306,3 +1306,32 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 }
 .kit-viewer-panel > table { width: auto; max-width: none; margin: 0; }
 @media (max-width: 640px) { .kit-viewer { padding: 10px; } }
+
+/* diff.js: what changed between two texts. The tool's head and why on the
+   signal wash, then each hunk under its section, folded lines counted. A row
+   is the sign and the text (with numbers, the old and new line numbers first),
+   wrapping in its column. Tints are mixed from the kit's own colours, so they
+   follow the theme: removed lines struck on red, added on green, a marked
+   line darker with ! for its sign. */
+.kit-diff { border: 1px solid var(--kit-line); border-radius: 8px; overflow: hidden; margin: 0 0 14px; background: var(--kit-card); }
+.kit-diff-head { padding: 8px 12px; background: var(--kit-signal-soft); font-weight: 600; font-size: 13.5px; }
+.kit-diff-why { padding: 0 12px 8px; background: var(--kit-signal-soft); font-size: 13px; color: var(--kit-muted); }
+.kit-diff-why:first-child { padding-top: 8px; }
+.kit-diff-lines { font: 12.5px/1.6 var(--kit-mono); padding: 4px 0; }
+.kit-diff-section { color: var(--kit-muted); font-size: 11.5px; padding: 6px 12px 2px; border-top: 1px solid var(--kit-line); }
+.kit-diff-section:first-child { border-top: 0; }
+.kit-dl { display: grid; grid-template-columns: 1.6em minmax(0, 1fr); white-space: pre-wrap; overflow-wrap: anywhere; padding-right: 12px; }
+.kit-diff.numbered .kit-dl { grid-template-columns: 3em 3em 1.6em minmax(0, 1fr); }
+.kit-dl .kit-n { color: var(--kit-muted); text-align: right; padding-right: 8px; margin: 0; user-select: none; }
+.kit-dl .kit-sign { text-align: center; color: var(--kit-muted); user-select: none; }
+.kit-dl .kit-t { min-height: 1.6em; tab-size: 4; text-decoration: none; }
+.kit-dl.add { background: color-mix(in srgb, var(--kit-ok) 13%, transparent); }
+.kit-dl.add .kit-sign { color: var(--kit-ok); }
+.kit-dl.del { background: color-mix(in srgb, var(--kit-danger) 11%, transparent); }
+.kit-dl.del .kit-sign { color: var(--kit-danger); }
+.kit-dl.del .kit-t { text-decoration: line-through; }
+.kit-dl.mark { background: color-mix(in srgb, var(--kit-danger) 22%, transparent); }
+.kit-dl.mark .kit-sign { font-weight: 700; }
+.kit-fold { color: var(--kit-muted); font-style: italic; padding: 0 12px 0 1.6em; font-size: 12px; }
+.kit-diff-none { padding: 8px 12px; color: var(--kit-muted); font-size: 13px; }
+@media (max-width: 520px) { .kit-diff.numbered .kit-dl { grid-template-columns: 2.4em 2.4em 1.4em minmax(0, 1fr); } }
