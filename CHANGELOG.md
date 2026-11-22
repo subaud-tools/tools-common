@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.122.0
+
+### Added
+- `claudeplugin`: `Spec.NoMod` renders a plugin with its manifest and `.mcp.json` and no mod, for a tool that has tools and no page or events: no `hooks/hooks.json`, no `hooks/register.js`, and nothing runs `<bin> watch`. `AssertCurrent` on such a spec also fails when the plugin's directory holds a `hooks` directory, which Claude Code would load. A spec without `NoMod` renders byte for byte as before.
+
 ## 0.121.0
 
 ### Changed

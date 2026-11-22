@@ -14,7 +14,8 @@ const UpdateEnv = "CLAUDEPLUGIN_UPDATE"
 // AssertCurrent fails t for each file in dir that differs from what s
 // renders, or is missing, and names the command that regenerates them. Each
 // tool calls it from a test of its own, with dir its committed plugin, so an
-// edited copy or a newer template fails that repo's tests.
+// edited copy or a newer template fails that repo's tests. A hooks directory
+// in the plugin of a Spec with NoMod fails too: Claude Code would load it.
 func AssertCurrent(t testing.TB, dir string, s Spec) {
 	t.Helper()
 	if os.Getenv(UpdateEnv) == "1" {
@@ -37,5 +38,8 @@ func AssertCurrent(t testing.TB, dir string, s Spec) {
 		case !bytes.Equal(got, files[p]):
 			t.Errorf("claudeplugin: %s in %s differs from what tools-common renders; regenerate with: %s", p, dir, regen)
 		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "hooks")); s.NoMod && err == nil {
+		t.Errorf("claudeplugin: %s has a hooks directory, and this plugin has no mod; remove it", dir)
 	}
 }

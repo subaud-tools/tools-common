@@ -3,7 +3,8 @@
 // and a mod (hooks/hooks.json, hooks/register.js) that runs `<bin> watch` (or
 // `<bin> <group> watch`) and starts a turn with each event it prints. Every
 // tool's mod comes from the one template in this package; AssertCurrent keeps
-// a tool's committed copy equal to it.
+// a tool's committed copy equal to it. A tool with no events sets Spec.NoMod
+// and gets the manifest and the .mcp.json only.
 //
 // plugin.json carries no "version": for a plugin in a git-hosted marketplace
 // Claude Code then versions it by commit, so the committed plugin does not
@@ -39,7 +40,11 @@ type Spec struct {
 	// stays where it is.
 	Group string
 	// ServerName is the MCP server's key in .mcp.json.
-	ServerName  string
+	ServerName string
+	// NoMod leaves the mod out, for a tool with no page and no events: the
+	// plugin is the manifest and the .mcp.json, with nothing under hooks/,
+	// and nothing runs `<Bin> watch`.
+	NoMod       bool
 	Description string
 	Author      string
 	AuthorURL   string
@@ -88,6 +93,9 @@ func Render(s Spec) (Files, error) {
 	}
 	if files[".mcp.json"], err = indent(mcp); err != nil {
 		return nil, err
+	}
+	if s.NoMod {
+		return files, nil
 	}
 	hooks := struct {
 		Description string   `json:"description"`
