@@ -363,27 +363,29 @@ export function band(o) {
     else if (endEl.parentNode !== line) line.append(endEl);
     watch();
   };
-  // Folding by measurement: a band with fold entries watches its title
-  // line's width, and measures again on each setter. The title's floor is
-  // 320px, or its own width when shorter; whenever the title would be under
-  // it with the fold on the line (everything else on the line already at its
-  // least, as the title shrinks last), the band is kit-band-folded and the
-  // fold goes into the ⋯. Each check lays the line out with the fold on it,
-  // so the band folds and unfolds at the same width and never flickers at
-  // the edge. Only the line is observed: folding never changes its size, so
-  // the observer never loops. A fold node that changes its own width (a
-  // Cancel coming) is measured on the next setter or resize. A band that
-  // leaves the page stops watching; put back, it watches again at its next
-  // setter.
+  // Folding by measurement: a band with fold entries on the page watches its
+  // title line's width, and the fold's nodes for a control coming or going
+  // inside them with no setter (a Cancel), and measures again on each
+  // setter. The title's floor is 320px, or its own width when shorter;
+  // whenever the title would be under it with the fold on the line
+  // (everything else on the line already at its least, as the title shrinks
+  // last), the band is kit-band-folded and the fold goes into the ⋯. Each
+  // check lays the line out with the fold on it, so the band folds and
+  // unfolds at the same width and never flickers at the edge. Only the line
+  // is size-observed (folding never changes its size, so the observer never
+  // loops); the fold's nodes are watched for changes (a MutationObserver,
+  // which folding never trips: it changes only the band's own class). A band
+  // that leaves the page stops watching at its next check; one put on the
+  // page watches from its own window, bound a microtask after it was made or
+  // set, or at its next setter.
   let ro = null;
+  let mo = null;
   let win = null;
-  let seen = false;
   const fit = () => {
     if (!el.isConnected) {
-      if (seen) unwatch();
+      unwatch();
       return;
     }
-    seen = true;
     const short = () => title.clientWidth < Math.min(320, title.scrollWidth);
     if (!el.classList.contains('kit-band-folded') && !short()) return;
     el.classList.remove('kit-band-folded');
@@ -392,9 +394,10 @@ export function band(o) {
   const unwatch = () => {
     ro?.disconnect();
     ro = null;
+    mo?.disconnect();
+    mo = null;
     win?.removeEventListener('resize', fit);
     win = null;
-    seen = false;
   };
   let pending = false;
   function watch() {
@@ -415,17 +418,23 @@ export function band(o) {
     if (el.isConnected) bind();
   }
   const bind = () => {
+    if (!el.isConnected) return;
     const w = el.ownerDocument.defaultView;
-    if (!w?.ResizeObserver) return;
+    if (!w?.ResizeObserver || !w.MutationObserver) return;
     if (win !== w) {
       unwatch();
       win = w;
       // made in the band's own window, the one that lays its line out
       ro = new w.ResizeObserver(fit);
       ro.observe(line);
+      mo = new w.MutationObserver(fit);
       // its resize heard too, for a window that draws no frames to deliver
       // the observer's (the kit's test browser)
       w.addEventListener('resize', fit);
+    }
+    mo.disconnect();
+    for (const f of s.fold) {
+      if (f.node?.nodeType) mo.observe(f.node, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'class', 'style'] });
     }
     fit();
   };

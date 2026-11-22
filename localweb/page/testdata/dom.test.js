@@ -1500,6 +1500,55 @@ test('dom: band end fold folds into the ⋯ the same way', async () => {
   }
 });
 
+test('dom: band leaves no observer or resize listener behind when replaced, even before it is watched', async () => {
+  const doc = await bandWindow(1440);
+  const win = doc.defaultView;
+  const observing = new Set(), hearing = new Set();
+  const RO = win.ResizeObserver;
+  win.ResizeObserver = class extends RO {
+    observe(t) { observing.add(this); super.observe(t); }
+    disconnect() { observing.delete(this); super.disconnect(); }
+  };
+  const add = win.addEventListener, remove = win.removeEventListener;
+  win.addEventListener = function (t, f, o) { if (t === 'resize') hearing.add(f); return add.call(this, t, f, o); };
+  win.removeEventListener = function (t, f, o) { if (t === 'resize') hearing.delete(f); return remove.call(this, t, f, o); };
+  const make = () => band({ title: longTitle(), fold: foldOf(controls()), menu: PARK });
+  try {
+    for (let i = 0; i < 4; i++) {
+      // made and replaced in one task, before its watch is bound
+      doc.body.replaceChildren(make().el);
+      doc.body.replaceChildren(make().el);
+      await new Promise(r => setTimeout(r, 10));
+      // and replaced a task later, once watched
+      doc.body.replaceChildren(make().el);
+      await new Promise(r => setTimeout(r, 10));
+    }
+    await resized(doc, 1440);
+    eq([observing.size, hearing.size], [1, 1], 'only the band on the page watches');
+    doc.body.replaceChildren();
+    await resized(doc, 1440);
+    eq([observing.size, hearing.size], [0, 0], 'and none once it is gone');
+  } finally {
+    win.ResizeObserver = RO;
+    win.addEventListener = add;
+    win.removeEventListener = remove;
+  }
+});
+
+test('dom: band folds when a control comes into a fold node with no setter', async () => {
+  const doc = await bandWindow(1060);
+  const group = h('span', { style: 'display:inline-flex; gap:8px' }, fixedBox(140, 'Open in Terminal'));
+  const b = onPage(doc, longTitle(), { fold: [{ node: group }, ...foldOf(controls().slice(1))], menu: PARK });
+  await resized(doc, 1060);
+  assert(!folded(b) && titleW(b) >= 320, `it fits unfolded to start with (${titleW(b)})`);
+  group.append(h('button', { type: 'button', style: 'box-sizing:border-box; width:70px' }, 'Cancel'));
+  await new Promise(r => setTimeout(r, 50));
+  assert(folded(b), `folded once Cancel came (${titleW(b)})`);
+  group.lastChild.remove();
+  await new Promise(r => setTimeout(r, 50));
+  assert(!folded(b) && titleW(b) >= 320, `unfolded once it went (${titleW(b)})`);
+});
+
 test('dom: band setters keep an end fold in its place', () => {
   const b = band({ title: 'A doc', end: [h('button', { type: 'button' }, 'Open')], search: { placeholder: 'Find' } });
   b.setFold([{ node: h('span', null, 'History'), at: 'end' }, { node: h('span', null, 'opus') }]);
