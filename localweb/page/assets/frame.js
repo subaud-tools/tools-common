@@ -60,6 +60,8 @@ function side(name, which, cls, o) {
 // the reader's toggle left it: nothing a card holds moves it. foot(node) locks
 // node (a sendBar) to the centre's bottom edge, in a kit-sendfoot made its last
 // child, so call it after drawing the centre; foot(null) takes it away.
+// With no right, the centre runs to the window's edge. wide(on) runs the
+// centre over the right column's space, the band and the left column unmoved.
 export function frame({ name, left, centre, right }) {
   const [l, leftBody] = side(name, 'left', 'kit-list', left);
   const [r, rightBody] = side(name, 'right', 'kit-rail', right);
@@ -74,7 +76,10 @@ export function frame({ name, left, centre, right }) {
     sendfoot.replaceChildren(node);
     mid.append(sendfoot);
   };
-  return { left: l, leftBody, centre: mid, right: r, rightBody, foot };
+  // wide(on) runs the centre over the right column's space (a design's topic
+  // chat), its cards uncapped; the band and the left column stay put.
+  const wide = on => mid.classList.toggle('kit-wide', !!on);
+  return { left: l, leftBody, centre: mid, right: r, rightBody, foot, wide };
 }
 
 // narrowMode shows one thing at a time at 1080 wide or less: the centre, or a

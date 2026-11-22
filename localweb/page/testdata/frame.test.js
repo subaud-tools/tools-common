@@ -1,7 +1,10 @@
 import { test, eq, assert, fixture } from './harness.js';
 import { frame, collapsible, narrowMode } from '/_kit/frame.js';
 import { createDrafts, sendBar } from '/_kit/drafts.js';
-import { buttons } from '/_kit/dom.js';
+import { buttons, bar, band, h } from '/_kit/dom.js';
+import { indexSection, indexRow } from '/_kit/index.js';
+import { filterRow } from '/_kit/frontpage.js';
+import { thread } from '/_kit/thread.js';
 import { lineTip, wireTip } from '/_kit/tip.js';
 
 const parts = (extra = {}) => ({
@@ -591,4 +594,106 @@ test('frame: a hidden label far down the centre column scrolls with it, not with
   eq(f.centre.contains(label.offsetParent), true, 'the label is placed against the centre column');
   assert(f.centre.scrollHeight > 2000, 'the centre column scrolls');
   assert(app.scrollHeight <= app.clientHeight + 1, `the frame itself has nothing to scroll (${app.scrollHeight} in ${app.clientHeight})`);
+});
+
+// layoutPage draws a page w wide in its own window: the bar, the band, then
+// the frame (o: frame's options), each column with a first item, so where
+// each starts can be measured. css is a tool's own stylesheet.
+async function layoutPage(w, o = {}, { css = '' } = {}) {
+  clean();
+  const doc = await sized(w);
+  if (css) doc.head.append(Object.assign(doc.createElement('style'), { textContent: css }));
+  const f = frame(parts(o));
+  const app = doc.createElement('div');
+  app.className = 'kit-app';
+  const top = band({ title: 'A page', under: [h('span', null, 'track')] });
+  app.append(bar({ brand: { name: 'tooltest' } }).el, top.el, ...[f.left, f.centre, f.right].filter(Boolean));
+  doc.body.append(app);
+  if (f.leftBody) f.leftBody.append(indexSection({ name: 'Findings', rows: [indexRow({ id: 'F1', title: 'One', select() {} })], empty: '' }));
+  const card = h('section', { class: 'kit-card' }, h('p', null, 'The first card.'));
+  f.centre.append(card);
+  return { doc, f, app, top, card };
+}
+
+const box = el => el.getBoundingClientRect();
+
+test('layout: the left column\'s first label is 16px under the band, the first middle card 24px', async () => {
+  for (const w of [1655, 1280]) {
+    const p = await layoutPage(w);
+    const under = box(p.top.el).bottom;
+    eq(under, 156, `${w}: the band ends at y156 under a 52px bar`);
+    near(box(p.f.leftBody.querySelector('.kit-label')).top - under, 16, `${w}: the left column's first label`);
+    near(box(p.card).top - under, 24, `${w}: the first middle card`);
+    near(box(p.card).left, 288 + 24, `${w}: the card's left edge`);
+  }
+});
+
+test('layout: a front page\'s filter row puts its first label where an item page\'s index section does', async () => {
+  const p = await layoutPage(1655);
+  const under = box(p.top.el).bottom;
+  p.f.leftBody.replaceChildren(filterRow({ label: 'Kind', items: [{ value: 'a', label: 'A', count: 1 }], chosen: [], onToggle() {} }));
+  near(box(p.f.leftBody.querySelector('.kit-label')).top - under, 16, 'the filter row\'s label');
+});
+
+test('layout: the right column\'s first label is 16px under the band too', async () => {
+  const p = await layoutPage(1655);
+  p.f.rightBody.append(thread({ id: 'F1', name: 'One', messages: [] }));
+  near(box(p.f.rightBody.querySelector('.kit-label')).top - box(p.top.el).bottom, 16, 'the thread\'s label');
+});
+
+test('layout: a middle card in a 1600px-wide middle column is 1100px wide, at the column\'s left padding', async () => {
+  const p = await layoutPage(288 + 1600, { right: undefined });
+  near(box(p.f.centre).width, 1600, 'the middle column');
+  near(box(p.card).width, 1100, 'the card stops at the cap');
+  near(box(p.card).left, box(p.f.centre).left + 24, 'left-aligned at the column\'s padding');
+  const s = getComputedStyle(p.card);
+  eq([s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft, s.borderTopLeftRadius], ['14px', '16px', '14px', '16px', '8px']);
+});
+
+test('layout: every middle card has the kit\'s shape and cap, whatever a tool\'s card class says', async () => {
+  const p = await layoutPage(288 + 1600, { right: undefined }, { css: '.tool-card { padding: 32px 28px; border-radius: 12px; max-width: 1200px; }' });
+  p.card.classList.add('tool-card');
+  const nested = h('div', { class: 'tool-stack' }, h('section', { class: 'kit-card tool-card' }, 'deeper'));
+  p.f.centre.append(nested);
+  for (const c of [p.card, nested.firstChild]) {
+    const s = getComputedStyle(c);
+    eq([s.paddingTop, s.paddingLeft, s.borderTopLeftRadius], ['14px', '16px', '8px']);
+    near(box(c).width, 1100, 'capped');
+  }
+});
+
+test('layout: a frame with no right column has its middle column end at the window\'s edge', async () => {
+  for (const w of [1655, 1280]) {
+    const p = await layoutPage(w, { right: undefined });
+    near(box(p.f.centre).right, w, `${w}: the middle runs to the edge`);
+    near(box(p.f.centre).left, 288, `${w}: from the left column`);
+  }
+});
+
+test('layout: wide(true) runs the middle column over the right column\'s space, the band and the left column unmoved', async () => {
+  const p = await layoutPage(1655);
+  const before = { band: box(p.top.el), left: box(p.f.left), mid: box(p.f.centre), card: box(p.card) };
+  near(before.mid.right, 1655 - 384, 'the right column takes its 384px');
+  p.f.wide(true);
+  const mid = box(p.f.centre);
+  near(mid.right, 1655, 'the middle runs to the edge');
+  near(mid.left, before.mid.left, 'its left edge stays');
+  near(box(p.card).top, before.card.top, 'its first card stays');
+  near(box(p.card).left, before.card.left, 'and its left');
+  for (const k of ['top', 'left', 'width', 'height']) {
+    near(box(p.top.el)[k], before.band[k], `the band's ${k}`);
+    near(box(p.f.left)[k], before.left[k], `the left column's ${k}`);
+  }
+  eq(box(p.f.right).width, 0, 'the right column is out of the way');
+  p.f.wide(false);
+  near(box(p.f.centre).right, 1655 - 384, 'wide(false) puts it back');
+  assert(box(p.f.right).width > 0, 'with the right column');
+});
+
+test('layout: wide(true) on a narrow page leaves the centre where it is', async () => {
+  const p = await layoutPage(900);
+  p.app.classList.add('kit-narrow');
+  const before = box(p.f.centre);
+  p.f.wide(true);
+  near(box(p.f.centre).left, before.left, 'its left');
 });

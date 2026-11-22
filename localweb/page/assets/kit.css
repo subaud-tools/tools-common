@@ -584,6 +584,22 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    down a long view), as the side columns do: else it is placed against the
    page and lengthens the document. */
 .kit-mid { position: relative; padding: 24px 24px 32px; }
+/* where the columns start: the middle column's first card 24px under the
+   band (its padding), a side column's first label 16px under it (the index
+   section's 4px and its label's 12px). Every card in the middle column has
+   the kit's shape, 14px by 16px padding and an 8px corner, and fills the
+   column up to 1100px, left-aligned: one cap for every page, a tool's card
+   class included (an empty card keeps its own roomier padding). A list's cards (sortedList, groups) keep the cap outside
+   the frame too. The wide view (frame's wide) lifts the cap. */
+.kit-mid .kit-card:not(.kit-empty-card) { padding: 14px 16px; border-radius: 8px; }
+.kit-mid .kit-card, .kit-sorted > .kit-card, .kit-group.kit-card { max-width: 1100px; }
+/* a front page has no right column: the empty track is 0 wide, so the middle
+   runs to the window's edge. The wide view (frame's wide) runs the middle
+   over the right column's space; the band, the left column and the middle's
+   left edge stay where they are. */
+.kit-app > .kit-mid.kit-wide { grid-column: 2 / -1; }
+.kit-app:has(> .kit-mid.kit-wide) > .kit-right-col { display: none; }
+.kit-mid.kit-wide .kit-card { max-width: none; }
 .kit-col-toggle {
   position: sticky; top: 8px; z-index: 3; display: block;
   margin: 8px 12px 0 auto; width: 25px; min-height: 25px; padding: 0;
@@ -722,8 +738,9 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 
 /* the thread column (thread.js): each message edged by who wrote it */
 .kit-thread { padding: 16px; }
-/* the label sits on the toggle's line, centred on it */
-.kit-right-col > .kit-col-body .kit-thread { padding-top: 14px; }
+/* the label sits on the toggle's line, 16px under the band as the left
+   column's first label is */
+.kit-right-col > .kit-col-body .kit-thread { padding-top: 16px; }
 .kit-thread > .kit-label { margin-bottom: 8px; }
 .kit-thread-name {
   font-weight: 600; margin: 0 0 12px;
@@ -923,7 +940,7 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-index-row.kit-sub .kit-index-main { padding-left: 26px; }
 .kit-pill-n { opacity: .75; }
 /* the sorted list (frontpage.js sortedList): the sort switch over one card of rows */
-.kit-sorted > .kit-card { max-width: 1100px; margin: 0 0 24px; }
+.kit-sorted > .kit-card { margin: 0 0 24px; }
 /* its title heads the card like a group's, but it doesn't fold */
 .kit-sorted .kit-group-head { cursor: default; }
 .kit-sorted .kit-group-head::before { content: none; }
@@ -933,7 +950,7 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-sort { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
 .kit-sort-label { color: var(--kit-muted); font-size: 13px; }
 .kit-sort .kit-chip { margin: 0; }
-.kit-group.kit-card { max-width: 1100px; margin: 0 0 24px; }
+.kit-group.kit-card { margin: 0 0 24px; }
 .kit-group-head {
   display: block; margin: 0 0 12px; padding: 0; border: 0; background: none;
   cursor: pointer; text-align: left;
