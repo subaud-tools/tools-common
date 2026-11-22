@@ -931,6 +931,43 @@ test('dom: band on a phone stays 104px, its second line one line, the fold in th
   assert(Math.abs(sort.getBoundingClientRect().top - segs[0].getBoundingClientRect().top) < 4, 'on the track\'s line');
 });
 
+test('dom: band setters leave the search field connected, focused and its selection kept', async () => {
+  const doc = await bandWindow(1280);
+  const b = band({ title: 'Plans', beside: [h('span', null, '290')], end: [h('button', { type: 'button' }, 'Open')], search: { placeholder: 'Search plans', onInput() {} } });
+  doc.body.append(b.el);
+  const field = b.search;
+  field.focus();
+  field.value = 'diazo plans';
+  field.setSelectionRange(2, 5);
+  eq(doc.activeElement === field, true, 'focused to start with');
+  const calls = [
+    ['setBeside', () => b.setBeside([h('span', null, '291')])],
+    ['setEnd', () => b.setEnd([h('button', { type: 'button' }, 'Close')])],
+    ['setMenu', () => b.setMenu([{ label: 'Delete', run() {} }])],
+    ['setFold', () => b.setFold([{ node: h('span', null, 'opus'), item: { label: 'Model', run() {} } }])],
+    ['setMenu again', () => b.setMenu(null)],
+    ['setFold again', () => b.setFold(null)],
+    ['setEnd again', () => b.setEnd(null)],
+  ];
+  for (const [name, call] of calls) {
+    call();
+    assert(b.search === field && field.isConnected, `${name}: the same field, still in the band`);
+    assert(doc.activeElement === field, `${name}: it keeps the focus`);
+    eq([field.value, field.selectionStart, field.selectionEnd], ['diazo plans', 2, 5], `${name}: its words and selection`);
+  }
+  eq([...b.el.querySelector('.kit-band-line').children].map(c => c.className || c.textContent), ['kit-band-title', '291', 'kit-band-end'], 'the line as drawn afresh');
+});
+
+test('dom: band setters on a band not yet on the page keep the title line in order', () => {
+  const b = band({ title: 'A plan', end: [h('button', { type: 'button' }, 'Open')] });
+  b.setFold([{ node: h('span', null, 'opus') }]);
+  b.setBeside([h('span', null, 'building')]);
+  b.setSearch({ placeholder: 'Find' });
+  b.setMenu([{ label: 'Delete', run() {} }]);
+  eq([...b.el.querySelector('.kit-band-line').children].map(c => c.className || c.tagName), ['kit-band-title', 'SPAN', 'kit-band-fold', 'kit-band-end']);
+  eq([...b.el.querySelector('.kit-band-end').children].map(c => c.className || c.tagName), ['BUTTON', 'kit-input kit-band-search', 'kit-band-more']);
+});
+
 test('dom: band search on a phone stays a field at the title line\'s end', async () => {
   const doc = await bandWindow(390);
   const b = band({ title: 'Plans', search: { placeholder: 'Search plans' }, under: [stages(6)], sort: h('span', null, 'recent ▾') });

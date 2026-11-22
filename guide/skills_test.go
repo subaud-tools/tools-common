@@ -161,6 +161,7 @@ func TestLayoutSkill(t *testing.T) {
 		"No tool CSS",
 		"A front page has no right column",
 		"PAGE-STANDARD.md",
+		"the empty-state card, `emptyCard`, keeps its own padding",
 	} {
 		if !strings.Contains(b, want) {
 			t.Errorf("laying-out-a-page does not say %q", want)

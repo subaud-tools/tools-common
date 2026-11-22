@@ -77,7 +77,8 @@ export function frame({ name, left, centre, right }) {
     mid.append(sendfoot);
   };
   // wide(on) runs the centre over the right column's space (a design's topic
-  // chat), its cards uncapped; the band and the left column stay put.
+  // chat), its cards uncapped; the band and the left column stay put. On a
+  // narrow page (narrowMode) it changes nothing, so it never leaves it blank.
   const wide = on => mid.classList.toggle('kit-wide', !!on);
   return { left: l, leftBody, centre: mid, right: r, rightBody, foot, wide };
 }

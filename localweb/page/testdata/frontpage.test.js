@@ -1166,7 +1166,8 @@ test('sortedList: given a band, on a phone the switch is a compact picker that r
   eq(namesOf(list.el), ['a.md', 'b.md', 'c.md']);
   eq(localStorage.getItem('kittest.sort'), 'name');
   eq(b.el.querySelector('.kit-pick-btn').textContent, 'name');
-  assert(b.el.querySelector('.kit-pick-btn') === btn && btn.isConnected, 'the picker stays in place, so it keeps the focus');
+  assert(b.el.querySelector('.kit-pick-btn') === btn && btn.isConnected, 'the picker stays in place');
+  assert(doc.activeElement === btn, `after the redraw the picker has the focus (${doc.activeElement && doc.activeElement.className})`);
   eq(b.el.querySelector('.kit-sort .kit-chip.on').dataset.value, 'name', 'the chips follow');
   fresh();
 });

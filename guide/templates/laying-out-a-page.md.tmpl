@@ -35,7 +35,7 @@ Every tool's page has one layout, the same on its front page and its item pages 
 | Second line | The stage track on an item page, the status pills on a front page; one line that scrolls sideways when too long | `band`'s `under`, with `stageTrack` or `statusPills` |
 | Second line's end | `underEnd` (the needs-you pill on an item page), then `sort` (a front page's sort: recent, stage, name; a compact picker on a phone) | `band`'s `underEnd`, `sortedList`'s `band` |
 | Left column | 288px; its first label 16px under the band; its sections are the page's own (filters on a front page, an index on an item page) | `frame`'s `left`, `indexSection`, `filterRow` |
-| Middle column | Its first card 24px under the band; every card 14px by 16px padding, an 8px corner, up to 1100px, left-aligned | `frame`'s `centre`, `card`, `sortedList` |
+| Middle column | Its first card 24px under the band; every card 14px by 16px padding, an 8px corner, up to 1100px, left-aligned (the empty-state card, `emptyCard`, keeps its own padding) | `frame`'s `centre`, `card`, `emptyCard`, `sortedList` |
 | Right column | An item page's thread, or its tabs with counts; its first label 16px under the band | `frame`'s `right`, `thread`, `railTabs` |
 | Phone (640px wide or less) | The band stays 104px; the fold goes into the band's ⋯; at 1080px or less one column shows at a time | `band`, `narrowMode` |
 

@@ -1,7 +1,7 @@
 import { test, eq, assert, fixture } from './harness.js';
 import { frame, collapsible, narrowMode } from '/_kit/frame.js';
 import { createDrafts, sendBar } from '/_kit/drafts.js';
-import { buttons, bar, band, h } from '/_kit/dom.js';
+import { buttons, bar, band, h, emptyCard } from '/_kit/dom.js';
 import { indexSection, indexRow } from '/_kit/index.js';
 import { filterRow } from '/_kit/frontpage.js';
 import { thread } from '/_kit/thread.js';
@@ -696,4 +696,29 @@ test('layout: wide(true) on a narrow page leaves the centre where it is', async 
   const before = box(p.f.centre);
   p.f.wide(true);
   near(box(p.f.centre).left, before.left, 'its left');
+});
+
+test('layout: wide(true) while a narrow page shows its right column leaves it showing', async () => {
+  const p = await layoutPage(900);
+  p.f.rightBody.append(thread({ id: 'F1', name: 'One', messages: [] }));
+  p.app.classList.add('kit-narrow', 'kit-narrow-right');
+  const before = box(p.f.rightBody);
+  assert(before.width > 0, 'the right column shows');
+  p.f.wide(true);
+  const r = box(p.f.rightBody);
+  const mid = getComputedStyle(p.f.centre).visibility !== 'hidden' && box(p.f.centre).width > 0;
+  assert(r.width > 0 || mid, 'something shows: never a blank page');
+  near(r.width, before.width, 'the right column keeps its place');
+  near(r.left, before.left, 'and its left');
+  p.app.classList.remove('kit-narrow-right');
+  near(box(p.f.centre).left, 40, 'back on the centre it sits where narrow puts it');
+});
+
+test('layout: the empty-state card in the middle keeps its own padding, under the cap', async () => {
+  const p = await layoutPage(288 + 1600, { right: undefined });
+  const e = emptyCard({ text: 'Nothing here yet.' });
+  p.f.centre.append(e);
+  const st = getComputedStyle(e);
+  eq([st.paddingTop, st.paddingLeft], ['26px', '10px']);
+  near(box(e).width, 1100, 'capped');
 });

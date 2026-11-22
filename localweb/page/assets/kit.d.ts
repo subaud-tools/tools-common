@@ -689,14 +689,14 @@ export interface Frame {
   rightBody: HTMLElement | null;
   /** Locks node (a sendBar) to the centre's bottom edge: a kit-sendfoot, full width, made the centre's last child, so call it after drawing the centre. null takes it away. The band spans the kit's 24px side padding, so keep it. */
   foot(node: Node | null): void;
-  /** The wide view (a system design's topic chat): true runs the centre over the right column's space, the right column hidden, and lifts the 1100px cap on its cards; the band, the left column and the centre's left edge and first item stay where they are. false puts it back. */
+  /** The wide view (a system design's topic chat): true runs the centre over the right column's space, the right column hidden, and lifts the 1100px cap on its cards; the band, the left column and the centre's left edge and first item stay where they are. On a narrow page (narrowMode's kit-narrow) it changes nothing: one column shows at a time there, the right one included. false puts it back. */
   wide(on: boolean): void;
 }
 
 /**
  * The three columns of a .kit-app grid; the caller appends left, centre and right after its bar (and band).
  * Where they start: the centre's first card 24px under the band, a side column's first label (an index section's or a filter row's, the thread's) 16px under it; the left column is 288px.
- * Every card in the centre (.kit-mid .kit-card, an empty card aside) has the kit's shape, 14px by 16px padding and an 8px corner, and fills the centre up to 1100px, left-aligned, whatever a tool's own card class says.
+ * Every card in the centre (.kit-mid .kit-card; an empty-state card, emptyCard, keeps its own 26px by 10px padding) has the kit's shape, 14px by 16px padding and an 8px corner, and fills the centre up to 1100px, left-aligned, whatever a tool's own card class says.
  * With no right (a front page), the centre runs to the window's edge, its cards still stopping at the cap.
  */
 export function frame(o: FrameOptions): Frame;

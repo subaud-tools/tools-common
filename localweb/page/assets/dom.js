@@ -261,21 +261,35 @@ export function band(o) {
   const s = { beside: [], fold: [], end: [], search: null, menu: [], under: [], underEnd: [], sort: null };
   let under = null;
   let field = null;
+  // The title line's parts are kept and changed in place, never rebuilt: the
+  // search field is never moved, so a setter called while the reader types in
+  // it leaves it focused with its caret and selection.
+  const foldEl = h('span', { class: 'kit-band-fold' });
+  const endEl = h('div', { class: 'kit-band-end' });
   const drawLine = () => {
-    const kids = [title, ...s.beside];
+    for (const c of [...line.childNodes]) if (c !== title && c !== foldEl && c !== endEl) c.remove();
+    const anchor = foldEl.parentNode === line ? foldEl : endEl.parentNode === line ? endEl : null;
+    for (const n of s.beside) line.insertBefore(typeof n === 'string' ? document.createTextNode(n) : n, anchor);
     const folds = s.fold.map(f => f.node).filter(n => n !== null && n !== undefined && n !== false);
-    if (folds.length) kids.push(h('span', { class: 'kit-band-fold' }, folds));
+    if (folds.length) {
+      foldEl.replaceChildren(...folds);
+      if (foldEl.parentNode !== line) line.insertBefore(foldEl, endEl.parentNode === line ? endEl : null);
+    } else foldEl.remove();
     const items = s.fold.filter(f => f.item);
-    const more = [];
+    let more = null;
     if (items.length || s.menu.length) {
       const m = rowMenu({ label: 'More', buttonClass: 'kit-row-more', items: [...items.map(f => f.item), ...s.menu] });
       // the fold's items show only on a phone, where their nodes are hidden
       m.querySelectorAll('.kit-row-pop > *').forEach((it, i) => { if (i < items.length) it.classList.add('kit-band-fold-item'); });
-      more.push(h('div', { class: `kit-band-more${s.menu.length ? '' : ' kit-band-phone'}` }, m));
+      more = h('div', { class: `kit-band-more${s.menu.length ? '' : ' kit-band-phone'}` }, m);
     }
-    const end = [...s.end, field, ...more].filter(Boolean);
-    if (end.length) kids.push(h('div', { class: 'kit-band-end' }, end));
-    line.replaceChildren(...kids);
+    for (const c of [...endEl.childNodes]) if (c !== field) c.remove();
+    if (field && field.parentNode !== endEl) endEl.append(field);
+    if (field) field.before(...s.end);
+    else endEl.append(...s.end);
+    if (more) endEl.append(more);
+    if (!endEl.childNodes.length) endEl.remove();
+    else if (endEl.parentNode !== line) line.append(endEl);
   };
   const drawUnder = () => {
     const tail = [...s.underEnd, s.sort].filter(Boolean);

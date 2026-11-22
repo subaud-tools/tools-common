@@ -598,9 +598,12 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    runs to the window's edge. The wide view (frame's wide) runs the middle
    over the right column's space; the band, the left column and the middle's
    left edge stay where they are. */
-.kit-app > .kit-mid.kit-wide { grid-column: 2 / -1; }
-.kit-app:has(> .kit-mid.kit-wide) > .kit-right-col { display: none; }
-.kit-mid.kit-wide .kit-card { max-width: none; }
+/* on a narrow page (narrowMode) one column shows at a time and the wide view
+   changes nothing: the right column stays, as a strip or open, so wide never
+   leaves the page blank */
+.kit-app:not(.kit-narrow) > .kit-mid.kit-wide { grid-column: 2 / -1; }
+.kit-app:not(.kit-narrow):has(> .kit-mid.kit-wide) > .kit-right-col { display: none; }
+.kit-app:not(.kit-narrow) > .kit-mid.kit-wide .kit-card { max-width: none; }
 .kit-col-toggle {
   position: sticky; top: 8px; z-index: 3; display: block;
   margin: 8px 12px 0 auto; width: 25px; min-height: 25px; padding: 0;
