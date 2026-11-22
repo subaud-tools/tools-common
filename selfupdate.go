@@ -24,7 +24,11 @@ import (
 // SelfUpdate implements the /dl family download contract:
 //
 //  1. GET <dlHost>/dl/<Name>/latest → bare semver (leading "v" tolerated).
-//  2. If it equals the current version → (false, current, nil), no download.
+//  2. If it equals the current version, or is older than it (receipt.Older:
+//     an rc or a local build ahead of the latest release) → (false, latest,
+//     nil): nothing is downloaded and nothing replaced, so an old release
+//     offered as the latest rolls nobody back. A build whose version does not
+//     parse, such as a dev build, is never newer and goes on to update.
 //  3. Otherwise download <base>/<asset> and <base>/<asset>.sha256 where
 //     asset = "<Name>_<goos>_<goarch>.tar.gz" and
 //     base  = <dlHost>/dl/<Name>/<latest>.
@@ -32,14 +36,13 @@ import (
 //  5. Download <asset>.receipt and <asset>.receipt.sig; the receipt must be
 //     signed by a key the family trusts and name this tool, this version,
 //     this asset and its sha256 (receipt.Check).
-//  6. Refuse a version older than the running one (receipt.Older).
-//  7. Extract the <Name> file from the tar.gz and stage it beside the
+//  6. Extract the <Name> file from the tar.gz and stage it beside the
 //     running binary (.<Name>.new.<pid>).
-//  8. On macOS, the staged file must be signed by the family's Developer ID
+//  7. On macOS, the staged file must be signed by the family's Developer ID
 //     (receipt.CheckSigner).
-//  9. Atomically replace the running binary (rename the staged file).
+//  8. Atomically replace the running binary (rename the staged file).
 //
-// A failure of 5, 6 or 8 is an error starting "update refused: " that names
+// A failure of 5 or 7 is an error starting "update refused: " that names
 // the check; the running binary is untouched. Nothing skips a check: no flag,
 // environment variable or config. The sidecar check (4) is kept though the
 // receipt covers it: it costs one small request and has always been there.
@@ -53,8 +56,8 @@ func (a *App) SelfUpdate(out, errw io.Writer) (updated bool, newVersion string, 
 		return false, "", err
 	}
 	current := strings.TrimPrefix(a.version.Number, "v")
-	if latest == current {
-		return false, current, nil
+	if latest == current || receipt.Older(latest, current) {
+		return false, latest, nil
 	}
 
 	asset := fmt.Sprintf("%s_%s_%s.tar.gz", a.name, runtime.GOOS, runtime.GOARCH)
@@ -85,10 +88,6 @@ func (a *App) SelfUpdate(out, errw io.Writer) (updated bool, newVersion string, 
 	}
 	if err := a.checkReceipt(receiptBytes, sigBytes, assetBytes, a.name, latest, asset); err != nil {
 		return false, "", fmt.Errorf("update refused: %w", err)
-	}
-	// A dev build's version does not parse, and is never older: it updates.
-	if receipt.Older(latest, current) {
-		return false, "", fmt.Errorf("update refused: version %q is older than the installed %s", latest, current)
 	}
 
 	binBytes, err := extractBinary(assetBytes, a.name)

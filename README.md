@@ -132,7 +132,13 @@ different command; re-registering a `Name` replaces its aliases.
 `<tool> update` means the same thing everywhere. `SelfUpdate`:
 
 1. GET `https://<domain>/dl/<tool>/latest` → bare semver (leading `v` tolerated).
-2. If it equals the current version → no-op.
+2. If it equals the current version → no-op. If it is older than the current
+   version (`receipt.Older`: `X.Y.Z` or `X.Y.Z-rc.N`, an rc older than its
+   final version), as for an rc or a local build ahead of the latest release,
+   nothing is downloaded or replaced either: `update` prints `<tool> <version>
+   is newer than the latest release <latest>; nothing to do` and exits 0, so
+   an old release offered as the latest rolls nobody back. A build whose
+   version is not one of those forms, such as a dev build, always updates.
 3. Otherwise download
    `https://<domain>/dl/<tool>/<version>/<tool>_<os>_<arch>.tar.gz` and its
    `.sha256` sidecar.
@@ -142,18 +148,15 @@ different command; re-registering a `Name` replaces its aliases.
    signed with Ed25519 by the release; it must verify against one of the two
    public keys in `receipt` (the release key, or the offline backup key) and
    name this tool, this version, this file and its sha256 (`receipt.Check`).
-6. Refuse a version older than the running one (`receipt.Older`: `X.Y.Z` or
-   `X.Y.Z-rc.N`, an rc older than its final version). A build whose version
-   is not one of those, such as a dev build, always updates.
-7. Extract the `<tool>` binary from the tar.gz and stage it beside the
+6. Extract the `<tool>` binary from the tar.gz and stage it beside the
    running binary (`.<tool>.new.<pid>`).
-8. On macOS, the staged file must carry a valid signature by the family's
+7. On macOS, the staged file must carry a valid signature by the family's
    Apple Developer ID team (`receipt.CheckSigner`, which runs
    `/usr/bin/codesign`). Linux has no such check.
-9. Atomically replace the running binary (`os.Rename`), so a running process
+8. Atomically replace the running binary (`os.Rename`), so a running process
    keeps its inode.
 
-When 5, 6 or 8 fails, `update` prints one line,
+When 5 or 7 fails, `update` prints one line,
 `<tool> update: update refused: <which check failed>`, exits 1 and leaves the
 running binary as it was. No flag, environment variable or config skips a
 check.

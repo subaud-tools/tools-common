@@ -77,10 +77,6 @@ func TestUpdateInstallsOnlyWhatItsReceiptCovers(t *testing.T) {
 			want: fmt.Sprintf("update refused: no receipt for %s: GET SERVER/dl/kempt/0.2.0/%s.receipt: 404 Not Found", asset, asset)},
 		{what: "no signature", absent: ".receipt.sig",
 			want: fmt.Sprintf("update refused: no receipt signature for %s: GET SERVER/dl/kempt/0.2.0/%s.receipt.sig: 404 Not Found", asset, asset)},
-		{what: "an older version", installed: "0.3.0",
-			want: `update refused: version "0.2.0" is older than the installed 0.3.0`},
-		{what: "an rc of the installed version", installed: "0.2.0", latest: "0.2.0-rc.3",
-			want: `update refused: version "0.2.0-rc.3" is older than the installed 0.2.0`},
 		{what: "a binary the signer check refuses", signer: refuseSigner,
 			want: "update refused: the binary is not signed by the subaud tools' Apple Developer ID"},
 	} {
@@ -196,5 +192,58 @@ func TestAnAppTrustsOnlyTheFamilysKeys(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(exe); string(b) != "old" {
 		t.Fatalf("on disk %q", b)
+	}
+}
+
+// A build newer than the latest release (an rc, a local build, or a machine
+// offered an old release as the latest) is left alone: update asks for
+// nothing but latest, replaces nothing, says so in one line and exits 0.
+func TestUpdateLeavesABuildNewerThanTheLatestRelease(t *testing.T) {
+	for _, c := range []struct{ installed, latest string }{
+		{"0.3.0", "0.2.0"},
+		{"0.2.0", "0.2.0-rc.3"},
+		{"0.120.0-rc.1", "0.119.3"},
+	} {
+		t.Run(c.installed+" offered "+c.latest, func(t *testing.T) {
+			var asked []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				asked = append(asked, r.URL.Path)
+				if r.URL.Path != "/dl/kempt/latest" {
+					http.NotFound(w, r)
+					return
+				}
+				_, _ = io.WriteString(w, c.latest+"\n")
+			}))
+			defer srv.Close()
+			dir := t.TempDir()
+			exe := filepath.Join(dir, "kempt")
+			_ = os.WriteFile(exe, []byte("old"), 0o755)
+			// The App is as New built it: no check is swapped.
+			a := New(Config{Name: "kempt", Domain: "kempt.tools", Version: Version{Number: c.installed}})
+			a.setDLHost(srv.URL)
+			a.exePath = func() (string, error) { return exe, nil }
+
+			var out, errw bytes.Buffer
+			if code := a.Dispatch([]string{"update"}, &out, &errw); code != 0 {
+				t.Fatalf("exit %d: %s", code, errw.String())
+			}
+			if want := "kempt " + c.installed + " is newer than the latest release " + c.latest + "; nothing to do\n"; out.String() != want || errw.Len() != 0 {
+				t.Fatalf("out %q, errw %q, want %q", out.String(), errw.String(), want)
+			}
+			if b, _ := os.ReadFile(exe); string(b) != "old" {
+				t.Fatalf("on disk %q", b)
+			}
+			if entries, _ := os.ReadDir(dir); len(entries) != 1 {
+				t.Fatalf("%d files beside the binary", len(entries))
+			}
+			if fmt.Sprint(asked) != "[/dl/kempt/latest /notice.txt]" {
+				t.Fatalf("asked for %v, want only latest and the notice", asked)
+			}
+
+			updated, version, err := a.SelfUpdate(io.Discard, io.Discard)
+			if updated || version != c.latest || err != nil {
+				t.Fatalf("SelfUpdate = %v, %q, %v; want false, the latest release, nil", updated, version, err)
+			}
+		})
 	}
 }

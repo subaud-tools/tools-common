@@ -7,9 +7,9 @@ import "strings"
 // than its final version.
 //
 // When either does not parse, Older is false: a dev build ("dev", "") must
-// still be able to update, and the candidate has already passed Check, so it
-// is a version the family released. The guard exists to stop a genuine older
-// release being offered as the newest.
+// still be able to update, and a candidate in another form is installed only
+// if it passes Check, so it is a version the family released. The rule
+// exists so that a genuine older release offered as the newest is left alone.
 func Older(candidate, installed string) bool {
 	c, ok := parseVersion(candidate)
 	if !ok {

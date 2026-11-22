@@ -21,12 +21,12 @@ import (
 //	<dl-root>/<tool>/<version>/<tool>_<os>_<arch>.tar.gz  (+ .sha256, .receipt, .receipt.sig)
 //
 //	go test . -run TestUpdateFromARealRelease -v -dl-root DIR -dl-tool kempt \
-//	    [-dl-installed 0.1.0] [-dl-want 'update refused: ...']
+//	    [-dl-installed 0.1.0] [-dl-want 'update refused: ...' | -dl-want nothing]
 var (
 	dlRoot      = flag.String("dl-root", "", "a local copy of a /dl tree to run update against with the shipped keys")
 	dlTool      = flag.String("dl-tool", "kempt", "the tool to update from -dl-root")
 	dlInstalled = flag.String("dl-installed", "0.0.1", "the version the updating tool reports")
-	dlWant      = flag.String("dl-want", "", "the whole error update must return; empty: it must install")
+	dlWant      = flag.String("dl-want", "", "the whole error update must return; \"nothing\": it must leave the binary and succeed; empty: it must install")
 )
 
 func TestUpdateFromARealRelease(t *testing.T) {
@@ -48,6 +48,13 @@ func TestUpdateFromARealRelease(t *testing.T) {
 
 	onDisk, _ := os.ReadFile(exe)
 	entries, _ := os.ReadDir(dir)
+	if *dlWant == "nothing" {
+		if err != nil || updated || string(onDisk) != "old" || len(entries) != 1 {
+			t.Fatalf("updated %v, err %v, on disk %d bytes, %d files: want the binary left and no error", updated, err, len(onDisk), len(entries))
+		}
+		t.Logf("nothing to do: %s %s is not older than the latest release %s", *dlTool, *dlInstalled, version)
+		return
+	}
 	if *dlWant == "" {
 		if err != nil || !updated || string(onDisk) == "old" || len(entries) != 1 {
 			t.Fatalf("updated %v, err %v, %d files", updated, err, len(entries))

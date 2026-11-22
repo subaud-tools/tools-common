@@ -150,9 +150,12 @@ func New(cfg Config) *App {
 			if err != nil {
 				return err
 			}
-			if updated {
+			switch {
+			case updated:
 				_, _ = fmt.Fprintf(out, "%s updated to %s\n", a.name, newVersion)
-			} else {
+			case receipt.Older(newVersion, strings.TrimPrefix(a.version.Number, "v")):
+				_, _ = fmt.Fprintf(out, "%s %s is newer than the latest release %s; nothing to do\n", a.name, a.version.Number, newVersion)
+			default:
 				_, _ = fmt.Fprintf(out, "%s is already the latest (%s)\n", a.name, a.version.Number)
 			}
 			a.PrintNotice(errw)
