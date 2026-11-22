@@ -4,6 +4,14 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.120.0
+
+### Changed
+- `update` (`SelfUpdate`) installs a release only when its signed receipt verifies. Beside the file and its `.sha256` it fetches `<file>.receipt` and `<file>.receipt.sig`, and the receipt must be signed by one of the two keys the family trusts (the release key, or the offline backup key) and name this tool, this version, this file and its checksum. It refuses a version older than the running one (an rc is older than its final version; a dev build always updates), and on macOS it refuses a binary that is not signed by the family's Apple Developer ID. A refusal is one line, `<tool> update: update refused: <which check failed>`, and leaves the running binary as it was. Nothing skips a check. A release that publishes no receipts can no longer be installed by `update`.
+
+### Added
+- `receipt`: `Check` and `Verify` (a release file against its signed receipt), `Older` (the downgrade rule) and `CheckSigner` (the macOS Developer ID check), for kempt, which installs the other tools.
+
 ## 0.119.0
 
 ### Changed

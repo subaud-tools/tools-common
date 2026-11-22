@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/subaud-tools/tools-common/auth"
+	"github.com/subaud-tools/tools-common/receipt"
 )
 
 // UsageError signals a usage (exit code 2) error from a command's Run.
@@ -86,6 +87,11 @@ type App struct {
 	client   *http.Client
 	exePath  func() (string, error)
 	auth     *auth.Client // logout and update's links; tests point it at a fake service
+	// update's two checks of a download. Always receipt.Check and
+	// receipt.CheckSigner outside this package's tests, which hold neither the
+	// family's signing key nor its Apple certificate.
+	checkReceipt func(receipt, sig, file []byte, tool, version, fileName string) error
+	checkSigner  func(path string) error
 }
 
 // New builds an App, sets dlHost = "https://"+cfg.Domain, and auto-registers
@@ -106,6 +112,9 @@ func New(cfg Config) *App {
 		client:   http.DefaultClient,
 		exePath:  os.Executable,
 		auth:     &auth.Client{},
+
+		checkReceipt: receipt.Check,
+		checkSigner:  receipt.CheckSigner,
 	}
 	a.Register(Command{
 		Name:    "version",

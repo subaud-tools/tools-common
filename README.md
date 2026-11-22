@@ -97,7 +97,7 @@ A tool can override any built-in by registering a command with the same `Name`
 (e.g. wrap `update` with domain-specific convergence).
 
 `Config.Gated` marks a tool whose `/dl` is closed to anyone: `update` then
-fetches `latest`, the tarball and its `.sha256` through five-minute signed
+fetches `latest`, the tarball, its `.sha256` and its receipt through five-minute signed
 links (`auth.Link`, `POST /links` with the machine's token) instead of from
 `https://<domain>/dl`. With no token, or one the service refuses, it points to
 the setup line on the account page (`auth.ErrNotSignedIn`,
@@ -137,11 +137,28 @@ different command; re-registering a `Name` replaces its aliases.
    `https://<domain>/dl/<tool>/<version>/<tool>_<os>_<arch>.tar.gz` and its
    `.sha256` sidecar.
 4. **Fail-closed** sha256 verify against the sidecar.
-5. Extract the `<tool>` binary from the tar.gz.
-6. Atomically replace the running binary (stage `.<tool>.new.<pid>` →
-   `os.Rename`), so a running process keeps its inode.
+5. Download `<file>.receipt` and `<file>.receipt.sig`. The receipt is
+   `{"tool":"<tool>","version":"<version>","file":"<file>","sha256":"<hex>"}`,
+   signed with Ed25519 by the release; it must verify against one of the two
+   public keys in `receipt` (the release key, or the offline backup key) and
+   name this tool, this version, this file and its sha256 (`receipt.Check`).
+6. Refuse a version older than the running one (`receipt.Older`: `X.Y.Z` or
+   `X.Y.Z-rc.N`, an rc older than its final version). A build whose version
+   is not one of those, such as a dev build, always updates.
+7. Extract the `<tool>` binary from the tar.gz and stage it beside the
+   running binary (`.<tool>.new.<pid>`).
+8. On macOS, the staged file must carry a valid signature by the family's
+   Apple Developer ID team (`receipt.CheckSigner`, which runs
+   `/usr/bin/codesign`). Linux has no such check.
+9. Atomically replace the running binary (`os.Rename`), so a running process
+   keeps its inode.
 
-A gated tool (`Config.Gated`) asks for each of the three files as a signed
+When 5, 6 or 8 fails, `update` prints one line,
+`<tool> update: update refused: <which check failed>`, exits 1 and leaves the
+running binary as it was. No flag, environment variable or config skips a
+check.
+
+A gated tool (`Config.Gated`) asks for each of the five files as a signed
 link instead of a fixed URL.
 
 ## Version format

@@ -17,6 +17,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/subaud-tools/tools-common/receipt"
 )
 
 // SelfUpdate implements the /dl family download contract:
@@ -27,12 +29,24 @@ import (
 //     asset = "<Name>_<goos>_<goarch>.tar.gz" and
 //     base  = <dlHost>/dl/<Name>/<latest>.
 //  4. Fail-closed sha256 verify against the sidecar's first field.
-//  5. Extract the <Name> file from the tar.gz.
-//  6. Atomically replace the running binary (stage .<Name>.new.<pid> → rename).
+//  5. Download <asset>.receipt and <asset>.receipt.sig; the receipt must be
+//     signed by a key the family trusts and name this tool, this version,
+//     this asset and its sha256 (receipt.Check).
+//  6. Refuse a version older than the running one (receipt.Older).
+//  7. Extract the <Name> file from the tar.gz and stage it beside the
+//     running binary (.<Name>.new.<pid>).
+//  8. On macOS, the staged file must be signed by the family's Developer ID
+//     (receipt.CheckSigner).
+//  9. Atomically replace the running binary (rename the staged file).
 //
-// A gated tool fetches each of the three files through a signed link the
-// access service gives this machine's token (auth.Link, asked for
-// Config.Product), instead of from <dlHost>/dl.
+// A failure of 5, 6 or 8 is an error starting "update refused: " that names
+// the check; the running binary is untouched. Nothing skips a check: no flag,
+// environment variable or config. The sidecar check (4) is kept though the
+// receipt covers it: it costs one small request and has always been there.
+//
+// A gated tool fetches each file through a signed link the access service
+// gives this machine's token (auth.Link, asked for Config.Product), instead
+// of from <dlHost>/dl.
 func (a *App) SelfUpdate(out, errw io.Writer) (updated bool, newVersion string, err error) {
 	latest, err := a.fetchLatest()
 	if err != nil {
@@ -58,7 +72,23 @@ func (a *App) SelfUpdate(out, errw io.Writer) (updated bool, newVersion string, 
 	want := strings.ToLower(firstField(string(sumBytes)))
 	got := sha256.Sum256(assetBytes)
 	if want == "" || hex.EncodeToString(got[:]) != want {
-		return false, "", fmt.Errorf("checksum mismatch for %s", asset)
+		return false, "", fmt.Errorf("update refused: the checksum of %s does not match its .sha256 file", asset)
+	}
+
+	receiptBytes, err := a.fetch(base + "/" + asset + ".receipt")
+	if err != nil {
+		return false, "", fmt.Errorf("update refused: no receipt for %s: %w", asset, err)
+	}
+	sigBytes, err := a.fetch(base + "/" + asset + ".receipt.sig")
+	if err != nil {
+		return false, "", fmt.Errorf("update refused: no receipt signature for %s: %w", asset, err)
+	}
+	if err := a.checkReceipt(receiptBytes, sigBytes, assetBytes, a.name, latest, asset); err != nil {
+		return false, "", fmt.Errorf("update refused: %w", err)
+	}
+	// A dev build's version does not parse, and is never older: it updates.
+	if receipt.Older(latest, current) {
+		return false, "", fmt.Errorf("update refused: version %q is older than the installed %s", latest, current)
 	}
 
 	binBytes, err := extractBinary(assetBytes, a.name)
@@ -73,7 +103,7 @@ func (a *App) SelfUpdate(out, errw io.Writer) (updated bool, newVersion string, 
 	if resolved, rerr := filepath.EvalSymlinks(exe); rerr == nil {
 		exe = resolved
 	}
-	if err := stageAndRename(exe, a.name, binBytes); err != nil {
+	if err := stageAndRename(exe, a.name, binBytes, a.checkSigner); err != nil {
 		return false, "", err
 	}
 	return true, latest, nil
@@ -202,9 +232,10 @@ func extractBinary(assetBytes []byte, bin string) ([]byte, error) {
 	return nil, fmt.Errorf("%s not found in asset", bin)
 }
 
-// stageAndRename writes data to .<bin>.new.<pid> beside final (0755) then
-// atomically renames it onto final, so a running process keeps its inode.
-func stageAndRename(final, bin string, data []byte) error {
+// stageAndRename writes data to .<bin>.new.<pid> beside final (0755), has
+// checkSigner pass the staged file, then atomically renames it onto final, so
+// a running process keeps its inode. A refused file is removed.
+func stageAndRename(final, bin string, data []byte, checkSigner func(path string) error) error {
 	dir := filepath.Dir(final)
 	staged := filepath.Join(dir, fmt.Sprintf(".%s.new.%d", bin, os.Getpid()))
 	if err := os.WriteFile(staged, data, 0o755); err != nil {
@@ -215,6 +246,10 @@ func stageAndRename(final, bin string, data []byte) error {
 	if err := os.Chmod(staged, 0o755); err != nil {
 		_ = os.Remove(staged)
 		return err
+	}
+	if err := checkSigner(staged); err != nil {
+		_ = os.Remove(staged)
+		return fmt.Errorf("update refused: %w", err)
 	}
 	if err := os.Rename(staged, final); err != nil {
 		_ = os.Remove(staged)
