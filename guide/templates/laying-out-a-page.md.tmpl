@@ -31,13 +31,13 @@ Every tool's page has one layout, the same on its front page and its item pages 
 | Bar | Brand, the tool's sections, status, other open work, live, Guide, theme, one primary action on the far right | `bar` |
 | Band | The page's title strip, 104px at every width, a phone included, with or without its second line | `band` |
 | Title line | The title, then `beside` (its place, its state), then `fold` (beside nodes that go into the ⋯ on a phone) | `band`'s `title`, `beside`, `fold` |
-| Title line's end | `end` (the page's actions), then `search` (a front page's search field), then the one ⋯ (`menu`, and the fold's items on a phone) | `band`'s `end`, `search`, `menu` |
+| Title line's end | `fold` entries with `at: 'end'` (actions that go into the ⋯ on a phone, as galley's History), then `end` (the page's actions), then `search` (a front page's search field, 240px when there is room), then the one ⋯ (`menu`, and the fold's items on a phone) | `band`'s `fold`, `end`, `search`, `menu` |
 | Second line | The stage track on an item page, the status pills on a front page; one line that scrolls sideways when too long | `band`'s `under`, with `stageTrack` or `statusPills` |
 | Second line's end | `underEnd` (the needs-you pill on an item page), then `sort` (a front page's sort: recent, stage, name; a compact picker on a phone) | `band`'s `underEnd`, `sortedList`'s `band` |
 | Left column | 288px; its first label 16px under the band; its sections are the page's own (filters on a front page, an index on an item page) | `frame`'s `left`, `indexSection`, `filterRow` |
 | Middle column | Its first card 24px under the band; every card 14px by 16px padding, an 8px corner, up to 1100px, left-aligned (the empty-state card, `emptyCard`, keeps its own padding) | `frame`'s `centre`, `card`, `emptyCard`, `sortedList` |
 | Right column | An item page's thread, or its tabs with counts; its first label 16px under the band | `frame`'s `right`, `thread`, `railTabs` |
-| Phone (640px wide or less) | The band stays 104px; the fold goes into the band's ⋯; at 1080px or less one column shows at a time | `band`, `narrowMode` |
+| Phone (640px wide or less) | On a phone the bar stays one 52px line: the brand, the sections and the primary stay, and the status, other open work, live, Guide and theme go into the bar's ⋯. The band stays 104px and the title stays whole while the rest of its line gives way (what is beside it, then the search down to 96px); the fold goes into the band's ⋯. At 1080px or less one column shows at a time | `bar`, `band`, `narrowMode` |
 
 A front page has no right column: leave `right` out of `frame` and its middle runs to the window's edge, its cards still stopping at 1100px. The one wide view, a system design's topic chat, runs the middle over the right column's space with `frame`'s `wide`; the band, the left column and the middle's left edge stay where they are.
 

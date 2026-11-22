@@ -298,9 +298,13 @@ function barMore(parts) {
 // actions), search (a field: { placeholder, value, onInput }) and the one ⋯;
 // on the second line, under (a stage track, status pills, a back link), then
 // at its right end underEnd (the needs-you pill) and sort (a list's switch,
-// sortedList's band). fold is [{ node, item }]: node shows beside the title on
-// a wide page, and on a phone it hides and item (a rowMenu item, optional)
-// shows in the ⋯. menu is the tool's own ⋯ items, at every width. The band
+// sortedList's band). fold is [{ node, item, at }]: node shows beside the
+// title on a wide page (with at: 'end', in the title line's end place, before
+// end), and on a phone it hides and item (a rowMenu item, optional) shows in
+// the ⋯. menu is the tool's own ⋯ items, at every width. On a phone the title
+// stays whole while the rest of its line gives way: the last beside node
+// shrinks with an ellipsis, then the search to its 96px floor, then the end
+// nodes; a title too long for the line alone shrinks last. The band
 // draws one ⋯ (rowMenu), only while there is something to put in it. Each
 // setter changes its own part in place; an empty place draws nothing.
 export function band(o) {
@@ -315,12 +319,15 @@ export function band(o) {
   // search field is never moved, so a setter called while the reader types in
   // it leaves it focused with its caret and selection.
   const foldEl = h('span', { class: 'kit-band-fold' });
+  const foldEndEl = h('span', { class: 'kit-band-fold kit-band-fold-end' });
   const endEl = h('div', { class: 'kit-band-end' });
   const drawLine = () => {
     for (const c of [...line.childNodes]) if (c !== title && c !== foldEl && c !== endEl) c.remove();
     const anchor = foldEl.parentNode === line ? foldEl : endEl.parentNode === line ? endEl : null;
     for (const n of s.beside) line.insertBefore(typeof n === 'string' ? document.createTextNode(n) : n, anchor);
-    const folds = s.fold.map(f => f.node).filter(n => n !== null && n !== undefined && n !== false);
+    const shown = fs => fs.map(f => f.node).filter(n => n !== null && n !== undefined && n !== false);
+    const folds = shown(s.fold.filter(f => f.at !== 'end'));
+    const endFolds = shown(s.fold.filter(f => f.at === 'end'));
     if (folds.length) {
       foldEl.replaceChildren(...folds);
       if (foldEl.parentNode !== line) line.insertBefore(foldEl, endEl.parentNode === line ? endEl : null);
@@ -335,8 +342,10 @@ export function band(o) {
     }
     for (const c of [...endEl.childNodes]) if (c !== field) c.remove();
     if (field && field.parentNode !== endEl) endEl.append(field);
-    if (field) field.before(...s.end);
-    else endEl.append(...s.end);
+    foldEndEl.replaceChildren(...endFolds);
+    const lead = [...(endFolds.length ? [foldEndEl] : []), ...s.end];
+    if (field) field.before(...lead);
+    else endEl.append(...lead);
     if (more) endEl.append(more);
     if (!endEl.childNodes.length) endEl.remove();
     else if (endEl.parentNode !== line) line.append(endEl);

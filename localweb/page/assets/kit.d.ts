@@ -300,10 +300,11 @@ export interface BandSearch {
   onInput?(value: string): void;
 }
 
-/** A node beside the title (span.kit-band-fold) that moves into the band's ⋯ on a phone (640 wide or less): there node hides and item, when given, shows in the ⋯, before the tool's menu items. */
+/** A node beside the title (span.kit-band-fold) that moves into the band's ⋯ on a phone (640 wide or less): there node hides and item, when given, shows in the ⋯, before the tool's menu items. With at: 'end' the node sits in the title line's end place instead (span.kit-band-fold-end, before end), as galley's History and HTML preview do, and folds the same way on a phone: the way to give an end action that leaves a phone's line. */
 export interface BandFold {
   node: Node;
   item?: RowMenuItem;
+  at?: 'end';
 }
 
 /**
@@ -311,16 +312,21 @@ export interface BandFold {
  * high at every width, a phone included, with or without its second line, so a
  * tool sets no height of its own. An 18px bold title, then on its line beside
  * (a state pill, a size, an email), fold, and at the line's right end
- * (div.kit-band-end) end (the page's actions), search (input.kit-band-search,
- * 240px, still a field on a phone) and the one ⋯ (rowMenu). The second line
+ * (div.kit-band-end) the fold entries with at: 'end', end (the page's actions),
+ * search (input.kit-band-search, 240px when there is room, never under 96px,
+ * still a field on a phone) and the one ⋯ (rowMenu, with the kit's bordered
+ * control look). The second line
  * (div.kit-band-under): under (a stage track, status pills, a back link), and
  * at its right end (div.kit-band-under-end) underEnd (the needs-you pill) then
  * sort (a list's sort: pass the band to sortedList). The second line is one
  * line at every width: a track or pills too long scroll sideways. The ⋯ holds
  * the fold's items (on a phone only) and menu (the tool's, at every width);
  * it is drawn only when there is something for it, so a page never has two.
- * No place given, no empty container. The last thing beside the title shrinks
- * first, with an ellipsis, so a long email on a phone keeps the title whole.
+ * No place given, no empty container. The title stays whole while the rest of
+ * its line gives way: the last thing beside it shrinks first, with an ellipsis
+ * (a long email on a phone), then the search down to 96px; end nodes stay
+ * whole, and a title too long for the line with them at their least shrinks
+ * last, with an ellipsis.
  * Search and sort go only through the band: nothing sits between the band and
  * the columns.
  */
@@ -769,7 +775,7 @@ export interface IndexSectionOptions {
   empty: string;
   /** Turns the name into a link: "<name> ›". */
   open?: () => void;
-  /** Drawn on the right of the name, in one heading row (div.kit-index-head): a "+ Add" button. Without it the name stands alone as before. */
+  /** Drawn on the right of the name, in one heading row (div.kit-index-head): a "+ Add" button. It is centred on the name's line and adds nothing to its height, so the name sits where a name alone does (16px under the band in a first section). Without it the name stands alone as before. */
   action?: Node;
 }
 

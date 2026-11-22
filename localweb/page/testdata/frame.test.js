@@ -642,6 +642,19 @@ test('layout: the right column\'s first label is 16px under the band too', async
   near(box(p.f.rightBody.querySelector('.kit-label')).top - box(p.top.el).bottom, 16, 'the thread\'s label');
 });
 
+test('layout: a left section whose label has an action puts its label 16px under the band, the action centred on its line', async () => {
+  for (const w of [1655, 390]) {
+    const p = await layoutPage(w);
+    if (w === 390) p.app.classList.add('kit-narrow', 'kit-narrow-left');
+    const action = h('button', { class: 'kit-chip', type: 'button' }, '+ New');
+    p.f.leftBody.replaceChildren(indexSection({ name: 'Artifacts', open() {}, action, rows: [indexRow({ id: 'A1', title: 'One', select() {} })], empty: '' }));
+    const label = p.f.leftBody.querySelector('.kit-label');
+    near(box(label).top - box(p.top.el).bottom, 16, `${w}: the label`);
+    const mid = r => r.top + r.height / 2;
+    assert(Math.abs(mid(box(action)) - mid(box(label))) <= 1, `${w}: the action is centred on the label's line (${mid(box(action))} vs ${mid(box(label))})`);
+  }
+});
+
 const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 const tabs = labels => railTabs({ name: 'tooltest', tabs: labels.map((label, i) => ({ id: label, label, count: i * 7 + 1, body: h('p', null, label) })) });
 

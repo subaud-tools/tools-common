@@ -1160,6 +1160,128 @@ test('dom: the bar above 640px draws as before, with no ⋯', async () => {
   } finally { fixture().replaceChildren(); }
 });
 
+// Every element of the band ends inside its content box.
+function insideBand(b, what) {
+  const edge = contentRight(b);
+  for (const n of b.el.querySelectorAll('*')) {
+    const r = n.getBoundingClientRect();
+    if (!r.width) continue;
+    assert(r.right <= edge + 0.5, `${what}: ${n.className || n.tagName} ends at ${r.right}, past ${edge}`);
+  }
+}
+const whole = el => el.scrollWidth <= el.clientWidth;
+// 204px in the kit's 18px bold sans on macOS. A wider sans (Linux's) may
+// leave it too long for the line alone; then the title may shrink only once
+// beside is gone and the search is at its floor.
+const TITLE30 = 'fix: lint the kit in its tests';
+function titleLast(b, beside, what) {
+  const t = b.el.querySelector('.kit-band-title');
+  const sw = b.search.getBoundingClientRect().width;
+  assert(sw >= 96, `${what}: the search keeps its 96px floor (${sw})`);
+  if (whole(t)) return;
+  assert(sw < 96.5 && (!beside || beside.getBoundingClientRect().width < 1),
+    `${what}: the title is cut (${t.clientWidth} of ${t.scrollWidth}) while the search is ${sw}px and beside ${beside && beside.getBoundingClientRect().width}px`);
+}
+
+test('dom: band on a phone: a 30-character title stays whole, beside gives way, the search keeps 96px, an end fold goes in the ⋯', async () => {
+  const doc = await bandWindow(390);
+  eq(TITLE30.length, 30);
+  const hist = h('button', { class: 'kit-ctl', type: 'button' }, 'History');
+  const beside = h('span', null, 'whole suite · 412 tests · 371 cut');
+  const b = band({
+    title: TITLE30, beside: [beside],
+    search: { placeholder: 'Search tests' },
+    fold: [{ node: hist, item: { label: 'History', action: 'history', run() {} }, at: 'end' }],
+  });
+  doc.body.append(b.el);
+  if (navigator.platform.startsWith('Mac')) assert(whole(b.el.querySelector('.kit-band-title')), 'the title is whole');
+  titleLast(b, beside, '390');
+  eq(cs(beside).textOverflow, 'ellipsis', 'beside gives way with an ellipsis');
+  assert(!shown(hist) && shown(b.el.querySelector('.kit-band-more .kit-row-more')), 'the end fold is in the ⋯');
+  insideBand(b, '390');
+  eq(b.el.getBoundingClientRect().height, 104);
+});
+
+test('dom: band on a phone: a plain end action stays whole, and the title gives way only after the search', async () => {
+  const doc = await bandWindow(390);
+  const open = h('button', { class: 'kit-ctl', type: 'button' }, 'Open');
+  const beside = h('span', null, 'running');
+  const b = band({ title: TITLE30, beside: [beside], end: [open], search: { placeholder: 'Search tests' } });
+  doc.body.append(b.el);
+  assert(whole(open), 'the action is whole');
+  titleLast(b, beside, 'with an end action');
+  insideBand(b, 'with an end action');
+});
+
+test('dom: band on a phone: a title too long for the line alone is the last to shrink', async () => {
+  const doc = await bandWindow(390);
+  const b = band({ title: 'subaud-tools/tools-workspace@docs/private-authed-tools-spec', beside: [h('span', null, '3 of 626')], search: { placeholder: 'Search' } });
+  doc.body.append(b.el);
+  const t = b.el.querySelector('.kit-band-title');
+  assert(!whole(t) && t.getBoundingClientRect().width > 150, `it shrinks, keeping the rest of the line (${t.getBoundingClientRect().width})`);
+  eq(getComputedStyle(t).textOverflow, 'ellipsis');
+  assert(b.search.getBoundingClientRect().width >= 96, 'the search keeps its floor');
+  insideBand(b, 'a long title');
+});
+
+test('dom: band search is 240px wide when there is room', async () => {
+  const doc = await bandWindow(1655);
+  for (const o of [{}, { beside: [h('span', null, '290 plans')] }, { end: [h('button', { class: 'kit-ctl', type: 'button' }, 'Open')], menu: [{ label: 'Delete', run() {} }] }]) {
+    const b = band({ title: 'Plans', search: { placeholder: 'Search plans' }, ...o });
+    doc.body.replaceChildren(b.el);
+    eq(b.search.getBoundingClientRect().width, 240, JSON.stringify(Object.keys(o)));
+  }
+});
+
+test('dom: band fold entries at the end sit in the title line\'s end place on a wide page, in the ⋯ on a phone', async () => {
+  for (const w of [1655, 390]) {
+    const doc = await bandWindow(w);
+    const hist = h('button', { class: 'kit-ctl', type: 'button' }, 'History');
+    const model = h('span', { class: 'kit-pill' }, 'opus');
+    const b = band({
+      title: 'way-of-working.md', search: { placeholder: 'Search' },
+      fold: [{ node: model, item: { label: 'Model', action: 'model', run() {} } }, { node: hist, item: { label: 'History', action: 'history', run() {} }, at: 'end' }],
+    });
+    doc.body.append(b.el);
+    const items = () => [...b.el.querySelectorAll('[role="menuitem"]')].filter(i => doc.defaultView.getComputedStyle(i).display !== 'none').map(i => i.dataset.action);
+    if (w === 1655) {
+      assert(hist.closest('.kit-band-end') && shown(hist), 'History is in the end place');
+      assert(!model.closest('.kit-band-end'), 'a fold with no at stays beside the title');
+      assert(hist.compareDocumentPosition(b.search) & Node.DOCUMENT_POSITION_FOLLOWING, 'before the search');
+      assert(hist.getBoundingClientRect().left > model.getBoundingClientRect().right + 400, 'at the line\'s right end');
+      const more = b.el.querySelector('.kit-band-more');
+      assert(!more || !shown(more), 'no ⋯ on a wide page with no menu');
+    } else {
+      eq([shown(hist), shown(model)], [false, false], 'hidden on a phone');
+      assert(shown(b.el.querySelector('.kit-band-more .kit-row-more')), 'the ⋯ shows');
+      eq(items(), ['model', 'history'], 'their items in the ⋯');
+      insideBand(b, '390');
+    }
+  }
+});
+
+test('dom: band setters keep an end fold in its place', () => {
+  const b = band({ title: 'A doc', end: [h('button', { type: 'button' }, 'Open')], search: { placeholder: 'Find' } });
+  b.setFold([{ node: h('span', null, 'History'), at: 'end' }, { node: h('span', null, 'opus') }]);
+  b.setMenu([{ label: 'Delete', run() {} }]);
+  b.setBeside([h('span', null, 'building')]);
+  eq([...b.el.querySelector('.kit-band-line').children].map(c => c.className || c.tagName), ['kit-band-title', 'SPAN', 'kit-band-fold', 'kit-band-end']);
+  eq([...b.el.querySelector('.kit-band-end').children].map(c => c.className || c.tagName), ['kit-band-fold kit-band-fold-end', 'BUTTON', 'kit-input kit-band-search', 'kit-band-more']);
+  b.setFold(null);
+  eq([...b.el.querySelector('.kit-band-end').children].map(c => c.className || c.tagName), ['BUTTON', 'kit-input kit-band-search', 'kit-band-more']);
+});
+
+test('dom: the band\'s ⋯ has the kit\'s bordered control look', async () => {
+  const doc = await bandWindow(1655);
+  const b = band({ title: 'A plan', menu: [{ label: 'Delete', run() {} }] });
+  doc.body.append(b.el);
+  const st = doc.defaultView.getComputedStyle(b.el.querySelector('.kit-band-more .kit-row-more'));
+  const ctl = doc.body.appendChild(h('button', { class: 'kit-ctl', type: 'button' }, 'x'));
+  const cst = doc.defaultView.getComputedStyle(ctl);
+  eq([st.borderTopWidth, st.borderTopStyle, st.borderTopColor, st.borderTopLeftRadius], [cst.borderTopWidth, cst.borderTopStyle, cst.borderTopColor, cst.borderTopLeftRadius]);
+  eq(st.height, '28px');
+});
+
 test('dom: a long email beside the title shrinks on a phone and the title stays', () => {
   const fx = fixture();
   fx.style.width = '390px';
@@ -1383,7 +1505,7 @@ test('dom: settingLine at 390px: the name has all of its row that the side does 
   const { put } = await settingWindow(390);
   const NAME = 'Claude Code permissions';
   eq(NAME.length, 23);
-  const whole = el => el.scrollWidth <= el.clientWidth;
+  const whole = el => el.scrollWidth <= el.clientWidth || (() => { throw new Error('DIAG ' + JSON.stringify([...el.parentNode.querySelectorAll('*')].map(n => [n.className || n.tagName, Math.round(n.getBoundingClientRect().left), Math.round(n.getBoundingClientRect().width), n.scrollWidth]))); })();
   // proj's line: a dropdown whose current choice is long, so its least width is wide.
   const controls = { ...SETTING_CONTROLS, 'long dropdown': () => pickField({ label: 'Permissions', labelHidden: true, choices: [{ value: '', label: 'Claude Code\'s own setting, whatever it is' }] }).el };
   for (const kind of ['long dropdown', 'dropdown', 'chips', 'input']) {
