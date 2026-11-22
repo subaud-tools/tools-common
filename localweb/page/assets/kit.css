@@ -190,13 +190,43 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   border: 0; border-radius: 6px; padding: 7px 26px; cursor: pointer;
 }
 .kit-primary[hidden] { display: none; }
-/* the bar on a phone: tighter, and an empty status takes no room, so the
-   brand, Guide, theme, a menu and the primary fit on one line at 390px */
+/* the section buttons' span: no box of its own above 640px */
+.kit-bar-sections { display: contents; }
+/* the bar's ⋯ (dom.js barMore): shown only on a phone, where it holds the
+   status, the also-open switcher, the live pill, Guide and theme in its tray,
+   a top-layer pop placed under it */
+.kit-bar-more { display: none; flex: none; }
+.kit-bar-more-btn { height: 28px; padding: 0 10px; font: 16px/1 var(--kit-sans); color: var(--kit-muted); }
+.kit-bar-more-btn[aria-expanded="true"] { background: var(--kit-card); color: var(--kit-fg); }
+.kit-bar-tray {
+  box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  min-width: 160px; padding: 10px; color: var(--kit-fg);
+  background: var(--kit-card); border: 1px solid var(--kit-line); border-radius: 8px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+}
+.kit-bar-tray[popover] { position: fixed; inset: auto; margin: 0; overflow: hidden auto; overscroll-behavior: contain; }
+.kit-bar-tray[hidden] { display: none; }
+.kit-bar-tray > .kit-status { margin-left: 0; overflow-wrap: anywhere; }
+/* the bar on a phone: one 52px line in every tool. The brand, the section
+   buttons, the ⋯ and the primary stay; the status, the also-open switcher,
+   the live pill, Guide and theme go into the ⋯. The section buttons keep
+   their whole labels (tighter padding first); when they still don't fit,
+   their line scrolls sideways, so nothing ends past the window's right edge. */
 @media (width <= 640px) {
   .kit-bar { gap: 6px; padding: 0 12px; }
   .kit-bar .kit-ctl { padding: 4px 8px; }
   .kit-bar .kit-status:empty { display: none; }
-  .kit-primary { padding: 7px 12px; white-space: nowrap; }
+  .kit-primary { flex: none; padding: 7px 12px; white-space: nowrap; }
+  .kit-bar > :is(.kit-status, .kit-also, .kit-live, .kit-guide-btn, .kit-bar-theme) { display: none; }
+  .kit-bar > .kit-bar-more { display: block; }
+  .kit-bar > .kit-bar-sections {
+    display: flex; gap: 4px; flex: 0 1 auto; min-width: 0;
+    overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+  }
+  .kit-bar > .kit-bar-sections:not(:has(> :not([hidden]))) { display: none; }
+  .kit-bar-sections > .kit-ctl { flex: none; padding: 4px 6px; white-space: nowrap; }
+  .kit-bar-sections > .kit-ctl .kit-n { margin-left: 4px; }
+  .kit-bar > .kit-brand { flex: none; }
 }
 /* the bar's "also open" area: other work a click away, before the live pill.
    Chips keep their size; what doesn't fit folds into "+N more" (dom.js).
@@ -250,21 +280,38 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .kit-band-line > :not(.kit-band-title) { flex: none; }
+/* what gives way when the title line is short of room, in order: the last
+   thing beside the title (with an ellipsis), then the search down to its
+   96px floor; the title shrinks last, only when it is too long for the line
+   with them at their least. End nodes stay whole: an end action that should
+   leave a phone's line is a fold entry with at: 'end', which goes into the
+   ⋯ there. The order comes from shrink weights far apart (beside 1e8, search
+   1e6, title 1) on one flex line: the end place lays its parts out on the
+   title line itself (display: contents), from its first part (margin-left:
+   auto), 8px apart. */
 /* the last thing beside the title gives way first (a long email on a phone):
    it shrinks with an ellipsis before the title does */
 .kit-band-line > :not(.kit-band-title, .kit-band-fold, .kit-band-end):not(:has(~ :not(.kit-band-fold, .kit-band-end))) {
-  flex: 0 1000 auto; min-width: 0;
+  flex: 0 100000000 auto; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .kit-band-fold { display: flex; align-items: center; gap: 12px; }
-.kit-band-end, .kit-band-under-end { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.kit-band-line > .kit-band-end { flex: 0 1 auto; min-width: 0; }
-.kit-band-end > :not(.kit-band-search) { flex: none; }
-.kit-band-search {
-  flex: 0 1 240px; width: 240px; min-width: 120px; height: 28px; padding-block: 0;
+.kit-band-under-end { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.kit-band-end { display: contents; }
+.kit-band-end > * { flex: none; margin-left: -4px; }
+.kit-band-end > :first-child { margin-left: auto; }
+/* an end fold first has no box on a phone: the next part takes the push */
+@media (width <= 640px) {
+  .kit-band-end > .kit-band-fold:first-child + * { margin-left: auto; }
+}
+.kit-band .kit-band-search {
+  flex: 0 1000000 240px; width: 240px; min-width: 96px; height: 28px; padding-block: 0;
   font: 13px var(--kit-mono);
 }
-.kit-band-more .kit-row-more { height: 28px; }
+/* the band's ⋯ has the kit's bordered control look (.kit-ctl) */
+.kit-band-more .kit-row-more {
+  min-width: 28px; height: 28px; padding: 0 4px; border: 1px solid var(--kit-line); border-radius: 6px;
+}
 .kit-band-under { display: flex; align-items: center; gap: 8px; height: 28px; min-width: 0; margin-top: 12px; }
 .kit-band-under > .kit-band-under-end { flex: none; }
 .kit-band-under > .kit-stages {
@@ -685,7 +732,11 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    right, on one line; a long name wraps rather than push the action out. */
 .kit-index-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 8px 8px; min-width: 0; }
 .kit-index-head > .kit-label { min-width: 0; overflow-wrap: anywhere; text-align: left; }
-.kit-index-head > :last-child { flex: none; }
+/* the action is centred on the label's line and adds nothing to its height,
+   so the label sits 16px under the band as an ordinary section's does: its
+   negative block margins take it out of the line's height, and centring puts
+   its box on the label's middle */
+.kit-index-head > :last-child { flex: none; margin-block: -100px; }
 .kit-index-section > .kit-empty { margin: 0 8px; }
 .kit-index-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .kit-index-row {
@@ -766,8 +817,17 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-thread .kit-note-line { flex-direction: column; align-items: stretch; }
 
 /* tabs in the right column (tabs.js): the row sits under the fold toggle's line */
-.kit-rail-tabs { padding-top: 41px; }
+/* the tab row starts 16px under the band, where a thread's first label does,
+   with the column's hide toggle beside it on its line: the toggle comes down
+   to the tabs' middle (a tab is 27px, the toggle 25px), the body rises under
+   it as ever, and the row keeps clear of the toggle (its 25px, its 12px right
+   margin and a 12px gap), wrapping before it. A narrow page's open column has
+   its toggle in a strip of its own, and a folded one only the toggle. */
+.kit-rail-tabs { padding-top: 16px; }
 .kit-rail-tabrow { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px; }
+:not(.kit-narrow) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-toggle { margin-top: 17px; }
+:not(.kit-narrow) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-body { margin-top: -42px; }
+:not(.kit-narrow) > .kit-right-col > .kit-col-body > .kit-rail-tabs > .kit-rail-tabrow { padding-right: 49px; }
 .kit-rail-panel { padding: 0 16px 16px; }
 .kit-right-col > .kit-col-body .kit-rail-panel .kit-thread { padding: 0; }
 

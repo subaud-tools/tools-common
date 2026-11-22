@@ -4,6 +4,18 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.119.0
+
+### Changed
+- kit: on a phone (640px or less) the top bar keeps one 52px line in every tool. Its status, the also-open switcher, the live pill, Guide and theme move into one bar ⋯ before the primary, each still working from there, and go back whenever the ⋯ closes (the bar leaving the page or the window growing past 640px included). The section buttons keep their whole labels, in a `span.kit-bar-sections` (no box of its own wider than a phone) that scrolls sideways when they don't fit; nothing is past the window's edge. Wider, the bar is as before.
+- kit: the right column's tabs (`railTabs`) start 16px under the band, as a thread's first label does, with the column's hide toggle on their line (they were 41px under it).
+- kit: the band's title is the last thing on its line to shrink: what is beside it gives way first, then the search, down to 96px. The search is 240px wide when there is room, and the band's ⋯ has the bordered control look. `.kit-band-end` is `display: contents`.
+- kit: a left section whose label has an action puts its label 16px under the band, the action centred on its line (it was 20.5px).
+
+### Added
+- kit: `popOut` takes `onClose`, which hears every close, quiet ones included.
+- kit: a `band()` fold entry takes `at: 'end'` to sit in the title line's end place on a wide page; on a phone it is in the band's ⋯, as other fold entries are.
+
 ## 0.117.0
 
 ### Added

@@ -222,6 +222,8 @@ export interface BarHandle {
   themeControl: HTMLElement;
   /** The Guide button every page's bar has, left of the theme control: it opens openGuide(). */
   guideControl: HTMLElement;
+  /** The bar's ⋯, shown only at 640px wide or less, where the bar stays one 52px line: the brand, the section buttons and the primary stay, and the status, the also-open switcher, the live pill, Guide and themeControl go into its tray. They are the same elements, moved there while the tray is open and back whenever it closes, so each keeps working. themeControl carries the class kit-bar-theme for it. The section buttons sit in span.kit-bar-sections (display: contents wider than a phone); on a phone they keep their whole labels and that span scrolls sideways when they don't fit. */
+  moreControl: HTMLElement;
   setSection(id: string): void;
   /** Show or hide every section button, for one bar kept across pages. */
   setSectionsShown(shown: boolean): void;
@@ -298,10 +300,11 @@ export interface BandSearch {
   onInput?(value: string): void;
 }
 
-/** A node beside the title (span.kit-band-fold) that moves into the band's ⋯ on a phone (640 wide or less): there node hides and item, when given, shows in the ⋯, before the tool's menu items. */
+/** A node beside the title (span.kit-band-fold) that moves into the band's ⋯ on a phone (640 wide or less): there node hides and item, when given, shows in the ⋯, before the tool's menu items. With at: 'end' the node sits in the title line's end place instead (span.kit-band-fold-end, before end), as galley's History and HTML preview do, and folds the same way on a phone: the way to give an end action that leaves a phone's line. */
 export interface BandFold {
   node: Node;
   item?: RowMenuItem;
+  at?: 'end';
 }
 
 /**
@@ -309,16 +312,21 @@ export interface BandFold {
  * high at every width, a phone included, with or without its second line, so a
  * tool sets no height of its own. An 18px bold title, then on its line beside
  * (a state pill, a size, an email), fold, and at the line's right end
- * (div.kit-band-end) end (the page's actions), search (input.kit-band-search,
- * 240px, still a field on a phone) and the one ⋯ (rowMenu). The second line
+ * (div.kit-band-end) the fold entries with at: 'end', end (the page's actions),
+ * search (input.kit-band-search, 240px when there is room, never under 96px,
+ * still a field on a phone) and the one ⋯ (rowMenu, with the kit's bordered
+ * control look). The second line
  * (div.kit-band-under): under (a stage track, status pills, a back link), and
  * at its right end (div.kit-band-under-end) underEnd (the needs-you pill) then
  * sort (a list's sort: pass the band to sortedList). The second line is one
  * line at every width: a track or pills too long scroll sideways. The ⋯ holds
  * the fold's items (on a phone only) and menu (the tool's, at every width);
  * it is drawn only when there is something for it, so a page never has two.
- * No place given, no empty container. The last thing beside the title shrinks
- * first, with an ellipsis, so a long email on a phone keeps the title whole.
+ * No place given, no empty container. The title stays whole while the rest of
+ * its line gives way: the last thing beside it shrinks first, with an ellipsis
+ * (a long email on a phone), then the search down to 96px; end nodes stay
+ * whole, and a title too long for the line with them at their least shrinks
+ * last, with an ellipsis.
  * Search and sort go only through the band: nothing sits between the band and
  * the columns.
  */
@@ -529,7 +537,7 @@ export function chipPick(o: { label: string; chips: PickChip[]; chosen: string[]
 /**
  * The open and close of a button's pop-out, as rowMenu and pickField use it: show opens pop (closing whichever pop-out was open on the page), and a press outside wrap or Esc closes it. onToggle hears it open and close unless the call was quiet. It listens on the document wrap lives in. A pop with the popover attribute shows in the top layer, adding nothing to the page's size; place puts it where it belongs (placePop): called once it shows, and again when the window is resized or anything but the pop scrolls. A pop opened before it is in the page shows once it is.
  */
-export function popOut(o: { wrap: HTMLElement; btn: HTMLElement; pop: HTMLElement; onToggle?(open: boolean): void; place?(e?: Event): void }): { show(quiet?: boolean): void; close(quiet?: boolean): void; readonly open: boolean };
+export function popOut(o: { wrap: HTMLElement; btn: HTMLElement; pop: HTMLElement; onToggle?(open: boolean): void; place?(e?: Event): void; /** Hears every close, quiet ones included (onToggle doesn't hear a quiet one). */ onClose?(): void }): { show(quiet?: boolean): void; close(quiet?: boolean): void; readonly open: boolean };
 
 /** Puts a top-layer pop (one with the popover attribute, position fixed) at its button, as pickField and rowMenu do: 4px below the button when it fits there or there is more room below than above, else 4px above it; never taller than the room, scrolling inside itself. Across, the default is pickField's: on the button's left edge when it fits within the nearest card or sheet and the window, else its right edge when it fits from that, else the left edge wrapped to the room, never narrower than the button. right is a row menu's: on the button's right edge when it fits within the window, else its left edge, else the edge with more room, wrapped to it. Give it to popOut as place. */
 export function placePop(btn: HTMLElement, pop: HTMLElement, o?: { right?: boolean }): void;
@@ -767,7 +775,7 @@ export interface IndexSectionOptions {
   empty: string;
   /** Turns the name into a link: "<name> ›". */
   open?: () => void;
-  /** Drawn on the right of the name, in one heading row (div.kit-index-head): a "+ Add" button. Without it the name stands alone as before. */
+  /** Drawn on the right of the name, in one heading row (div.kit-index-head): a "+ Add" button. It is centred on the name's line and adds nothing to its height, so the name sits where a name alone does (16px under the band in a first section). Without it the name stands alone as before. */
   action?: Node;
 }
 

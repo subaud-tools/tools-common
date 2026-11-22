@@ -145,7 +145,7 @@ test('railTabs: storage that throws costs only the remembering', () => {
   }
 });
 
-test('railTabs: under the toggle line, folded with the column, the same tab open again', () => {
+test('railTabs: on the toggle\'s line, clear of it, folded with the column, the same tab open again', () => {
   clean();
   const f = frame({ name: 'tabtest', centre: { label: 'Cards' }, right: { panel: 'thread', label: 'Thread' } });
   f.right.style.transition = 'none';
@@ -156,7 +156,10 @@ test('railTabs: under the toggle line, folded with the column, the same tab open
   app.append(document.createElement('div'), document.createElement('div'), f.centre, f.right);
   fixture().append(app);
   const row = t.el.querySelector('[role=tablist]');
-  assert(row.getBoundingClientRect().top >= f.right.firstChild.getBoundingClientRect().bottom, 'the row is under the toggle');
+  const tg = f.right.firstChild.getBoundingClientRect();
+  const tabs = [...row.children].map(c => c.getBoundingClientRect());
+  assert(tabs[0].top < tg.bottom && tg.top < tabs[0].bottom, 'the row is on the toggle\'s line');
+  assert(tabs.every(r => r.right <= tg.left || r.top >= tg.bottom), 'clear of the toggle');
   f.right.firstChild.click();
   eq(row.offsetWidth, 0, 'folded');
   f.right.firstChild.click();

@@ -5,6 +5,7 @@ import { buttons, bar, band, h, emptyCard } from '/_kit/dom.js';
 import { indexSection, indexRow } from '/_kit/index.js';
 import { filterRow } from '/_kit/frontpage.js';
 import { thread } from '/_kit/thread.js';
+import { railTabs } from '/_kit/tabs.js';
 import { lineTip, wireTip } from '/_kit/tip.js';
 
 const parts = (extra = {}) => ({
@@ -639,6 +640,48 @@ test('layout: the right column\'s first label is 16px under the band too', async
   const p = await layoutPage(1655);
   p.f.rightBody.append(thread({ id: 'F1', name: 'One', messages: [] }));
   near(box(p.f.rightBody.querySelector('.kit-label')).top - box(p.top.el).bottom, 16, 'the thread\'s label');
+});
+
+test('layout: a left section whose label has an action puts its label 16px under the band, the action centred on its line', async () => {
+  for (const w of [1655, 390]) {
+    const p = await layoutPage(w);
+    if (w === 390) p.app.classList.add('kit-narrow', 'kit-narrow-left');
+    const action = h('button', { class: 'kit-chip', type: 'button' }, '+ New');
+    p.f.leftBody.replaceChildren(indexSection({ name: 'Artifacts', open() {}, action, rows: [indexRow({ id: 'A1', title: 'One', select() {} })], empty: '' }));
+    const label = p.f.leftBody.querySelector('.kit-label');
+    near(box(label).top - box(p.top.el).bottom, 16, `${w}: the label`);
+    const mid = r => r.top + r.height / 2;
+    assert(Math.abs(mid(box(action)) - mid(box(label))) <= 1, `${w}: the action is centred on the label's line (${mid(box(action))} vs ${mid(box(label))})`);
+  }
+});
+
+const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+const tabs = labels => railTabs({ name: 'tooltest', tabs: labels.map((label, i) => ({ id: label, label, count: i * 7 + 1, body: h('p', null, label) })) });
+
+test('layout: the right column\'s tabs start 16px under the band, where a thread\'s label does, the toggle on their line', async () => {
+  for (const w of [1655, 1280]) {
+    const p = await layoutPage(w);
+    const under = box(p.top.el).bottom;
+    p.f.rightBody.append(tabs(['Drafts', 'Chat', 'Notes']).el);
+    const first = p.f.rightBody.querySelector('[role="tab"]');
+    near(box(first).top - under, 16, `${w}: the first tab`);
+    const toggle = p.f.right.querySelector('.kit-col-toggle');
+    const mid = r => r.top + r.height / 2;
+    assert(Math.abs(mid(box(toggle)) - mid(box(first))) <= 1.5, `${w}: the toggle is on the tabs' line (${mid(box(toggle))} vs ${mid(box(first))})`);
+    for (const t of p.f.rightBody.querySelectorAll('[role="tab"]')) assert(!overlaps(box(t), box(toggle)), `${w}: ${t.textContent} clears the toggle`);
+  }
+});
+
+test('layout: a row of tabs too long for one line wraps clear of the toggle, and the toggle still folds the column', async () => {
+  const p = await layoutPage(1655);
+  p.f.rightBody.append(tabs(['Drafts', 'Chat', 'Notes', 'Evidence', 'History']).el);
+  const toggle = p.f.right.querySelector('.kit-col-toggle');
+  for (const t of p.f.rightBody.querySelectorAll('[role="tab"]')) assert(!overlaps(box(t), box(toggle)), `${t.textContent} clears the toggle`);
+  p.f.right.style.transition = 'none'; // its width at once
+  toggle.click();
+  near(box(p.f.right).width, 40, 'folded to a strip');
+  toggle.click();
+  near(box(p.f.right).width, 384, 'and back');
 });
 
 test('layout: a middle card in a 1600px-wide middle column is 1100px wide, at the column\'s left padding', async () => {

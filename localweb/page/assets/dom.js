@@ -98,12 +98,17 @@ export function bar(o) {
   let sectionsShown = true;
   const sectionButton = s => h('button', { class: 'kit-ctl', type: 'button', hidden: !sectionsShown, dataset: { id: s.id }, onclick: () => o.onSection && o.onSection(s.id) }, s.label, count(s.count));
   for (const s of o.sections || []) ctls.set(s.id, sectionButton(s));
-  // The section buttons sit between the brand and the status text; a
-  // redraw (setSections) puts the new ones in the same place.
+  // The section buttons sit between the brand and the status text, in their
+  // own span (display: contents above 640px, so they draw as the bar's own
+  // children; on a phone a line that scrolls sideways when they don't fit).
+  // A redraw (setSections) puts the new ones in it.
+  const sectionsEl = h('span', { class: 'kit-bar-sections' }, ...ctls.values());
   const status = h('span', { class: 'kit-status' }, o.status || '');
   const also = alsoOpen();
   const pill = h('span', { class: 'kit-live', hidden: true, role: 'status' });
   const themeControl = o.theme || h('button', { class: 'kit-ctl', type: 'button' }, 'theme');
+  // marks it as one of the parts the bar's ⋯ takes on a phone (kit.css)
+  themeControl.classList.add('kit-bar-theme');
   // Guide is on every page, left of the theme control (guide.js).
   const guideControl = h('button', { class: 'kit-ctl kit-guide-btn', type: 'button', onclick: () => void openGuide() }, 'Guide');
   // Sign in again asks the server (localweb's POST /signin) to open a
@@ -173,13 +178,15 @@ export function bar(o) {
   // A beta tool (its guide entry says so) carries " · beta" after its name.
   const brand = h(o.brand.href ? 'a' : 'span', { class: 'kit-brand', href: o.brand.href || null }, o.brand.mark || null, o.brand.name);
   const beta = badgeIfBeta(brand);
+  const more = barMore([status, also.el, pill, guideControl, themeControl]);
   const handle = {
     beta,
     el: h('header', { class: 'kit-bar' },
       brand,
-      ...ctls.values(), status, h('span', { class: 'kit-sp' }), also.el, pill, guideControl, themeControl, primary),
+      sectionsEl, status, h('span', { class: 'kit-sp' }), also.el, pill, guideControl, themeControl, more.el, primary),
     themeControl,
     guideControl,
+    moreControl: more.button,
     setSection(id) {
       for (const [k, el] of ctls) {
         el.classList.toggle('on', k === id);
@@ -195,10 +202,9 @@ export function bar(o) {
     // same look and onSection, for one bar kept across pages. They keep
     // setSectionsShown's state; active (or none) is the one on.
     setSections(sections, active) {
-      for (const el of ctls.values()) el.remove();
       ctls.clear();
       for (const s of sections || []) ctls.set(s.id, sectionButton(s));
-      status.before(...ctls.values());
+      sectionsEl.replaceChildren(...ctls.values());
       handle.setSection(active);
     },
     setCount(id, n) {
@@ -241,6 +247,54 @@ export function bar(o) {
   return handle;
 }
 
+// barMore is the bar's ⋯ on a phone (640px wide or less), where the bar
+// keeps one 52px line: the brand, the sections and the primary stay, and the
+// parts given (the status, the also-open switcher, the live pill, Guide and
+// theme) are hidden on the bar (kit.css) and shown in the ⋯'s tray, a
+// top-layer pop. They are the same elements, moved into the tray while it is
+// open and back to their places (a marker each) when it closes, so each keeps
+// working and a page that reaches them by reference changes nothing. Above
+// 640px the ⋯ is hidden and never opens. A press on the also-open button or
+// Guide closes the tray, since each opens something of its own; theme and
+// Sign in again leave it open.
+function barMore(parts) {
+  const button = h('button', { class: 'kit-ctl kit-bar-more-btn', type: 'button', 'aria-label': 'More', 'aria-haspopup': 'true', 'aria-expanded': 'false' }, '⋯');
+  const tray = h('div', { class: 'kit-bar-tray', popover: 'manual' });
+  tray.hidden = true;
+  const el = h('div', { class: 'kit-bar-more' }, button, tray);
+  let marks = [];
+  const putBack = () => {
+    for (const [mark, part] of marks) if (mark.parentNode) mark.replaceWith(part);
+    marks = [];
+  };
+  const pop = popOut({
+    wrap: el, btn: button, pop: tray,
+    // every close puts the parts back, a quiet one too (the bar left the
+    // page while open, another pop opened)
+    onClose: putBack,
+    place: () => {
+      // the window grew past a phone's width: the parts go back on the bar
+      if (!button.getClientRects().length) { pop.close(); return; }
+      placePop(button, tray, { right: true });
+    },
+  });
+  button.addEventListener('click', () => {
+    if (pop.open) { pop.close(); return; }
+    putBack();
+    marks = parts.filter(p => p.parentNode).map(p => {
+      const mark = document.createComment('');
+      p.replaceWith(mark);
+      return [mark, p];
+    });
+    tray.replaceChildren(...marks.map(([, p]) => p));
+    pop.show();
+  });
+  tray.addEventListener('click', e => {
+    if (e.target.closest?.('.kit-also-btn, .kit-guide-btn')) pop.close();
+  });
+  return { el, button };
+}
+
 // band is the strip under the bar with the page's title, one height (104px)
 // at every width. Its places, the same on every page: on the title line, the
 // title, beside (a state pill, a size, an email), fold (beside nodes that move
@@ -248,9 +302,13 @@ export function bar(o) {
 // actions), search (a field: { placeholder, value, onInput }) and the one ⋯;
 // on the second line, under (a stage track, status pills, a back link), then
 // at its right end underEnd (the needs-you pill) and sort (a list's switch,
-// sortedList's band). fold is [{ node, item }]: node shows beside the title on
-// a wide page, and on a phone it hides and item (a rowMenu item, optional)
-// shows in the ⋯. menu is the tool's own ⋯ items, at every width. The band
+// sortedList's band). fold is [{ node, item, at }]: node shows beside the
+// title on a wide page (with at: 'end', in the title line's end place, before
+// end), and on a phone it hides and item (a rowMenu item, optional) shows in
+// the ⋯. menu is the tool's own ⋯ items, at every width. On a phone the title
+// stays whole while the rest of its line gives way: the last beside node
+// shrinks with an ellipsis, then the search to its 96px floor, then the end
+// nodes; a title too long for the line alone shrinks last. The band
 // draws one ⋯ (rowMenu), only while there is something to put in it. Each
 // setter changes its own part in place; an empty place draws nothing.
 export function band(o) {
@@ -265,12 +323,15 @@ export function band(o) {
   // search field is never moved, so a setter called while the reader types in
   // it leaves it focused with its caret and selection.
   const foldEl = h('span', { class: 'kit-band-fold' });
+  const foldEndEl = h('span', { class: 'kit-band-fold kit-band-fold-end' });
   const endEl = h('div', { class: 'kit-band-end' });
   const drawLine = () => {
     for (const c of [...line.childNodes]) if (c !== title && c !== foldEl && c !== endEl) c.remove();
     const anchor = foldEl.parentNode === line ? foldEl : endEl.parentNode === line ? endEl : null;
     for (const n of s.beside) line.insertBefore(typeof n === 'string' ? document.createTextNode(n) : n, anchor);
-    const folds = s.fold.map(f => f.node).filter(n => n !== null && n !== undefined && n !== false);
+    const shown = fs => fs.map(f => f.node).filter(n => n !== null && n !== undefined && n !== false);
+    const folds = shown(s.fold.filter(f => f.at !== 'end'));
+    const endFolds = shown(s.fold.filter(f => f.at === 'end'));
     if (folds.length) {
       foldEl.replaceChildren(...folds);
       if (foldEl.parentNode !== line) line.insertBefore(foldEl, endEl.parentNode === line ? endEl : null);
@@ -285,8 +346,10 @@ export function band(o) {
     }
     for (const c of [...endEl.childNodes]) if (c !== field) c.remove();
     if (field && field.parentNode !== endEl) endEl.append(field);
-    if (field) field.before(...s.end);
-    else endEl.append(...s.end);
+    foldEndEl.replaceChildren(...endFolds);
+    const lead = [...(endFolds.length ? [foldEndEl] : []), ...s.end];
+    if (field) field.before(...lead);
+    else endEl.append(...lead);
     if (more) endEl.append(more);
     if (!endEl.childNodes.length) endEl.remove();
     else if (endEl.parentNode !== line) line.append(endEl);
@@ -634,14 +697,14 @@ let popOpen = null;
 // popOut is the open and close of a button's pop-out, shared by rowMenu and
 // pickField: show opens pop and closes whichever was open; a press outside
 // wrap, or Esc, closes it. onToggle hears it open and close unless the call
-// was quiet. It listens on the document wrap lives in. A pop with the popover
+// was quiet; onClose hears every close, quiet ones too. It listens on the document wrap lives in. A pop with the popover
 // attribute shows in the top layer, over any card or sheet that would clip it,
 // so it adds nothing to the page's size. place, when given, puts the pop where
 // it belongs (placePop): called once it shows, and again when the window is
 // resized or anything but the pop itself scrolls, so it stays at its button.
 // A pop opened before it is in the page, or taken out of the top layer by the
 // browser when its row is moved, shows there once it is in the page.
-export function popOut({ wrap, btn, pop, onToggle, place }) {
+export function popOut({ wrap, btn, pop, onToggle, place, onClose }) {
   let doc = null, win = null, watch = null, was = false, kind = null;
   const moved = e => {
     if (e.target !== pop) place(e);
@@ -715,6 +778,7 @@ export function popOut({ wrap, btn, pop, onToggle, place }) {
     doc?.removeEventListener('keydown', esc);
     if (popOpen === close) popOpen = null;
     if (!quiet) onToggle?.(false);
+    onClose?.();
   }
   function show(quiet) {
     popOpen?.(quiet);

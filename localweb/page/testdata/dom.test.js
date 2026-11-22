@@ -88,7 +88,8 @@ test('dom: bar setSections redraws the sections in place', () => {
   eq(plans.isConnected, false);
   eq(el.querySelectorAll('.kit-ctl[data-id]').length, 2);
   const ids = [...el.children].map(n => n.dataset.id || n.className);
-  eq(ids.slice(0, 4), ['kit-brand', 'plan', 'record', 'kit-status']);
+  eq(ids.slice(0, 3), ['kit-brand', 'kit-bar-sections', 'kit-status']);
+  eq([...el.querySelector('.kit-bar-sections').children].map(n => n.dataset.id), ['plan', 'record'], 'the sections, in the place they had');
   const rec = el.querySelector('.kit-ctl[data-id="record"]');
   eq(rec.textContent, 'Record2');
   assert(rec.classList.contains('on') && rec.getAttribute('aria-current') === 'page', 'active given is on');
@@ -1019,7 +1020,7 @@ test('dom: a centre with no left column fills the app grid under the band', () =
   fx.replaceChildren();
 });
 
-test('dom: the bar fits a phone: brand, Guide, theme, a menu and the primary on one line', async () => {
+test('dom: the bar fits a phone: brand, a menu of the tool\'s and the primary on one line', async () => {
   const win = document.createElement('iframe');
   win.style.cssText = 'width:390px; height:300px; border:0; display:block';
   win.srcdoc = '<!doctype html><link rel="stylesheet" href="/_kit/kit.css"><style>html,body{margin:0}</style><body>';
@@ -1040,6 +1041,349 @@ test('dom: the bar fits a phone: brand, Guide, theme, a menu and the primary on 
     assert(cr.height <= 40, `${c.className} is one line (${cr.height}px)`);
   }
   fixture().replaceChildren();
+});
+
+// Everything drawn in the bar ends inside the window: no element's right edge
+// past it (hidden ones have no box).
+function insideWindow(doc, root, what) {
+  const edge = doc.documentElement.clientWidth;
+  for (const n of root.querySelectorAll('*')) {
+    // what a sideways-scrolling sections region holds is clipped to it: the
+    // region itself is what must end inside
+    if (n.parentElement?.closest('.kit-bar-sections')) continue;
+    const r = n.getBoundingClientRect();
+    if (!r.width) continue;
+    assert(r.right <= edge + 0.5, `${what}: ${n.className || n.tagName} ends at ${r.right}, past ${edge}`);
+  }
+}
+const shown = n => n.getBoundingClientRect().width > 0;
+const resized = async (doc, w) => {
+  doc.defaultView.frameElement.style.width = `${w}px`;
+  await new Promise(r => setTimeout(r, 50));
+  // the test browser runs on virtual time and draws no frames, so it never
+  // fires the resize a real window does: fire it as the browser would
+  doc.defaultView.dispatchEvent(new Event('resize'));
+};
+const MOVED = b => [b.el.querySelector('.kit-status'), b.el.querySelector('.kit-also'), b.el.querySelector('.kit-live'), b.guideControl, b.themeControl];
+
+test('dom: bar setSections while its ⋯ is open puts the sections on the bar, once each, working', async () => {
+  const doc = await bandWindow(390);
+  const pressed = [];
+  const b = bar({ brand: { name: 'diazo' }, status: 'synced', sections: [{ id: 'plans', label: 'Plans' }], onSection: id => pressed.push(id), primary: { label: 'Go', run() {} } });
+  doc.body.append(b.el);
+  try {
+    b.moreControl.click();
+    b.setSections([{ id: 'plan', label: 'Plan' }, { id: 'record', label: 'Record', count: 2 }], 'record');
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    b.moreControl.click();
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await resized(doc, 1280);
+    const tray = b.el.querySelector('.kit-bar-tray');
+    for (const id of ['plan', 'record']) {
+      const els = b.el.querySelectorAll(`.kit-ctl[data-id="${id}"]`);
+      eq(els.length, 1, `${id} once`);
+      assert(!tray.contains(els[0]) && shown(els[0]), `${id} is on the bar`);
+      els[0].click();
+    }
+    eq(pressed, ['plan', 'record'], 'and each works');
+    eq(b.el.querySelectorAll('.kit-ctl[data-id]').length, 2, 'nothing else');
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: bar removed while its ⋯ is open and put back has its parts on the bar again', async () => {
+  const doc = await bandWindow(390);
+  const b = bar({ brand: { name: 'diazo' }, status: 'synced', primary: { label: 'Go', run() {} } });
+  b.setElsewhere([{ label: 'one', onClick() {} }]);
+  b.setLive('live');
+  doc.body.append(b.el);
+  try {
+    b.moreControl.click();
+    const tray = b.el.querySelector('.kit-bar-tray');
+    b.el.remove();
+    await new Promise(r => setTimeout(r, 20));
+    doc.body.append(b.el);
+    await new Promise(r => setTimeout(r, 20));
+    for (const p of MOVED(b)) assert(p.parentNode === b.el && !tray.contains(p), `${p.className} is back on the bar`);
+    assert(!tray.matches(':popover-open'), 'the tray is closed');
+    await resized(doc, 1280);
+    for (const p of MOVED(b)) assert(shown(p), `${p.className} shows above 640px`);
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: bar ⋯ open when the window grows past 640px puts its parts back on the bar', async () => {
+  const doc = await bandWindow(390);
+  const b = bar({ brand: { name: 'diazo' }, status: 'synced', primary: { label: 'Go', run() {} } });
+  b.setElsewhere([{ label: 'one', onClick() {} }]);
+  b.setLive('live');
+  doc.body.append(b.el);
+  try {
+    b.moreControl.click();
+    await resized(doc, 1280);
+    assert(!b.el.querySelector('.kit-bar-tray').matches(':popover-open'), 'the tray closed');
+    for (const p of MOVED(b)) assert(p.parentNode === b.el && shown(p), `${p.className} is on the bar`);
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: the bar on a phone with casebook\'s three sections and a primary: each label whole, 52px, nothing past the edge', async () => {
+  const doc = await bandWindow(390);
+  const b = bar({
+    brand: { name: 'casebook' },
+    sections: [{ id: 'decide', label: 'decide', count: 1516 }, { id: 'review', label: 'review', count: 12 }, { id: 'run', label: 'run', count: 3 }],
+    active: 'decide', primary: { label: 'Next unlabeled', run() {} },
+  });
+  doc.body.append(b.el);
+  try {
+    eq(b.el.getBoundingClientRect().height, 52, 'the bar stays 52px');
+    insideWindow(doc, b.el, 'casebook');
+    for (const s of b.el.querySelectorAll('.kit-ctl[data-id]')) {
+      assert(s.scrollWidth <= s.clientWidth, `${s.dataset.id} reads in full (${s.scrollWidth} in ${s.clientWidth})`);
+      eq(Math.round(s.getBoundingClientRect().height) <= 40, true, `${s.dataset.id} is one line`);
+    }
+    const prim = b.el.querySelector('.kit-primary');
+    assert(shown(prim) && prim.scrollWidth <= prim.clientWidth, 'the primary is whole');
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: the bar on a phone with diazo\'s parts: 52px, one line, the rest in its ⋯, each still working', async () => {
+  const doc = await bandWindow(390);
+  const themeBtn = h('button', { class: 'kit-ctl', type: 'button' }, 'theme');
+  const theme = initTheme('dom-phone', themeBtn);
+  const fetched = [];
+  const b = bar({
+    brand: { name: 'diazo', href: '/' },
+    sections: [{ id: 'plans', label: 'Plans', count: 7 }, { id: 'later', label: 'Later', count: 2 }],
+    active: 'plans', theme: themeBtn, primary: { label: 'New plan', run() {} },
+    signIn: { fetch: async url => { fetched.push(url); return new Response('', { status: 500 }); } },
+  });
+  b.setElsewhere([{ label: 'one', tone: 'you', onClick() {} }, { label: 'two', onClick() {} }, { label: 'three', onClick() {} }]);
+  b.setLive('live');
+  doc.body.append(b.el);
+  const real = window.fetch;
+  window.fetch = async () => new Response(JSON.stringify({ tool: 'diazo', tools: [] }));
+  try {
+    eq(b.el.getBoundingClientRect().height, 52, 'the bar stays 52px');
+    insideWindow(doc, b.el, 'closed');
+    const also = b.el.querySelector('.kit-also'), pill = b.el.querySelector('.kit-live');
+    for (const n of [b.el.querySelector('.kit-brand'), ...b.el.querySelectorAll('.kit-ctl[data-id]'), b.el.querySelector('.kit-primary'), b.moreControl]) {
+      assert(shown(n), `${n.className} stays on the bar`);
+      assert(n.getBoundingClientRect().height <= 40, `${n.className} is one line`);
+    }
+    for (const n of [also, pill, b.guideControl, themeBtn]) assert(!shown(n), `${n.className} is not on the bar`);
+    assert(b.moreControl.compareDocumentPosition(b.el.querySelector('.kit-primary')) & Node.DOCUMENT_POSITION_FOLLOWING, 'the ⋯ is before the primary');
+
+    b.moreControl.click();
+    const tray = b.el.querySelector('.kit-bar-tray');
+    assert(tray.matches(':popover-open'), 'the ⋯ opens its tray');
+    for (const n of [also, pill, b.guideControl, themeBtn]) {
+      assert(tray.contains(n) && shown(n), `${n.className} is in the tray`);
+    }
+    insideWindow(doc, tray, 'the tray');
+    themeBtn.click();
+    eq(theme.get(), 'light', 'theme cycles');
+    assert(tray.matches(':popover-open'), 'the tray stays open for the theme');
+    b.setLive('stale');
+    pill.querySelector('.kit-signin').click();
+    await flush();
+    eq(fetched, ['/signin'], 'Sign in again posts /signin');
+    also.querySelector('.kit-also-btn').click();
+    assert(document.querySelector('.kit-also-menu'), 'the also-open list opens');
+    assert(!tray.matches(':popover-open'), 'and the tray closes for it');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    b.moreControl.click();
+    b.guideControl.click();
+    await new Promise(r => setTimeout(r, 30));
+    const dlg = document.querySelector('.kit-guide-sheet');
+    assert(dlg, 'Guide opens the guide');
+    assert(!tray.matches(':popover-open'), 'and the tray closes for it');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    eq([...b.el.children].map(c => c.className.split(' ')[0] || c.tagName).slice(-8), ['kit-status', 'kit-sp', 'kit-also', 'kit-live', 'kit-ctl', 'kit-ctl', 'kit-bar-more', 'kit-primary'], 'closed, each is back in its place');
+    b.moreControl.click();
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert(!tray.matches(':popover-open'), 'Esc closes the tray');
+  } finally {
+    window.fetch = real;
+    theme.set('system');
+    fixture().replaceChildren();
+  }
+});
+
+test('dom: the bar on a phone with cull\'s and casebook\'s parts: 52px, nothing past the edge, the primary whole', async () => {
+  const doc = await bandWindow(390);
+  const b = bar({
+    brand: { name: 'casebook' }, status: 'synced 2m ago · courts-macbook-pro',
+    sections: [{ id: 'label', label: 'label', count: '37/150' }, { id: 'eval', label: 'eval', count: 12 }, { id: 'rules', label: 'rules', count: 1516 }],
+    active: 'label', primary: { label: 'Next unlabeled', run() {} },
+  });
+  b.setElsewhere([{ label: 'one', tone: 'you', onClick() {} }, { label: 'two', onClick() {} }]);
+  doc.body.append(b.el);
+  try {
+    eq(b.el.getBoundingClientRect().height, 52, 'the bar stays 52px');
+    insideWindow(doc, b.el, 'the bar');
+    const prim = b.el.querySelector('.kit-primary');
+    assert(shown(prim) && prim.scrollWidth <= prim.clientWidth, 'the primary is whole');
+    assert(!shown(b.el.querySelector('.kit-status')), 'the status is not on the bar');
+    b.moreControl.click();
+    const tray = b.el.querySelector('.kit-bar-tray');
+    assert(tray.contains(b.el.querySelector('.kit-status')) && shown(tray.querySelector('.kit-status')), 'it is in the tray');
+    insideWindow(doc, tray, 'the tray');
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: the bar above 640px draws as before, with no ⋯', async () => {
+  const doc = await bandWindow(1280);
+  const b = bar({
+    brand: { name: 'diazo' }, status: 'synced', sections: [{ id: 'plans', label: 'Plans', count: 7 }],
+    primary: { label: 'New plan', run() {} },
+  });
+  b.setElsewhere([{ label: 'one', onClick() {} }]);
+  b.setLive('live');
+  doc.body.append(b.el);
+  try {
+    eq(b.el.getBoundingClientRect().height, 52);
+    assert(!shown(b.moreControl), 'no ⋯');
+    for (const n of [b.el.querySelector('.kit-status'), b.el.querySelector('.kit-also'), b.el.querySelector('.kit-live'), b.guideControl, b.themeControl, b.el.querySelector('.kit-primary')]) {
+      assert(n.parentNode === b.el && shown(n), `${n.className} on the bar`);
+    }
+    const tops = [...b.el.children].filter(shown).map(c => Math.round(c.getBoundingClientRect().top + c.getBoundingClientRect().height / 2));
+    eq(new Set(tops).size, 1, 'one line');
+  } finally { fixture().replaceChildren(); }
+});
+
+// Every element of the band ends inside its content box.
+function insideBand(b, what) {
+  const edge = contentRight(b);
+  for (const n of b.el.querySelectorAll('*')) {
+    const r = n.getBoundingClientRect();
+    if (!r.width) continue;
+    assert(r.right <= edge + 0.5, `${what}: ${n.className || n.tagName} ends at ${r.right}, past ${edge}`);
+  }
+}
+const whole = el => el.scrollWidth <= el.clientWidth;
+// 204px in the kit's 18px bold sans on macOS; other fonts differ, so the
+// tests assert the order things give way in, never the font's widths: the
+// title may be cut only once beside is gone and the search is at its floor.
+const TITLE30 = 'fix: lint the kit in its tests';
+function titleLast(b, beside, what) {
+  const t = b.el.querySelector('.kit-band-title');
+  const sw = b.search.getBoundingClientRect().width;
+  assert(sw >= 96, `${what}: the search keeps its 96px floor (${sw})`);
+  if (whole(t)) return;
+  assert(sw < 96.5 && (!beside || beside.getBoundingClientRect().width < 1),
+    `${what}: the title is cut (${t.clientWidth} of ${t.scrollWidth}) while the search is ${sw}px and beside ${beside && beside.getBoundingClientRect().width}px`);
+}
+
+test('dom: band on a phone: a 30-character title stays whole, beside gives way, the search keeps 96px, an end fold goes in the ⋯', async () => {
+  const doc = await bandWindow(390);
+  eq(TITLE30.length, 30);
+  const hist = h('button', { class: 'kit-ctl', type: 'button' }, 'History');
+  const beside = h('span', null, 'whole suite · 412 tests · 371 cut');
+  const b = band({
+    title: TITLE30, beside: [beside],
+    search: { placeholder: 'Search tests' },
+    fold: [{ node: hist, item: { label: 'History', action: 'history', run() {} }, at: 'end' }],
+  });
+  doc.body.append(b.el);
+  titleLast(b, beside, '390');
+  eq(cs(beside).textOverflow, 'ellipsis', 'beside gives way with an ellipsis');
+  assert(!shown(hist) && shown(b.el.querySelector('.kit-band-more .kit-row-more')), 'the end fold is in the ⋯');
+  insideBand(b, '390');
+  eq(b.el.getBoundingClientRect().height, 104);
+});
+
+test('dom: band on a phone: a plain end action stays whole, and the title gives way only after the search', async () => {
+  const doc = await bandWindow(390);
+  const open = h('button', { class: 'kit-ctl', type: 'button' }, 'Open');
+  const beside = h('span', null, 'running');
+  const b = band({ title: TITLE30, beside: [beside], end: [open], search: { placeholder: 'Search tests' } });
+  doc.body.append(b.el);
+  assert(whole(open), 'the action is whole');
+  titleLast(b, beside, 'with an end action');
+  insideBand(b, 'with an end action');
+});
+
+test('dom: band on a phone: a title too long for the line alone is the last to shrink', async () => {
+  const doc = await bandWindow(390);
+  const b = band({ title: 'subaud-tools/tools-workspace@docs/private-authed-tools-spec', beside: [h('span', null, '3 of 626')], search: { placeholder: 'Search' } });
+  doc.body.append(b.el);
+  const t = b.el.querySelector('.kit-band-title');
+  assert(!whole(t) && t.getBoundingClientRect().width > 150, `it shrinks, keeping the rest of the line (${t.getBoundingClientRect().width})`);
+  eq(getComputedStyle(t).textOverflow, 'ellipsis');
+  assert(b.search.getBoundingClientRect().width >= 96, 'the search keeps its floor');
+  insideBand(b, 'a long title');
+});
+
+test('dom: band search is 240px wide when there is room', async () => {
+  const doc = await bandWindow(1655);
+  for (const o of [{}, { beside: [h('span', null, '290 plans')] }, { end: [h('button', { class: 'kit-ctl', type: 'button' }, 'Open')], menu: [{ label: 'Delete', run() {} }] }]) {
+    const b = band({ title: 'Plans', search: { placeholder: 'Search plans' }, ...o });
+    doc.body.replaceChildren(b.el);
+    eq(b.search.getBoundingClientRect().width, 240, JSON.stringify(Object.keys(o)));
+  }
+});
+
+test('dom: band fold entries at the end sit in the title line\'s end place on a wide page, in the ⋯ on a phone', async () => {
+  for (const w of [1655, 390]) {
+    const doc = await bandWindow(w);
+    const hist = h('button', { class: 'kit-ctl', type: 'button' }, 'History');
+    const model = h('span', { class: 'kit-pill' }, 'opus');
+    const b = band({
+      title: 'way-of-working.md', search: { placeholder: 'Search' },
+      fold: [{ node: model, item: { label: 'Model', action: 'model', run() {} } }, { node: hist, item: { label: 'History', action: 'history', run() {} }, at: 'end' }],
+    });
+    doc.body.append(b.el);
+    const items = () => [...b.el.querySelectorAll('[role="menuitem"]')].filter(i => doc.defaultView.getComputedStyle(i).display !== 'none').map(i => i.dataset.action);
+    if (w === 1655) {
+      assert(hist.closest('.kit-band-end') && shown(hist), 'History is in the end place');
+      assert(!model.closest('.kit-band-end'), 'a fold with no at stays beside the title');
+      assert(hist.compareDocumentPosition(b.search) & Node.DOCUMENT_POSITION_FOLLOWING, 'before the search');
+      assert(hist.getBoundingClientRect().left > model.getBoundingClientRect().right + 400, 'at the line\'s right end');
+      const more = b.el.querySelector('.kit-band-more');
+      assert(!more || !shown(more), 'no ⋯ on a wide page with no menu');
+    } else {
+      eq([shown(hist), shown(model)], [false, false], 'hidden on a phone');
+      assert(shown(b.el.querySelector('.kit-band-more .kit-row-more')), 'the ⋯ shows');
+      eq(items(), ['model', 'history'], 'their items in the ⋯');
+      insideBand(b, '390');
+    }
+  }
+});
+
+test('dom: band with an end fold first keeps the search and ⋯ at the right edge, on a phone and a wide page', async () => {
+  for (const w of [390, 1655]) {
+    const doc = await bandWindow(w);
+    const b = band({
+      title: 'Doc', search: { placeholder: 'Search' }, menu: [{ label: 'Delete', run() {} }],
+      fold: [{ node: h('button', { class: 'kit-ctl', type: 'button' }, 'History'), item: { label: 'History', run() {} }, at: 'end' }],
+    });
+    doc.body.append(b.el);
+    const more = b.el.querySelector('.kit-band-more .kit-row-more');
+    assert(Math.abs(more.getBoundingClientRect().right - contentRight(b)) < 1, `${w}: the ⋯ ends at the right padding (${more.getBoundingClientRect().right} vs ${contentRight(b)})`);
+    const gap = more.getBoundingClientRect().left - b.search.getBoundingClientRect().right;
+    assert(gap > 0 && gap < 12, `${w}: the search ends just before the ⋯ (${gap})`);
+  }
+});
+
+test('dom: band setters keep an end fold in its place', () => {
+  const b = band({ title: 'A doc', end: [h('button', { type: 'button' }, 'Open')], search: { placeholder: 'Find' } });
+  b.setFold([{ node: h('span', null, 'History'), at: 'end' }, { node: h('span', null, 'opus') }]);
+  b.setMenu([{ label: 'Delete', run() {} }]);
+  b.setBeside([h('span', null, 'building')]);
+  eq([...b.el.querySelector('.kit-band-line').children].map(c => c.className || c.tagName), ['kit-band-title', 'SPAN', 'kit-band-fold', 'kit-band-end']);
+  eq([...b.el.querySelector('.kit-band-end').children].map(c => c.className || c.tagName), ['kit-band-fold kit-band-fold-end', 'BUTTON', 'kit-input kit-band-search', 'kit-band-more']);
+  b.setFold(null);
+  eq([...b.el.querySelector('.kit-band-end').children].map(c => c.className || c.tagName), ['BUTTON', 'kit-input kit-band-search', 'kit-band-more']);
+});
+
+test('dom: the band\'s ⋯ has the kit\'s bordered control look', async () => {
+  const doc = await bandWindow(1655);
+  const b = band({ title: 'A plan', menu: [{ label: 'Delete', run() {} }] });
+  doc.body.append(b.el);
+  const st = doc.defaultView.getComputedStyle(b.el.querySelector('.kit-band-more .kit-row-more'));
+  const ctl = doc.body.appendChild(h('button', { class: 'kit-ctl', type: 'button' }, 'x'));
+  const cst = doc.defaultView.getComputedStyle(ctl);
+  eq([st.borderTopWidth, st.borderTopStyle, st.borderTopColor, st.borderTopLeftRadius], [cst.borderTopWidth, cst.borderTopStyle, cst.borderTopColor, cst.borderTopLeftRadius]);
+  eq(st.height, '28px');
 });
 
 test('dom: a long email beside the title shrinks on a phone and the title stays', () => {
@@ -1265,7 +1609,7 @@ test('dom: settingLine at 390px: the name has all of its row that the side does 
   const { put } = await settingWindow(390);
   const NAME = 'Claude Code permissions';
   eq(NAME.length, 23);
-  const whole = el => el.scrollWidth <= el.clientWidth;
+  const whole = el => el.scrollWidth <= el.clientWidth || (() => { throw new Error('DIAG ' + JSON.stringify([...el.parentNode.querySelectorAll('*')].map(n => [n.className || n.tagName, Math.round(n.getBoundingClientRect().left), Math.round(n.getBoundingClientRect().width), n.scrollWidth]))); })();
   // proj's line: a dropdown whose current choice is long, so its least width is wide.
   const controls = { ...SETTING_CONTROLS, 'long dropdown': () => pickField({ label: 'Permissions', labelHidden: true, choices: [{ value: '', label: 'Claude Code\'s own setting, whatever it is' }] }).el };
   for (const kind of ['long dropdown', 'dropdown', 'chips', 'input']) {

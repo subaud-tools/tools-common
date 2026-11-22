@@ -162,6 +162,7 @@ func TestLayoutSkill(t *testing.T) {
 		"A front page has no right column",
 		"PAGE-STANDARD.md",
 		"the empty-state card, `emptyCard`, keeps its own padding",
+		"the bar stays one 52px line", "the bar's ⋯", "`at: 'end'`", "the title stays whole",
 	} {
 		if !strings.Contains(b, want) {
 			t.Errorf("laying-out-a-page does not say %q", want)
