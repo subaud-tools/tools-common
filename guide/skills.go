@@ -21,7 +21,7 @@ type Skill struct {
 
 // skillNames are the family skills, in the order Skills returns them; each
 // renders templates/<name>.md.tmpl.
-var skillNames = []string{"using-the-tools", "getting-started-with-subaud"}
+var skillNames = []string{"using-the-tools", "getting-started-with-subaud", "laying-out-a-page"}
 
 type skillData struct {
 	Tools         []Tool
@@ -34,8 +34,9 @@ type skillData struct {
 
 var blankRuns = regexp.MustCompile(`\n{3,}`)
 
-// Skills renders the two family skills from the guide content: the agent's
-// map (using-the-tools) and the walks (getting-started-with-subaud).
+// Skills renders the family skills: from the guide content the agent's map
+// (using-the-tools) and the walks (getting-started-with-subaud), and the page
+// layout every tool's page follows (laying-out-a-page).
 func Skills() ([]Skill, error) {
 	s, err := loaded()
 	if err != nil {

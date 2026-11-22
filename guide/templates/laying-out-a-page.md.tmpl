@@ -1,0 +1,58 @@
+---
+name: laying-out-a-page
+description: {{yamlquote "Use when a session builds or changes a page, or draws a mockup, in any tool on the tools-common page kit (diazo, galley, casebook, cull, sift, muda, or a new one): where the bar, the band and the three columns go, which kit part fills each place, and what never goes where, so changing screens moves nothing. Installed with every subaud tool."}}
+owner: family
+---
+
+# Laying out a page
+
+Every tool's page has one layout, the same on its front page and its item pages and the same from tool to tool: switching screens moves nothing. tools-common's page kit (`localweb/page`) draws it, and `PAGE-STANDARD.md` in tools-common holds the rules. Use the kit's parts for every place below. A page that needs something they don't give gets a change to the kit, not CSS of its own.
+
+## The page and its places
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ bar (52px): brand · sections · status            also · live · Guide · ▣  │
+├──────────────────────────────────────────────────────────────────────────┤
+│ band (104px at every width)                                              │
+│  title · beside · fold                        end · search · ⋯           │  title line
+│  under: stage track, or status pills          underEnd · sort            │  second line
+├────────────┬───────────────────────────────────────────┬─────────────────┤
+│ left 288px │ middle                                    │ right           │
+│ first label│ first card 24px under the band            │ thread, or tabs │
+│ 16px under │ cards: 14px by 16px padding, 8px corner,  │ with counts;    │
+│ the band   │ up to 1100px, left-aligned                │ first label 16px│
+│            │                                           │ under the band  │
+└────────────┴───────────────────────────────────────────┴─────────────────┘
+```
+
+| Place | What goes there | Kit part |
+|---|---|---|
+| Bar | Brand, the tool's sections, status, other open work, live, Guide, theme, one primary action on the far right | `bar` |
+| Band | The page's title strip, 104px at every width, a phone included, with or without its second line | `band` |
+| Title line | The title, then `beside` (its place, its state), then `fold` (beside nodes that go into the ⋯ on a phone) | `band`'s `title`, `beside`, `fold` |
+| Title line's end | `end` (the page's actions), then `search` (a front page's search field), then the one ⋯ (`menu`, and the fold's items on a phone) | `band`'s `end`, `search`, `menu` |
+| Second line | The stage track on an item page, the status pills on a front page; one line that scrolls sideways when too long | `band`'s `under`, with `stageTrack` or `statusPills` |
+| Second line's end | `underEnd` (the needs-you pill on an item page), then `sort` (a front page's sort: recent, stage, name; a compact picker on a phone) | `band`'s `underEnd`, `sortedList`'s `band` |
+| Left column | 288px; its first label 16px under the band; its sections are the page's own (filters on a front page, an index on an item page) | `frame`'s `left`, `indexSection`, `filterRow` |
+| Middle column | Its first card 24px under the band; every card 14px by 16px padding, an 8px corner, up to 1100px, left-aligned | `frame`'s `centre`, `card`, `sortedList` |
+| Right column | An item page's thread, or its tabs with counts; its first label 16px under the band | `frame`'s `right`, `thread`, `railTabs` |
+| Phone (640px wide or less) | The band stays 104px; the fold goes into the band's ⋯; at 1080px or less one column shows at a time | `band`, `narrowMode` |
+
+A front page has no right column: leave `right` out of `frame` and its middle runs to the window's edge, its cards still stopping at 1100px. The one wide view, a system design's topic chat, runs the middle over the right column's space with `frame`'s `wide`; the band, the left column and the middle's left edge stay where they are.
+
+## What never goes where
+
+- Nothing goes between the band and the columns: no search box, sort line, notice or toolbar over the cards.
+- Search and sort go only through the band: `band`'s `search`, and `sortedList` given the band. A list never draws its own sort over its cards.
+- No tool CSS for the band's height, the columns' widths or start, or the cards' padding, corner or 1100px cap. The kit sets them; a tool's own rules for them are removed when it adopts the kit's layout.
+- One ⋯ in the band, the kit's: give it items with `menu`, never a second button of the tool's own.
+- What the places hold (a page's stages, its left rows, its cards' contents, its ⋯ items) is the tool's own; where they go is not.
+
+## Mockups
+
+Start every mockup from the mockup starter, served with the kit at `/_kit/layout/` on any tool's page server: the bar, the band and the three columns drawn with the kit's own stylesheet and classes, each place labelled, as a front page and an item page, at desktop and phone width. Copy it, replace each labelled place with what the screen holds, and keep the kit's stylesheet: a mockup that sets its own sizes for the band, the columns or the cards has drifted from the page it shows.
+
+## Checking a page
+
+Load the tool's front page and an item page in a headless browser at 1655px, 1280px and 390px wide, and compare: the bar, the band (104px) and the left column are the same; each column's first label and first card start at the same left edge and top; from 1820px up the first card is 1100px wide on both. Then switch between the pages and see nothing jump.

@@ -48,7 +48,7 @@ func TestSkillsRenderFromTheContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(sk) != 2 || sk[0].Name != "using-the-tools" || sk[1].Name != "getting-started-with-subaud" {
+	if len(sk) != 3 || sk[0].Name != "using-the-tools" || sk[1].Name != "getting-started-with-subaud" || sk[2].Name != "laying-out-a-page" {
 		t.Fatalf("skills %+v", sk)
 	}
 	for _, s := range sk {
@@ -114,5 +114,56 @@ func TestSkillsRenderFromTheContent(t *testing.T) {
 	again, _ := Skills()
 	if !bytes.Equal(again[0].Body, sk[0].Body) || !bytes.Equal(again[1].Body, sk[1].Body) {
 		t.Error("rendering is not deterministic")
+	}
+}
+
+// The page layout skill is a family skill like the others, and loads whenever
+// a session builds or changes a page or draws a mockup in any tool: its
+// description says so, and its body carries the named places, the kit part
+// for each, what never goes where, and the mockup starter.
+func TestLayoutSkill(t *testing.T) {
+	sk, err := Skills()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b string
+	for _, s := range sk {
+		if s.Name == "laying-out-a-page" {
+			b = string(s.Body)
+		}
+	}
+	if b == "" {
+		t.Fatal("no laying-out-a-page skill")
+	}
+	parts := strings.SplitN(b, "---\n", 3)
+	if len(parts) < 3 {
+		t.Fatal("no front matter")
+	}
+	front := parts[1]
+	for _, want := range []string{"name: laying-out-a-page\n", "owner: family\n"} {
+		if !strings.Contains(front, want) {
+			t.Errorf("front matter has no %q", want)
+		}
+	}
+	_, desc, _ := strings.Cut(front, "description: ")
+	desc, _, _ = strings.Cut(desc, "\n")
+	for _, want := range []string{"builds or changes a page", "mockup", "any tool"} {
+		if !strings.Contains(desc, want) {
+			t.Errorf("description does not say %q: %s", want, desc)
+		}
+	}
+	for _, want := range []string{
+		"104px", "/_kit/layout/", "1100px", "16px", "24px", "288px",
+		"`band`", "`sortedList`", "`frame`", "`wide`", "`narrowMode`",
+		"end", "search", "underEnd", "sort", "fold",
+		"Nothing goes between the band and the columns",
+		"Search and sort go only through the band",
+		"No tool CSS",
+		"A front page has no right column",
+		"PAGE-STANDARD.md",
+	} {
+		if !strings.Contains(b, want) {
+			t.Errorf("laying-out-a-page does not say %q", want)
+		}
 	}
 }

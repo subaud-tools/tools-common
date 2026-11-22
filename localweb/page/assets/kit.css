@@ -259,6 +259,7 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-band-fold { display: flex; align-items: center; gap: 12px; }
 .kit-band-end, .kit-band-under-end { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .kit-band-line > .kit-band-end { flex: 0 1 auto; min-width: 0; }
+.kit-band-end > :not(.kit-band-search) { flex: none; }
 .kit-band-search {
   flex: 0 1 240px; width: 240px; min-width: 120px; height: 28px; padding-block: 0;
   font: 13px var(--kit-mono);

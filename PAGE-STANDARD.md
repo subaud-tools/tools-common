@@ -32,7 +32,14 @@ Every page takes these from the kit, `localweb/page`. Page shape has no test: it
 
 | Rule | Delivered by | Since |
 |---|---|---|
-| The three-column frame, with the thread on the right. The thread column is always present and stays where the reader left it. | `frame`, `collapsible`, `thread` | needs adopting from 0.41.0 |
+| The three-column frame, with the thread on the right. The thread column is always present on an item page, and stays where the reader left it; a front page has none. | `frame`, `collapsible`, `thread` | needs adopting from 0.41.0; no thread on a front page from 0.117.0 |
+| Changing screens moves nothing: the bar, the band, the columns' left edges and each column's first item sit at the same place on a tool's front page and its item pages, and the same from tool to tool. It comes from the rows below; the laying-out-a-page skill and the mockup starter at `/_kit/layout/` keep new pages and mockups on it. | `bar`, `band`, `frame`, the `laying-out-a-page` family skill, `/_kit/layout/` | needs adopting from 0.117.0 |
+| The band under the bar is 104px high at every width, a phone included, with or without its second line; a tool sets no height of its own. Its places, the same on every page: on the title line the title, beside it its place and state (`beside`), nodes that go into the band's ⋯ on a phone (`fold`), and at the line's right end the page's actions (`end`), a front page's search (`search`) and the band's one ⋯ (`menu`); on the second line the stage track on an item page or the status pills on a front page (`under`), and at its right end the needs-you pill (`underEnd`) and a front page's sort (`sort`). On a phone the second line stays one line that scrolls sideways, and the fold's nodes move into the ⋯. | `band` | needs adopting from 0.117.0 |
+| Search and sort go only through the band, and nothing sits between the band and the columns: a front page's search is `band`'s `search`, its sort is `sortedList` given the band, drawn as its switch at the second line's end and as a compact picker on a phone. | `band`'s `search`, `sortedList`'s `band` | needs adopting from 0.117.0 |
+| Each column's first item starts at one place under the band: a side column's first label 16px under it, the middle column's first card 24px under it. The left column is 288px. No tool CSS moves them. | `frame`, `indexSection`, `filterRow`, `thread` | needs adopting from 0.117.0 |
+| Every card in the middle column has one shape, 14px by 16px padding and an 8px corner, and fills the column up to 1100px, left-aligned; a tool's own card class sets neither. | `.kit-mid .kit-card` in `kit.css`, with `card` and `sortedList` | needs adopting from 0.117.0 |
+| A front page has no right column: its middle column runs to the window's edge, and its cards stop at the 1100px cap. | `frame` with no `right` | needs adopting from 0.117.0 |
+| One wide view, a system design's topic chat, runs the middle column over the right column's space, its cards uncapped; the band, the left column and the middle's left edge and first item stay where they are. No other page widens its middle. | `frame`'s `wide` | needs adopting from 0.117.0 |
 | One thing at a time at 1080 wide or less, on a page that turns it on, with a count on each strip. | `narrowMode` | adopted by diazo |
 | One primary action on the top bar, on the far right. | `bar`, through its `primary` | already released |
 | The fixed card header. | `card`, through its `head` | already released |
@@ -40,7 +47,7 @@ Every page takes these from the kit, `localweb/page`. Page shape has no test: it
 | Drafts that go out together on Send. The bar sits locked to the middle column's foot: a band the column's full width on its bottom edge, on a short page too, with the page scrolling above it and nothing under it at the end. The page keeps the kit's middle-column side padding (24px) for the band to span the column. | `sendBar`, placed with `frame`'s `foot(bar)`, with the drafts held by `createDrafts`, or by the tool's own store where a draft lives in the content (galley's instructions anchored in the document) | needs adopting from 0.41.0; the locked foot from 0.74.0 |
 | A right column with more than the thread shows it as tabs with counts, one open at a time; the reader's choice is remembered, a tool's switch isn't. Drafts listed there show their quoted item, edit in place and delete, and keep the reader's typing through a redraw. | `railTabs`, `draftList` (mount its `el` once and call `redraw`) | 0.47.0 |
 | A switcher in the top bar lists the tool's other pages, kept current. | `bar`'s `setElsewhere`, kept by `keepElsewhere(bar, read)` | 0.44.0 |
-| A front page lists the tool's pages with filters and status pills. Its centre is one list in the sort switch's order, each row naming its place, or groups that fold and move with rows in the sort switch's order inside each, grouped by something the left column doesn't filter, or by a left-column filter when the chosen pill leaves a single status. | `filterRow` (with `subs`), `statusPills`, `sortedList` (with `groups`), `sortSwitch` | 0.44.0; one sorted list from 0.103.0; groups that fold and move from 0.114.0 |
+| A front page lists the tool's pages with filters and status pills (the pills on the band's second line). Its centre is one list in the sort switch's order (the switch in the band's sort place), each row naming its place, or groups that fold and move with rows in the sort switch's order inside each, grouped by something the left column doesn't filter, or by a left-column filter when the chosen pill leaves a single status. | `filterRow` (with `subs`), `statusPills`, `sortedList` (with `groups`), `sortSwitch` | 0.44.0; one sorted list from 0.103.0; groups that fold and move from 0.114.0 |
 | A count of what needs the reader is a button that goes there: one item opens on a press, several open a menu naming each; after an answer the page stays and says how many are left, with a Next button naming the next; opening a thing shows it with its answer control on screen, and focuses a reply box. What is on the list is the tool's. | `needsPill` (mount its `el` again on a redraw and call `set`), `nextLine`, `arrive` (mark the control `data-answer`) | 0.48.0 |
 | A setting is one line of a settings card: its name, its control, and on the right its mark ("changed here") and actions (Reset). The line is the same height with the mark and without, at every width, so nothing under it moves when a mark appears or goes; a mark too long for its row is cut with an ellipsis. | `settingLine`, in a `card` | 0.115.0 |
 | The message states. | `msgstate`, in Go and in the kit | already released |
@@ -79,14 +86,14 @@ Server rules:
 
 Page rules:
 
-| Page | Frame and thread | Top bar | Card header | Stage track | Drafts | Message states |
-|---|---|---|---|---|---|---|
-| diazo | conforms | conforms | conforms | conforms | conforms | conforms |
-| sift | conforms | conforms | conforms | conforms | conforms | conforms |
-| cull | needs adopting from 0.41.0 | uses `bar` | uses `card` | needs adopting from 0.41.0 | needs adopting from 0.41.0 | uses `msgstate` |
-| casebook | conforms | conforms | conforms | conforms | conforms | conforms |
-| galley | through its PLAN2 | through its PLAN2 | through its PLAN2 | through its PLAN2 | through its PLAN2 | uses `msgstate` |
-| muda | no page yet: its PLAN1 builds on the kit parts | no page yet | no page yet | no page yet | no page yet | no page yet |
-| proj | not decided | not decided | not decided | not decided | not decided | not decided |
-| imprint | no page | no page | no page | no page | no page | no page |
-| billet (no agent conversation) | none: no conversation | through its UX review PLAN1 | not used | none: no conversation | none: no conversation | not used |
+| Page | Frame and thread | Top bar | Card header | Stage track | Drafts | Message states | Layout |
+|---|---|---|---|---|---|---|---|
+| diazo | conforms | conforms | conforms | conforms | conforms | conforms | needs adopting from 0.117.0 |
+| sift | conforms | conforms | conforms | conforms | conforms | conforms | needs adopting from 0.117.0 |
+| cull | needs adopting from 0.41.0 | uses `bar` | uses `card` | needs adopting from 0.41.0 | needs adopting from 0.41.0 | uses `msgstate` | needs adopting from 0.117.0 |
+| casebook | conforms | conforms | conforms | conforms | conforms | conforms | needs adopting from 0.117.0 |
+| galley | through its PLAN2 | through its PLAN2 | through its PLAN2 | through its PLAN2 | through its PLAN2 | uses `msgstate` | needs adopting from 0.117.0 |
+| muda | no page yet: its PLAN1 builds on the kit parts | no page yet | no page yet | no page yet | no page yet | no page yet | needs adopting from 0.117.0 |
+| proj | not decided | not decided | not decided | not decided | not decided | not decided | needs adopting from 0.117.0 |
+| imprint | no page | no page | no page | no page | no page | no page | needs adopting from 0.117.0 |
+| billet (no agent conversation) | none: no conversation | through its UX review PLAN1 | not used | none: no conversation | none: no conversation | not used | needs adopting from 0.117.0 |
