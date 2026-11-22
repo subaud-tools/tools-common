@@ -1367,8 +1367,12 @@ test('dom: band with an end fold first keeps the search and ⋯ at the right edg
 // The give-way order on a wide page, in fixed widths so no font decides it:
 // a 610px title (the galley plan's) and a 600px fold of four controls that
 // never shrink (diazo's session controls).
-const fixedBox = (w, label, cls = '') => h('span', { class: cls, style: `display:inline-block; box-sizing:border-box; width:${w}px` }, label);
-const longTitle = () => fixedBox(610, 'galley: Share fails after Approve, and some approved reviews won\'t open');
+// fixedBox is w px wide in every font: its label is clipped inside it, so a
+// font that sets the label wider (CI's Linux fonts) never widens what holds
+// it. longTitle's label is longer than 610px in any font, so every machine
+// runs the case CI does.
+const fixedBox = (w, label, cls = '') => h('span', { class: cls, style: `display:inline-block; box-sizing:border-box; width:${w}px; overflow:hidden; white-space:nowrap; vertical-align:middle` }, label);
+const longTitle = () => fixedBox(610, 'galley: Share fails after Approve, and some approved reviews won\'t open, and more words past its box');
 const controls = () => [140, 140, 140, 144].map((w, i) => fixedBox(w, `ctl${i}`, 'kit-ctl'));
 const foldOf = (ctls, at) => ctls.map((n, i) => ({ node: n, item: { label: `ctl${i}`, action: `ctl${i}`, run() {} }, ...(at ? { at } : {}) }));
 // The band as a tool draws it: made, then put on the page. The test browser
