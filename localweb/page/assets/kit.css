@@ -67,6 +67,9 @@ html[data-theme="dark"] { color-scheme: dark; }
 
 /* base */
 *, *::before, *::after { box-sizing: border-box; }
+/* hidden always hides: a part's own display (a flex card line, a button)
+   would otherwise win over the browser's [hidden] rule */
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body {
   background: var(--kit-bg);
@@ -162,7 +165,6 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   font: 13px var(--kit-mono); color: var(--kit-fg); background: transparent;
   border: 1px solid var(--kit-line); border-radius: 6px; padding: 4px 14px; cursor: pointer;
 }
-.kit-ctl[hidden] { display: none; }
 .kit-ctl.on { background: var(--kit-card); border-color: var(--kit-muted); }
 .kit-ctl .kit-n { color: var(--kit-muted); margin-left: 6px; }
 .kit-status { color: var(--kit-muted); margin-left: 6px; }
@@ -170,7 +172,6 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-status[data-tone="danger"] { color: var(--kit-danger); }
 .kit-sp { flex: 1; }
 .kit-live { display: flex; align-items: center; gap: 8px; border: 1px solid var(--kit-line); border-radius: 6px; padding: 4px 12px; }
-.kit-live[hidden] { display: none; }
 .kit-live i { width: 9px; height: 9px; border-radius: 50%; background: var(--kit-ok); }
 .kit-live[data-state="polling"] i { background: var(--kit-wait); }
 .kit-live[data-state="down"] i { background: var(--kit-danger); }
@@ -189,7 +190,6 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   font: 700 13px var(--kit-mono); background: var(--kit-signal); color: var(--kit-signal-ink);
   border: 0; border-radius: 6px; padding: 7px 26px; cursor: pointer;
 }
-.kit-primary[hidden] { display: none; }
 /* the section buttons' span: no box of its own above 640px */
 .kit-bar-sections { display: contents; }
 /* the bar's ⋯ (dom.js barMore): shown only on a phone, where it holds the
@@ -205,7 +205,6 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
 }
 .kit-bar-tray[popover] { position: fixed; inset: auto; margin: 0; overflow: hidden auto; overscroll-behavior: contain; }
-.kit-bar-tray[hidden] { display: none; }
 .kit-bar-tray > .kit-status { margin-left: 0; overflow-wrap: anywhere; }
 /* the bar on a phone: one 52px line in every tool. The brand, the section
    buttons, the ⋯ and the primary stay; the status, the also-open switcher,
@@ -232,7 +231,6 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    Chips keep their size; what doesn't fit folds into "+N more" (dom.js).
    The dot says who it waits on: you (signal), the agent (agent), nobody. */
 .kit-also { display: flex; align-items: center; flex: none; }
-.kit-also[hidden] { display: none; }
 /* One fixed width, so the bar never moves as the count changes. */
 .kit-also-btn {
   display: inline-flex; align-items: center; gap: 7px; width: 27ch; white-space: nowrap; overflow: hidden;
@@ -561,8 +559,6 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-pick-pop .kit-pick-opt.on { background: var(--kit-signal-soft); }
 .kit-pick-name { display: block; }
 .kit-pick-detail { display: block; margin-top: 2px; font-size: 12px; color: var(--kit-muted); white-space: normal; }
-/* pickField's more line and the choices behind it: whichever is not showing */
-.kit-pick-pop > [hidden] { display: none; }
 /* a label kept for a screen reader and not drawn (pickField and chipPick's
    labelHidden): in the page, taking no room */
 .kit-label-hidden {
@@ -1091,7 +1087,6 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-row-pop[popover] {
   position: fixed; inset: auto; margin: 0; overflow: hidden auto; overscroll-behavior: contain; color: var(--kit-fg);
 }
-.kit-row-pop[hidden] { display: none; }
 .kit-row-pop a, .kit-row-pop button {
   display: block; width: 100%; text-align: left; font: 13px var(--kit-sans); color: var(--kit-fg);
   background: none; border: 0; border-radius: 6px; padding: 7px 9px; cursor: pointer;
@@ -1126,7 +1121,6 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
   font: 600 12px var(--kit-mono); white-space: nowrap; cursor: pointer;
   background: var(--kit-signal); color: var(--kit-signal-ink);
 }
-.kit-needs[hidden] { display: none; }
 .kit-needs:hover { filter: brightness(1.08); }
 .kit-stages .kit-needs { margin-left: 8px; }
 .kit-needs-row { grid-template-columns: 1fr; }
@@ -1263,7 +1257,6 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
  * dropdown; popOut puts them in again when a menu opens after them. */
 .kit-spot-ring[popover] { inset: auto; margin: 0; padding: 0; border: 0; background: none; overflow: visible; }
 .kit-spot-card[popover] { inset: auto; margin: 0; }
-.kit-spot-ring[hidden], .kit-spot-card[hidden] { display: none; }
 .kit-spot-ring {
   position: fixed;
   z-index: 190;
@@ -1299,7 +1292,6 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-spot-title { font-weight: 600; }
 .kit-spot-wait { margin-top: 6px !important; color: var(--kit-muted); font-size: 12.5px; }
 .kit-spot-acts { display: flex; justify-content: flex-end; margin-top: 8px; }
-.kit-spot-acts[hidden] { display: none; }
 
 /* ---- the Guide (guide.js) ------------------------------------------------ */
 /* A wide sheet: the installed tools down the side, the one picked in the
@@ -1374,7 +1366,6 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
   border: 1px solid var(--kit-line); border-radius: 6px; background: var(--kit-card); color: var(--kit-fg);
   font-size: 13px; line-height: 1.2; cursor: zoom-in; opacity: .92;
 }
-.kit-grow[hidden] { display: none; }
 .kit-grow:hover, .kit-grow:focus-visible { opacity: 1; border-color: var(--kit-signal); }
 .kit-viewer {
   position: fixed; inset: 0; z-index: 150; display: flex; flex-direction: column;

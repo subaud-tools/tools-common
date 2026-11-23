@@ -1633,6 +1633,20 @@ test('dom: cardLines in a card: a rule between them, its words and meta in the k
   eq(cs(b.querySelector('.danger')).color, token('--kit-danger'));
 });
 
+test('dom: a hidden cardLine, and a hidden action on one, take no space', () => {
+  const fx = fixture();
+  try {
+    const row = cardLine({ main: 'x', actions: [{ label: '☆', run() {} }] });
+    fx.append(row);
+    const act = row.querySelector('.kit-card-line-act');
+    act.hidden = true;
+    eq(cs(act).display, 'none', 'a hidden action');
+    row.hidden = true;
+    eq(cs(row).display, 'none', 'a hidden line');
+    eq(row.getBoundingClientRect().height, 0, 'no height');
+  } finally { fx.replaceChildren(); }
+});
+
 test('dom: cardLine is as it was, and an action\'s data lands as data-* on its button', () => {
   const l = cardLine({ main: 'iCloud Keychain', meta: 'added 4 Nov', actions: [{ label: 'Rename' }, { label: 'Remove', danger: true, disabled: true, title: 'Remove iCloud Keychain' }] });
   eq(l.outerHTML, '<div class="kit-card-line"><span class="kit-card-line-main">iCloud Keychain</span><span class="kit-card-line-side">'
