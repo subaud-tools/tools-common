@@ -607,7 +607,7 @@ export function submitOnEnter<T extends { addEventListener(type: 'keydown', list
   submit: () => void,
 ): T;
 
-// ---- share.js (styled by share.css; kit.css imports it, a page without kit.css links it and sets --share-*)
+// ---- share.js (styled by share.css, which kit.css imports, through --share-* properties)
 
 export const SHARE_LABEL: 'Share ▾';
 export const SHARE_DOWNLOAD_HTML: 'Download HTML';
