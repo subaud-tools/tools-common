@@ -103,7 +103,16 @@ export function sortSwitch({ orders, chosen, onPick, label = 'sort' }) {
 // box that ticks or unticks every row under it (mixed while only some are).
 // Shift-click on a row's box ticks the range from the store's anchor over
 // the rows showing; an id no item drawn has any more leaves the selection.
-export function sortedList({ name, orders, items, row, empty, label, title, groups, band, pick }) {
+//
+// groupings, [{ value, label, groups }] (groups null for none), puts a group
+// switch before the sort switch (in the band's sort place, with its own
+// compact picker for a phone); a press regroups in place as set(items,
+// groups) does, the sort reads "sort in groups" while the grouping chosen has
+// groups, and the choice is remembered under <name>.group, the first
+// grouping when none is or the one remembered is gone. With groupings, groups
+// (in the call and in set) is left alone: the page passes groups only inside
+// a grouping.
+export function sortedList({ name, orders, items, row, empty, label, title, groups, band, pick, groupings }) {
   const key = `${name}.sort`;
   const known = v => orders.some(o => o.value === v);
   let chosen = known(remembered.get(key)) ? remembered.get(key) : orders[0].value;
@@ -111,25 +120,48 @@ export function sortedList({ name, orders, items, row, empty, label, title, grou
   let by = groups;
   const el = h('div', { class: 'kit-sorted' });
   const choose = v => { chosen = v; remembered.set(key, v); draw(); };
-  const picker = band ? pickField({ label: label || 'sort', labelHidden: true, size: 'compact', choices: orders.map(o => ({ value: o.value, label: o.label })), value: chosen, onPick: choose }) : null;
+  const gkey = `${name}.group`;
+  const gknown = v => groupings.some(g => g.value === v);
+  let gchosen = null;
+  const chooseGroup = v => { gchosen = v; remembered.set(gkey, v); by = groupings.find(g => g.value === v).groups; draw(); };
+  if (groupings) {
+    gchosen = gknown(remembered.get(gkey)) ? remembered.get(gkey) : groupings[0].value;
+    by = groupings.find(g => g.value === gchosen).groups;
+  }
+  const sortLabel = () => (groupings && by ? 'sort in groups' : label || 'sort');
+  const picker = band ? pickField({ label: sortLabel(), labelHidden: true, size: 'compact', choices: orders.map(o => ({ value: o.value, label: o.label })), value: chosen, onPick: choose }) : null;
   const place = band ? h('div', { class: 'kit-band-sort' }) : null;
-  if (band) band.setSort(place);
+  const gpicker = band && groupings ? pickField({ label: 'group', labelHidden: true, size: 'compact', choices: groupings.map(g => ({ value: g.value, label: g.label })), value: gchosen, onPick: chooseGroup }) : null;
+  const gplace = gpicker ? h('div', { class: 'kit-band-sort kit-band-group' }) : null;
+  if (band) band.setSort(gplace ? h('div', { class: 'kit-band-sorts' }, gplace, place) : place);
   const ticks = pick ? tickBoxes(pick, el) : null;
+  // In the band only the chips are redrawn: the picker stays, and keeps the focus.
+  const into = (at, chips, pickerEl) => {
+    if (at.firstChild) at.firstChild.replaceWith(chips);
+    else at.append(chips, pickerEl);
+  };
   const draw = () => {
     const { compare } = orders.find(o => o.value === chosen);
-    const made = sortSwitch({ orders, chosen, label, onPick: choose });
+    // the group switch is made first: a press on it takes the focus back to it
+    let gsw = groupings ? sortSwitch({ orders: groupings, chosen: gchosen, label: 'group', onPick: chooseGroup }) : null;
+    const made = sortSwitch({ orders, chosen, label: sortLabel(), onPick: choose });
     let sw = made;
     if (band) {
       picker.set(chosen);
-      // only the chips are redrawn: the picker stays, and keeps the focus
-      if (place.firstChild) place.firstChild.replaceWith(made);
-      else place.append(made, picker.el);
+      picker.el.querySelector('.kit-field-label').textContent = sortLabel();
+      into(place, made, picker.el);
       sw = null;
+      if (gpicker) {
+        gpicker.set(gchosen);
+        into(gplace, gsw, gpicker.el);
+        gsw = null;
+      }
     }
+    const switches = [gsw, sw].filter(Boolean);
     const drawRow = ticks ? ticks.row(row) : row;
     ticks?.begin();
     if (by && now.length) {
-      el.replaceChildren(...[sw].filter(Boolean), ...sortedGroups({ name, groups: by, items: now, compare, row: drawRow, redraw: draw, head: ticks?.head }));
+      el.replaceChildren(...switches, ...sortedGroups({ name, groups: by, items: now, compare, row: drawRow, redraw: draw, head: ticks?.head }));
       ticks?.end(now);
       return;
     }
@@ -137,7 +169,7 @@ export function sortedList({ name, orders, items, row, empty, label, title, grou
     const rows = sortedItems.map(drawRow);
     const heading = title && !by ? h('div', { class: 'kit-label kit-group-head' }, title(rows.length)) : null;
     const headBox = ticks && rows.length ? ticks.head(sortedItems) : null;
-    el.replaceChildren(...[sw].filter(Boolean),
+    el.replaceChildren(...switches,
       h('section', { class: 'kit-card' },
         headBox ? h('div', { class: 'kit-group-line' }, headBox, heading) : heading,
         rows.length ? h('ul', { class: 'kit-group-rows' }, rows) : h('p', { class: 'kit-empty' }, empty)));
@@ -148,7 +180,7 @@ export function sortedList({ name, orders, items, row, empty, label, title, grou
     el,
     set(next, nextGroups) {
       now = next;
-      if (nextGroups) by = nextGroups;
+      if (nextGroups && !groupings) by = nextGroups;
       draw();
     },
   };

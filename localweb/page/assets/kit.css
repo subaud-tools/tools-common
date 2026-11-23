@@ -346,6 +346,9 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-band-sort > .kit-sort { margin: 0; flex-wrap: nowrap; }
 .kit-band-sort > .kit-field { margin: 0; width: 112px; }
 .kit-band-sort > .kit-pick-compact { display: none; }
+/* a list's groupings (sortedList's groupings): the group switch, then the
+   sort switch, on one line in the band's sort place */
+.kit-band-sorts { display: flex; align-items: center; gap: 16px; }
 /* the fold's items show in the ⋯ only on a phone or while the band is
    folded (short of room for the title's floor beside the fold), and a ⋯ that
    holds only them shows only then */

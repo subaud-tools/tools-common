@@ -1075,7 +1075,7 @@ export interface SortedOrder<T> extends SortOrder {
 export interface SortedList<T> {
   /** div.kit-sorted: the sort switch (none when given a band), then one section.kit-card, or with groups one section.kit-card.kit-group per group that has rows. */
   el: HTMLElement;
-  /** Redraw with new items, in the order chosen; groups, when given, replaces the grouping (another grouping draws its own kept order). With no groups it keeps the current grouping: a grouped list stays grouped. A page that wants the plain list again builds a new sortedList. */
+  /** Redraw with new items, in the order chosen; groups, when given (and the list has no groupings), replaces the grouping (another grouping draws its own kept order). With no groups it keeps the current grouping: a grouped list stays grouped. A page that wants the plain list again builds a new sortedList. */
   set(items: T[], groups?: SortedGroups<T>): void;
 }
 
@@ -1114,8 +1114,19 @@ export interface SortedPick<T> {
   id(item: T): string;
 }
 
-/** One list in the order chosen on its sort switch (div.kit-sorted): the switch, then one section.kit-card holding ul.kit-group-rows with row(item) for each item in that order, or p.kit-empty reading empty when there are none. With groups (SortedGroups), the switch is followed instead by one folding section.kit-card.kit-group per group that has rows, each with its ul.kit-group-rows in the chosen order, and title is not drawn; with no items, the one card with the empty line. Without groups it draws exactly as before. The choice is remembered under <name>.sort; with none, or one no order has, the first order. A press re-sorts and redraws in place; the items given are not reordered. label replaces the switch's sort. title, when given, opens the card with div.kit-label.kit-group-head reading title(n) for the n rows shown, redrawn on every press and set (it doesn't fold). After a press with the focus in the switch, the chosen chip has it. band, a band's handle, puts the switch in the band's sort place (band.setSort) instead of over the cards, so el holds the cards alone: a div.kit-band-sort holding the switch and a compact pickField (labelled label, default sort) that takes the switch's place on a phone (640 wide or less); a pick on either re-sorts, and the picker stays in place, keeping the focus. pick (SortedPick) adds tick boxes; without it nothing changes. */
-export function sortedList<T>(o: { name: string; orders: SortedOrder<T>[]; items: T[]; row(item: T): HTMLElement; empty: string; label?: string; title?(n: number): string; groups?: SortedGroups<T>; band?: BandHandle; pick?: SortedPick<T> }): SortedList<T>;
+/**
+ * One grouping a sorted list offers on its group switch: a chip reading label, and the groups it draws (SortedGroups), or null for one card of every row.
+ * Each grouping's groups keep their own order and folds under their own name, so switching back keeps the reader's arrangement.
+ */
+export interface SortedGrouping<T> {
+  value: string;
+  /** The chip's words. */
+  label: string;
+  groups: SortedGroups<T> | null;
+}
+
+/** One list in the order chosen on its sort switch (div.kit-sorted): the switch, then one section.kit-card holding ul.kit-group-rows with row(item) for each item in that order, or p.kit-empty reading empty when there are none. With groups (SortedGroups), the switch is followed instead by one folding section.kit-card.kit-group per group that has rows, each with its ul.kit-group-rows in the chosen order, and title is not drawn; with no items, the one card with the empty line. Without groups it draws exactly as before. The choice is remembered under <name>.sort; with none, or one no order has, the first order. A press re-sorts and redraws in place; the items given are not reordered. label replaces the switch's sort. title, when given, opens the card with div.kit-label.kit-group-head reading title(n) for the n rows shown, redrawn on every press and set (it doesn't fold). After a press with the focus in the switch, the chosen chip has it. band, a band's handle, puts the switch in the band's sort place (band.setSort) instead of over the cards, so el holds the cards alone: a div.kit-band-sort holding the switch and a compact pickField (labelled label, default sort) that takes the switch's place on a phone (640 wide or less); a pick on either re-sorts, and the picker stays in place, keeping the focus. pick (SortedPick) adds tick boxes; without it nothing changes. groupings (SortedGrouping, at least one) puts a group switch (sortSwitch labelled group, one chip per grouping) before the sort switch: over the cards, or given a band in its sort place, which is then div.kit-band-sorts holding div.kit-band-sort.kit-band-group (the group chips and their own compact pickField, labelled group, for a phone) and then the sort's div.kit-band-sort. A press on either regroups in place as set(items, groups) does, keeping the sort and the ticks; while the grouping chosen has groups the sort switch and its picker read "sort in groups", otherwise label (default sort). The choice is remembered under <name>.group; with none, or one no grouping has, the first grouping. With groupings, groups is ignored, in the call and in set: the page passes groups only inside a grouping. Without groupings nothing changes. */
+export function sortedList<T>(o: { name: string; orders: SortedOrder<T>[]; items: T[]; row(item: T): HTMLElement; empty: string; label?: string; title?(n: number): string; groups?: SortedGroups<T>; band?: BandHandle; pick?: SortedPick<T>; groupings?: SortedGrouping<T>[] }): SortedList<T>;
 
 export interface ListGroup {
   key: string;
