@@ -48,7 +48,7 @@ func TestBetaTools(t *testing.T) {
 		}
 	}
 	slices.Sort(got)
-	if want := []string{"casebook", "cull", "muda", "sift"}; !slices.Equal(got, want) {
+	if want := []string{"billet", "casebook", "cull", "muda", "sift"}; !slices.Equal(got, want) {
 		t.Fatalf("beta tools %v, want %v", got, want)
 	}
 	d, err := Data("sift", func(name string) bool { return name == "diazo" })
