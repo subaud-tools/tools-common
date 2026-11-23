@@ -16,7 +16,7 @@ Every tool's page has one layout, the same on its front page and its item pages 
 ├──────────────────────────────────────────────────────────────────────────┤
 │ band (104px at every width)                                              │
 │  title · beside · fold                        end · search · ⋯           │  title line
-│  under: stage track, or status pills          underEnd · sort            │  second line
+│  under: stage track, or status pills          underEnd · group · sort    │  second line
 ├────────────┬───────────────────────────────────────────┬─────────────────┤
 │ left 288px │ middle                                    │ right           │
 │ first label│ first card 24px under the band            │ thread, or tabs │
@@ -33,9 +33,9 @@ Every tool's page has one layout, the same on its front page and its item pages 
 | Title line | The title, then `beside` (its place, its state), then `fold` (beside nodes that go into the ⋯ on a phone, and on any width where the title would go under 320px beside them; an entry with `shrink` gives way first, with an ellipsis) | `band`'s `title`, `beside`, `fold` |
 | Title line's end | `fold` entries with `at: 'end'` (actions that go into the ⋯ on a phone, as galley's History), then `end` (the page's actions), then `search` (a front page's search field, 240px when there is room), then the one ⋯ (`menu`, and the fold's items on a phone) | `band`'s `fold`, `end`, `search`, `menu` |
 | Second line | The stage track on an item page, the status pills on a front page; one line that scrolls sideways when too long | `band`'s `under`, with `stageTrack` or `statusPills` |
-| Second line's end | `underEnd` (the needs-you pill on an item page), then `sort` (a front page's sort: recent, stage, name; a compact picker on a phone) | `band`'s `underEnd`, `sortedList`'s `band` |
+| Second line's end | `underEnd` (the needs-you pill on an item page), then a front page's group switch when its list offers several groupings (none, project, status; one may be by a left-column filter, since the reader chooses it), then `sort` (a front page's sort: recent, stage, name; "sort in groups" while grouped); each a compact picker on a phone | `band`'s `underEnd`, `sortedList`'s `band` and `groupings` |
 | Left column | 288px; its first label 16px under the band; its sections are the page's own (filters on a front page, an index on an item page) | `frame`'s `left`, `indexSection`, `filterRow` |
-| Middle column | Its first card 24px under the band; every card 14px by 16px padding, an 8px corner, up to 1100px, left-aligned (the empty-state card, `emptyCard`, keeps its own padding) | `frame`'s `centre`, `card`, `emptyCard`, `sortedList` |
+| Middle column | Its first card 24px under the band; every card 14px by 16px padding, an 8px corner, up to 1100px, left-aligned (the empty-state card, `emptyCard`, keeps its own padding). A list whose rows can be picked several at a time has the kit's tick boxes, on each row and on each group's head (or the card's head); the actions on what is picked go in the band | `frame`'s `centre`, `card`, `emptyCard`, `sortedList` (`pick` for the tick boxes) |
 | Right column | An item page's thread, or its tabs with counts; its first label 16px under the band | `frame`'s `right`, `thread`, `railTabs` |
 | Phone (640px wide or less) | On a phone the bar stays one 52px line: the brand, the sections and the primary stay, and the status, other open work, live, Guide and theme go into the bar's ⋯. The band stays 104px and the title stays whole while the rest of its line gives way (what is beside it, then the search down to 96px); the fold goes into the band's ⋯. At 1080px or less one column shows at a time | `bar`, `band`, `narrowMode` |
 
@@ -45,6 +45,7 @@ A front page has no right column: leave `right` out of `frame` and its middle ru
 
 - Nothing goes between the band and the columns: no search box, sort line, notice or toolbar over the cards.
 - Search and sort go only through the band: `band`'s `search`, and `sortedList` given the band. A list never draws its own sort over its cards.
+- Actions on picked rows go in the band, never in a toolbar or button row over the list: the main one a `fold` entry with `at: 'end'` at the title line's end (on a phone it moves into the ⋯), the rest in the band's one ⋯, each label counting the picked rows showing.
 - No tool CSS for the band's height, the columns' widths or start, or the cards' padding, corner or 1100px cap. The kit sets them; a tool's own rules for them are removed when it adopts the kit's layout.
 - One ⋯ in the band, the kit's: give it items with `menu`, never a second button of the tool's own.
 - What the places hold (a page's stages, its left rows, its cards' contents, its ⋯ items) is the tool's own; where they go is not.
