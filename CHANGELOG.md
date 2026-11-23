@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.126.0
+
+### Fixed
+- kit: `[hidden]` always hides. `kit.css` has one rule near its top, `[hidden] { display: none !important; }`, so a part with a display of its own (a `cardLine`, which is flex) no longer shows while it carries `hidden`; before, a hidden card line, such as a search's non-matching row, still drew. The per-part rules that did the same for one part each (`.kit-ctl`, `.kit-live`, `.kit-primary`, `.kit-bar-tray`, `.kit-also`, `.kit-pick-pop > [hidden]`, `.kit-row-pop`, `.kit-needs`, `.kit-spot-ring`, `.kit-spot-card`, `.kit-spot-acts`, `.kit-grow`) are gone. The bar's rule that hides its sections when all their children are hidden stays. A tool's own rule that shows an element carrying `hidden` no longer can: take `hidden` off it instead.
+
 ## 0.125.0
 
 ### Added
