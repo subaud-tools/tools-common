@@ -2,6 +2,7 @@ import { test, eq, assert, fixture, focusEl } from './harness.js';
 import { filterRow, statusPills, groupList, rowMenu, sortSwitch, sortedList } from '/_kit/frontpage.js';
 import { indexRow } from '/_kit/index.js';
 import { pickField, band } from '/_kit/dom.js';
+import { createSelection } from '/_kit/selection.js';
 
 const projects = [{ value: 'diazo', label: 'diazo', count: 3 }, { value: 'sift', label: 'sift', count: 2 }];
 const rowsOf = el => [...el.querySelectorAll('.kit-filter')].map(b => [b.dataset.value, b.querySelector('.kit-index-title').textContent, b.querySelector('.kit-meta').textContent]);
@@ -1170,4 +1171,131 @@ test('sortedList: given a band, on a phone the switch is a compact picker that r
   assert(doc.activeElement === btn, `after the redraw the picker has the focus (${doc.activeElement && doc.activeElement.className})`);
   eq(b.el.querySelector('.kit-sort .kit-chip.on').dataset.value, 'name', 'the chips follow');
   fresh();
+});
+
+// sortedList's pick: a tick box on each row and head, bound to a selection store.
+const picked = (o = {}) => {
+  const selection = createSelection();
+  const list = sortedList({ name: 'kitpick', orders: docOrders, items: plans, row: planRow, empty: 'No plans.', pick: { selection, id: p => p.name }, ...o });
+  return { list, selection, el: list.el };
+};
+const pfresh = () => { for (const k of Object.keys(localStorage)) if (k.startsWith('kitpick.')) localStorage.removeItem(k); };
+const boxOf = (el, name) => [...el.querySelectorAll('.kit-group-rows > li')].find(li => li.querySelector('.kit-index-title').textContent === name).querySelector(':scope > .kit-box');
+const headBox = (el, key) => el.querySelector(`[data-group="${key}"] > .kit-group-line > .kit-box`);
+
+test('sortedList pick: one box per row and per group head, the head\'s between the grip and the fold', () => {
+  pfresh();
+  const { el } = picked({ groups: byStatus() });
+  eq(el.querySelectorAll('.kit-group-rows > li > .kit-box').length, plans.length);
+  eq(el.querySelectorAll('.kit-group-line > .kit-box').length, 4);
+  const line = el.querySelector('[data-group="agent"] .kit-group-line');
+  eq([...line.children].map(c => c.className), ['kit-group-grip', 'kit-box', 'kit-label kit-group-head', 'kit-row-menu']);
+  const box = boxOf(el, 'a');
+  eq([box.tagName, box.getAttribute('role'), box.getAttribute('aria-checked')], ['SPAN', 'checkbox', 'false']);
+  assert(box.parentElement.firstElementChild === box, 'the box starts the row');
+  assert(box.parentElement.classList.contains('kit-pickrow'), 'the row is a pick row');
+  pfresh();
+});
+
+test('sortedList pick: with no groups, the card\'s head carries one box that ticks every row', () => {
+  pfresh();
+  const { el, selection } = picked({ title: n => `plans · ${n}` });
+  const line = el.querySelector('.kit-card > .kit-group-line');
+  eq([...line.children].map(c => c.className), ['kit-box', 'kit-label kit-group-head']);
+  eq(line.lastElementChild.textContent, 'plans · 5');
+  line.firstElementChild.click();
+  eq(selection.ids().sort(), ['a', 'b', 'c', 'd', 'e']);
+  eq(line.firstElementChild.getAttribute('aria-checked'), 'true');
+  eq(el.querySelectorAll('li.kit-pickrow.sel').length, 5);
+  line.firstElementChild.click();
+  eq(selection.ids(), []);
+  pfresh();
+});
+
+test('sortedList pick: ticking a head ticks its rows, one of two reads mixed, and a box press folds nothing', () => {
+  pfresh();
+  const { el, selection } = picked({ groups: byStatus() });
+  fixture().append(el);
+  headBox(el, 'agent').click();
+  eq(selection.ids().sort(), ['a', 'b']);
+  eq(headBox(el, 'agent').getAttribute('aria-checked'), 'true');
+  eq([boxOf(el, 'a').getAttribute('aria-checked'), boxOf(el, 'b').getAttribute('aria-checked')], ['true', 'true']);
+  assert(!el.querySelector('[data-group="agent"]').classList.contains('kit-folded'), 'not folded');
+  boxOf(el, 'a').click();
+  eq(selection.ids(), ['b']);
+  eq(headBox(el, 'agent').getAttribute('aria-checked'), 'mixed');
+  assert(!boxOf(el, 'a').parentElement.classList.contains('sel'), 'a unticked');
+  assert(boxOf(el, 'b').parentElement.classList.contains('sel'), 'b ticked');
+  headBox(el, 'agent').click();
+  eq(selection.ids().sort(), ['a', 'b'], 'a part-ticked head ticks the rest');
+  headBox(el, 'agent').click();
+  eq(selection.ids(), [], 'a ticked head unticks them');
+  eq(headBox(el, 'needs').getAttribute('aria-checked'), 'false');
+  pfresh();
+});
+
+test('sortedList pick: a press on a row\'s box does not reach the row', () => {
+  pfresh();
+  let opened = 0;
+  const { el, selection } = picked({ row: p => { const li = planRow(p); li.addEventListener('click', () => opened++); return li; } });
+  boxOf(el, 'c').click();
+  eq([selection.ids(), opened], [['c'], 0]);
+  pfresh();
+});
+
+test('sortedList pick: shift-click ticks the range from the anchor over the rows as drawn', () => {
+  pfresh();
+  const { el, selection } = picked();
+  const shift = name => boxOf(el, name).dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true }));
+  boxOf(el, 'e').click();
+  shift('b');
+  eq(selection.ids().sort(), ['b', 'c', 'd', 'e'], 'recent: e d c b a');
+  pfresh();
+});
+
+test('sortedList pick: set with an item gone, or filtered out, drops its id', () => {
+  pfresh();
+  const { list, el, selection } = picked();
+  boxOf(el, 'a').click();
+  boxOf(el, 'c').click();
+  list.set(plans.filter(p => p.name !== 'c'));
+  eq(selection.ids(), ['a']);
+  eq(el.querySelectorAll('li.kit-pickrow.sel').length, 1);
+  list.set(plans);
+  eq(selection.ids(), ['a'], 'it does not come back');
+  pfresh();
+});
+
+test('sortedList pick: ticks are kept by id across a re-sort and a store change from outside', () => {
+  pfresh();
+  const { el, selection } = picked();
+  boxOf(el, 'b').click();
+  el.querySelector('.kit-sort [data-value="name"]').click();
+  eq(boxOf(el, 'b').getAttribute('aria-checked'), 'true');
+  selection.all(['d']);
+  eq(boxOf(el, 'd').getAttribute('aria-checked'), 'true');
+  eq(el.querySelector('.kit-card > .kit-group-line > .kit-box').getAttribute('aria-checked'), 'mixed');
+  localStorage.removeItem('kitpick.sort');
+  pfresh();
+});
+
+test('sortedList: a list without pick has no box', () => {
+  fresh();
+  gfresh();
+  assert(!sorted().el.querySelector('.kit-box, .kit-pickrow'), 'none in a plain list');
+  assert(!grouped().el.querySelector('.kit-box, .kit-pickrow'), 'none in a grouped list');
+  eq([...sorted({ title: n => `${n}` }).el.querySelector('.kit-card').children].map(c => c.className), ['kit-label kit-group-head', 'kit-group-rows']);
+  gfresh();
+});
+
+test('sortedList pick: a ticked box is filled, a part-ticked one shows a dash, a ticked row is tinted', () => {
+  pfresh();
+  const { el } = picked({ groups: byStatus() });
+  fixture().append(el);
+  const plain = getComputedStyle(boxOf(el, 'a')).backgroundColor;
+  boxOf(el, 'a').click();
+  assert(getComputedStyle(boxOf(el, 'a')).backgroundColor !== plain, 'ticked is filled');
+  assert(getComputedStyle(headBox(el, 'agent')).backgroundImage.includes('gradient'), 'mixed shows a dash');
+  assert(getComputedStyle(boxOf(el, 'a').parentElement).backgroundColor !== getComputedStyle(boxOf(el, 'b').parentElement).backgroundColor, 'a ticked row is tinted');
+  pfresh();
 });

@@ -96,7 +96,14 @@ export function sortSwitch({ orders, chosen, onPick, label = 'sort' }) {
 // band, a band's handle, puts the switch in the band's sort place instead of
 // over the cards: a div.kit-band-sort holding the switch, and a compact
 // picker (pickField) that takes its place on a phone.
-export function sortedList({ name, orders, items, row, empty, label, title, groups, band }) {
+//
+// pick, { selection, id(item) }, starts each row with the kit's tick box
+// (span.kit-box, role checkbox), bound to selection (createSelection's store)
+// by id(item); each group's head, or with no groups the card's head, gets a
+// box that ticks or unticks every row under it (mixed while only some are).
+// Shift-click on a row's box ticks the range from the store's anchor over
+// the rows showing; an id no item drawn has any more leaves the selection.
+export function sortedList({ name, orders, items, row, empty, label, title, groups, band, pick }) {
   const key = `${name}.sort`;
   const known = v => orders.some(o => o.value === v);
   let chosen = known(remembered.get(key)) ? remembered.get(key) : orders[0].value;
@@ -107,6 +114,7 @@ export function sortedList({ name, orders, items, row, empty, label, title, grou
   const picker = band ? pickField({ label: label || 'sort', labelHidden: true, size: 'compact', choices: orders.map(o => ({ value: o.value, label: o.label })), value: chosen, onPick: choose }) : null;
   const place = band ? h('div', { class: 'kit-band-sort' }) : null;
   if (band) band.setSort(place);
+  const ticks = pick ? tickBoxes(pick, el) : null;
   const draw = () => {
     const { compare } = orders.find(o => o.value === chosen);
     const made = sortSwitch({ orders, chosen, label, onPick: choose });
@@ -118,15 +126,22 @@ export function sortedList({ name, orders, items, row, empty, label, title, grou
       else place.append(made, picker.el);
       sw = null;
     }
+    const drawRow = ticks ? ticks.row(row) : row;
+    ticks?.begin();
     if (by && now.length) {
-      el.replaceChildren(...[sw].filter(Boolean), ...sortedGroups({ name, groups: by, items: now, compare, row, redraw: draw }));
+      el.replaceChildren(...[sw].filter(Boolean), ...sortedGroups({ name, groups: by, items: now, compare, row: drawRow, redraw: draw, head: ticks?.head }));
+      ticks?.end(now);
       return;
     }
-    const rows = [...now].sort(compare).map(row);
+    const sortedItems = [...now].sort(compare);
+    const rows = sortedItems.map(drawRow);
+    const heading = title && !by ? h('div', { class: 'kit-label kit-group-head' }, title(rows.length)) : null;
+    const headBox = ticks && rows.length ? ticks.head(sortedItems) : null;
     el.replaceChildren(...[sw].filter(Boolean),
       h('section', { class: 'kit-card' },
-        title && !by ? h('div', { class: 'kit-label kit-group-head' }, title(rows.length)) : null,
+        headBox ? h('div', { class: 'kit-group-line' }, headBox, heading) : heading,
         rows.length ? h('ul', { class: 'kit-group-rows' }, rows) : h('p', { class: 'kit-empty' }, empty)));
+    ticks?.end(now);
   };
   draw();
   return {
@@ -135,6 +150,69 @@ export function sortedList({ name, orders, items, row, empty, label, title, grou
       now = next;
       if (nextGroups) by = nextGroups;
       draw();
+    },
+  };
+}
+
+// tickBoxes is sortedList's pick: the boxes of one list's draw, kept in step
+// with the store. row wraps the page's row to start it with its box; head
+// makes a head's box for the items under it; begin and end bracket a draw,
+// end dropping the ids no item drawn has. The store's changes repaint the
+// boxes until the list, once in a page, has left it.
+function tickBoxes({ selection, id }, el) {
+  let rows = new Map();
+  let heads = [];
+  const state = ids => {
+    const n = ids.filter(i => selection.has(i)).length;
+    return n === 0 ? 'false' : n === ids.length ? 'true' : 'mixed';
+  };
+  const paint = () => {
+    for (const [i, li] of rows) {
+      const on = selection.has(i);
+      li.classList.toggle('sel', on);
+      li.querySelector(':scope > .kit-box')?.setAttribute('aria-checked', String(on));
+    }
+    for (const { box, ids } of heads) box.setAttribute('aria-checked', state(ids));
+  };
+  // The ids of the rows showing, in the order drawn: a folded group's rows
+  // are hidden, so a range goes past them.
+  const showing = () => [...rows].filter(([, li]) => !li.closest('.kit-folded')).map(([i]) => i);
+  let seen = false;
+  const off = selection.onChange(() => {
+    if (el.isConnected) seen = true;
+    else if (seen) {
+      off();
+      return;
+    }
+    paint();
+  });
+  const box = onclick => h('span', { class: 'kit-box', role: 'checkbox', 'aria-checked': 'false', onclick: e => { e.stopPropagation(); onclick(e); } });
+  return {
+    begin() { rows = new Map(); heads = []; },
+    row: draw => item => {
+      const i = String(id(item));
+      const li = draw(item);
+      li.querySelector(':scope > .kit-box')?.remove();
+      li.classList.add('kit-pickrow');
+      li.prepend(box(e => {
+        const from = selection.anchor();
+        if (e.shiftKey && from !== null) selection.range(from, i, showing());
+        else selection.toggle(i);
+      }));
+      rows.set(i, li);
+      return li;
+    },
+    head(items) {
+      const ids = items.map(it => String(id(it)));
+      const b = box(() => (ids.every(i => selection.has(i)) ? selection.deselect(ids) : selection.all(ids)));
+      heads.push({ box: b, ids });
+      return b;
+    },
+    end(items) {
+      const drawn = new Set(items.map(it => String(id(it))));
+      const gone = selection.ids().filter(i => !drawn.has(i));
+      if (gone.length) selection.deselect(gone);
+      paint();
     },
   };
 }
@@ -193,7 +271,7 @@ let dragging = null;
 // uncounted), and a ⋯ that moves it; the folds are kept under
 // <name>.folded.<key> ('1' folded, '' open), groups.folded starting folded
 // while none is kept. Every group is drawn alike.
-function sortedGroups({ name, groups, items, compare, row, redraw }) {
+function sortedGroups({ name, groups, items, compare, row, redraw, head: headBox }) {
   const orderKey = `${name}.order.${groups.name}`;
   const byKey = new Map();
   const labels = new Map();
@@ -223,7 +301,8 @@ function sortedGroups({ name, groups, items, compare, row, redraw }) {
   const uncounted = groups.uncounted || [];
   const startFolded = groups.folded || [];
   return shown.map((k, i) => {
-    const rows = [...byKey.get(k)].sort(compare).map(row);
+    const inGroup = [...byKey.get(k)].sort(compare);
+    const rows = inGroup.map(row);
     const label = labelOf(k);
     const prev = shown[i - 1];
     const next = shown[i + 1];
@@ -241,7 +320,7 @@ function sortedGroups({ name, groups, items, compare, row, redraw }) {
       ],
     });
     const sec = h('section', { class: 'kit-card kit-group', 'data-group': k },
-      h('div', { class: 'kit-group-line' }, grip, head, menu),
+      h('div', { class: 'kit-group-line' }, grip, headBox ? headBox(inGroup) : null, head, menu),
       h('ul', { class: 'kit-group-rows' }, rows));
     const foldKey = `${name}.folded.${k}`;
     const set = on => {

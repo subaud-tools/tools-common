@@ -1054,6 +1054,15 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-sorted .kit-group-line > .kit-group-head:hover { color: var(--kit-signal); }
 .kit-group-grip { color: var(--kit-muted); cursor: grab; letter-spacing: -2px; user-select: none; }
 .kit-group-line > .kit-row-menu { flex: none; }
+/* a sorted list's tick boxes (sortedList's pick): one at the start of each
+   row and on each group's head (or the card's, with no groups); a ticked
+   box is filled, a part-ticked one shows a dash, a ticked row is tinted */
+.kit-pickrow { position: relative; padding-left: 26px; }
+.kit-pickrow > .kit-box { position: absolute; left: 0; top: 13px; margin: 0; cursor: pointer; }
+.kit-pickrow.sel { background: color-mix(in srgb, var(--kit-signal) 8%, transparent); }
+.kit-group-line > .kit-box { margin: 0 4px 0 0; flex: none; cursor: pointer; }
+.kit-box[aria-checked="true"] { background: var(--kit-signal); border-color: var(--kit-signal); }
+.kit-box[aria-checked="mixed"] { background: linear-gradient(var(--kit-signal), var(--kit-signal)) center / 8px 2px no-repeat; border-color: var(--kit-signal); }
 .kit-group.kit-drop-before { box-shadow: 0 -2px 0 var(--kit-signal); }
 .kit-group.kit-drop-after { box-shadow: 0 2px 0 var(--kit-signal); }
 /* a row's ⋯ menu (frontpage.js rowMenu): the pop-out shows in the top layer,
