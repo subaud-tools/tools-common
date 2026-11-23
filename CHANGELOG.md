@@ -4,6 +4,11 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.123.0
+
+### Added
+- guide: entries for billet (beta) and imprint, so their pages' Guide content, billet's beta mark and the using-the-tools skill know them. Both join `guide.Family`.
+
 ## 0.122.0
 
 ### Added
