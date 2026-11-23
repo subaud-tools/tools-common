@@ -4,6 +4,14 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.125.0
+
+### Added
+- `localweb/page/build/test-kit.mjs`: a node loader, run as `node --import ./build/test-kit.mjs`, that resolves each `/_kit/<file>` import to the page kit's file in the tools-common module the tool's `go.mod` pins (found with `go list -m`), as serve does for the page. A tool's node tests, probes and gates of modules that import `/_kit/kit.js` run on the kit itself. Taken from diazo's `web/test-kit.mjs`; a tool's build copies it like the other `build/` files.
+
+### Changed
+- kit: the comments in `share.js`, `share.css` and `kit.d.ts` no longer say galley bundles `share.js` alone without `kit.css`: every page takes it from `/_kit/kit.js`, styled by `share.css` through `kit.css`.
+
 ## 0.124.0
 
 ### Added

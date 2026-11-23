@@ -37,11 +37,11 @@ func buildTool(t *testing.T) string {
 		t.Fatal(err)
 	}
 	// The files a tool without diagrams copies (mermaid-entry.ts is for one
-	// that builds a mermaid bundle), with record-bundle.mjs.
+	// that builds a mermaid bundle), with record-bundle.mjs and test-kit.mjs.
 	if err := os.MkdirAll(filepath.Join(dir, "build"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []string{"eslint.base.mjs", "probe.mjs", "record-bundle.mjs"} {
+	for _, f := range []string{"eslint.base.mjs", "probe.mjs", "record-bundle.mjs", "test-kit.mjs"} {
 		b, err := os.ReadFile(filepath.Join("build", f))
 		if err != nil {
 			t.Fatal(err)
@@ -128,6 +128,31 @@ try { base({ root: '/r', testFiles: [], maxTestFiles: 24 }); } catch (e) { conso
 		want := `[{"projectService":{"allowDefaultProject":["*.test.ts"],"maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING":24},"tsconfigRootDir":"/r"},"error",true,"off",["node_modules/","x.js"]]` + "\n" +
 			"eslint.base.mjs: pass root: import.meta.dirname\n" +
 			"eslint.base.mjs: maxTestFiles caps how many files match testFiles, and testFiles is []\n"
+		if out != want {
+			t.Fatalf("got\n%s\nwant\n%s", out, want)
+		}
+	})
+
+	// test-kit.mjs finds the kit through go list in a tool that pins this
+	// module (here by a replace to this checkout) and resolves /_kit/ there.
+	t.Run("test-kit.mjs resolves /_kit/ to the pinned module", func(t *testing.T) {
+		root, err := filepath.Abs("../..")
+		if err != nil {
+			t.Fatal(err)
+		}
+		mod := "module buildtool\n\ngo 1.26\n\nrequire github.com/subaud-tools/tools-common v0.0.0\n\nreplace github.com/subaud-tools/tools-common => " + root + "\n"
+		if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = os.Remove(filepath.Join(dir, "go.mod")) }()
+		const script = `const share = await import('/_kit/share.js');
+console.log(import.meta.resolve('/_kit/kit.js'));
+console.log(share.SHARE_LABEL);`
+		out, err := runIn(t, dir, nil, "node", "--import", "./build/test-kit.mjs", "--input-type=module", "-e", script)
+		if err != nil {
+			t.Fatalf("node: %v\n%s", err, out)
+		}
+		want := "file://" + filepath.Join(root, "localweb", "page", "assets", "kit.js") + "\nShare ▾\n"
 		if out != want {
 			t.Fatalf("got\n%s\nwant\n%s", out, want)
 		}

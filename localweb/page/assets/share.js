@@ -2,9 +2,9 @@
 //
 // The kit's half is the menu and its words: the labels, the status line
 // after a Share, and how long that line stays. The tool's half is which
-// items to pass and what each one does, in onPick. It imports nothing, so a
-// page without the rest of the kit (galley) can bundle it alone; share.css
-// styles it through --share-* properties.
+// items to pass and what each one does, in onPick. It imports nothing; a page
+// takes it from /_kit/kit.js like the rest of the kit, and share.css (which
+// kit.css imports) styles it through --share-* properties.
 
 export const SHARE_LABEL = 'Share ▾';
 export const SHARE_DOWNLOAD_HTML = 'Download HTML';

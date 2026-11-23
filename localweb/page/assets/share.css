@@ -2,7 +2,7 @@
 
    It reads only --share-* properties, each defaulting to a kit token and
    then to a literal, so it looks right under kit.css (which imports it) and
-   a page without kit.css (galley) sets them to its own colours:
+   a page can set them to its own colours:
 
      --share-ground  the menu's ground       (--kit-card)
      --share-ink     its text                (--kit-fg)
