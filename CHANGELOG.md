@@ -4,6 +4,17 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.124.0
+
+### Added
+- kit: `sortedList` takes `pick: { selection, id(item) }`: each row (class `kit-pickrow`, `sel` while ticked) starts with the kit's tick box (`span.kit-box`, role `checkbox`), bound to a `createSelection` store by `id(item)`. Each group's head gets a box between its grip and its fold, and with no groups the card opens with a `div.kit-group-line` holding one box and then `title`'s heading; a head's box ticks every row under it, or unticks them all when all are, and reads `aria-checked="mixed"` while only some are. A press on a box neither opens a row nor folds a group. Shift-click on a row's box sets the rows showing from the store's anchor to it (a folded group's rows are left out). Ticks are kept by id across presses and `set`, and after each draw an id no item drawn has is deselected. The kit adds no actions: the page reads `selection.ids()`.
+- kit: `sortedList` takes `groupings: [{ value, label, groups }]` (`groups: null` for one card): a group switch (`sortSwitch` labelled group) before the sort switch, over the cards or, given a band, in its sort place, which is then `div.kit-band-sorts` holding `div.kit-band-sort.kit-band-group` (the chips and their own compact picker for a phone) and the sort's `div.kit-band-sort`. A press regroups in place as `set(items, groups)` does, keeping the sort, each grouping's kept order and folds, and the ticks; the sort reads "sort in groups" while the grouping chosen has groups. The choice is remembered under `<name>.group`, the first grouping when none is or the one remembered is gone. With `groupings`, `groups` is ignored, in the call and in `set`.
+- A `sortedList` given neither draws exactly as before.
+
+### Changed
+- `PAGE-STANDARD.md`: the front-page rule lets a list offer several groupings on a group switch before the sort in the band's sort place, one of which may be by a left-column filter, since the reader chooses it (`sortedList`'s `groupings`). The layout skill's second line's end says the same.
+- `PAGE-STANDARD.md`: a new rule says picking several rows of a front page's list is the list's tick boxes (`sortedList`'s `pick`), with the actions on what is picked in the band (the main one a fold entry at the end of the title line, the rest in the band's ⋯), never in a toolbar over the list. The layout skill's middle column and its list of what never goes where say the same.
+
 ## 0.123.0
 
 ### Added
