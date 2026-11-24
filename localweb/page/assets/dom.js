@@ -94,7 +94,7 @@ function alsoOpen() {
 // "also open" button, the live pill, Guide, theme, and the one filled primary
 // button. On a hosted machine (the guide answer carries pageserve's place) it
 // starts with the workspace, a link to billet's start page for it, and the
-// diazo | proj | galley switch with the page's tool filled in; on a device
+// diazo | cast | galley switch with the page's tool filled in; on a device
 // both stay hidden and the bar is as it was.
 export function bar(o) {
   const ctls = new Map();
@@ -180,7 +180,7 @@ export function bar(o) {
 
   const brand = h(o.brand.href ? 'a' : 'span', { class: 'kit-brand', href: o.brand.href || null }, o.brand.mark || null, o.brand.name);
   // The workspace and the switch, hidden until the guide says the page is on
-  // a hosted machine. Their links open in the top window: inside proj's split
+  // a hosted machine. Their links open in the top window: inside cast's split
   // page a tool's page is a frame.
   const ws = h('a', { class: 'kit-bar-ws', target: '_top', hidden: true });
   const toolSwitch = h('span', { class: 'kit-bar-switch', hidden: true });

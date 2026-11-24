@@ -309,14 +309,14 @@ test('spotlight: ok on the note clears it and posts kit:spotlight-done; a click 
   const fx = fixture();
   fx.innerHTML = '<div data-walk="split" style="width:200px;height:80px"></div>';
   const d = done();
-  await spotlight(step({ n: 1, tool: 'proj', walk: 'split', ok: true }));
+  await spotlight(step({ n: 1, tool: 'cast', walk: 'split', ok: true }));
   fx.querySelector('div').click();
   await sleep(30);
   eq(d.got, [], 'the area itself');
   document.querySelector('.kit-spot-ok').click();
   await sleep(30);
   d.stop();
-  eq(d.got, [{ type: 'kit:spotlight-done', n: 1, tool: 'proj', walk: 'split' }]);
+  eq(d.got, [{ type: 'kit:spotlight-done', n: 1, tool: 'cast', walk: 'split' }]);
   assert(!document.querySelector('.kit-spot-card'), 'cleared');
 });
 
@@ -351,20 +351,20 @@ test('live: a spotlight event draws on any kit page, and an empty one clears, wi
 test('spotlight: while the control is missing the note is the preparing line with no ring, then the title and note with the ring once it appears', async () => {
   const fx = fixture();
   fx.innerHTML = '';
-  await spotlight(step({ n: 2, of: 6, tool: 'proj', walk: 'proj-tab', prepare: "Your agent is opening proj's own page as a tab on the right. When it's there, you'll press its tab.", title: 'Press the proj tab.', note: 'The right side holds the pages.' }));
+  await spotlight(step({ n: 2, of: 6, tool: 'cast', walk: 'cast-tab', prepare: "Your agent is opening cast's own page as a tab on the right. When it's there, you'll press its tab.", title: 'Press the cast tab.', note: 'The right side holds the pages.' }));
   await sleep(30);
   const card = document.querySelector('.kit-spot-card');
   const shown = sel => { const e = card.querySelector(sel); return !!e && !e.hidden; };
   assert(card && !card.hidden, 'the note shows');
   assert(document.querySelector('.kit-spot-ring').hidden, 'no ring while preparing');
-  eq(card.querySelector('.kit-spot-wait').textContent, "Your agent is opening proj's own page as a tab on the right. When it's there, you'll press its tab.");
+  eq(card.querySelector('.kit-spot-wait').textContent, "Your agent is opening cast's own page as a tab on the right. When it's there, you'll press its tab.");
   assert(shown('.kit-spot-wait') && !shown('.kit-spot-title') && !shown('.kit-spot-note'), 'only the preparing line');
   eq(card.querySelector('.kit-spot-count').textContent, '2 of 6');
-  fx.innerHTML = '<button data-walk="proj-tab" style="margin:40px">proj</button>';
+  fx.innerHTML = '<button data-walk="cast-tab" style="margin:40px">cast</button>';
   await sleep(30);
   assert(!document.querySelector('.kit-spot-ring').hidden, 'ringed once it showed');
   assert(!shown('.kit-spot-wait') && shown('.kit-spot-title') && shown('.kit-spot-note'), 'the doing note now');
-  eq(card.querySelector('.kit-spot-title').textContent, 'Press the proj tab.');
+  eq(card.querySelector('.kit-spot-title').textContent, 'Press the cast tab.');
   fx.innerHTML = '';
   await sleep(300);
   assert(shown('.kit-spot-wait') && document.querySelector('.kit-spot-ring').hidden, 'back to preparing when it goes');
@@ -430,7 +430,7 @@ function next() {
   addEventListener('message', on);
   return { got, stop: () => removeEventListener('message', on) };
 }
-const endCard = o => ({ end: { tool: 'proj', learned: ['A session is a terminal.', 'It keeps running.'], next: "Plan a small change on diazo's page.", next_tool: 'diazo', ...o } });
+const endCard = o => ({ end: { tool: 'cast', learned: ['A session is a terminal.', 'It keeps running.'], next: "Plan a small change on diazo's page.", next_tool: 'diazo', ...o } });
 
 test('spotlight: an end card shows centred with what was learned, no ring, and its button posts kit:walk-next with next_tool', async () => {
   const fx = fixture();
@@ -454,7 +454,7 @@ test('spotlight: an end card shows centred with what was learned, no ring, and i
   btn.click();
   await sleep(30);
   d.stop();
-  eq(d.got, [{ type: 'kit:walk-next', tool: 'proj', next_tool: 'diazo' }]);
+  eq(d.got, [{ type: 'kit:walk-next', tool: 'cast', next_tool: 'diazo' }]);
   assert(!document.querySelector('.kit-spot-card'), 'cleared');
 });
 
@@ -604,7 +604,7 @@ test('spotlight: the ring and the note are above a dropdown\'s menu, opened befo
 
 test('spotlight: an intro card keeps the focus on Start when a menu opens under it', async () => {
   const { more, pop } = walkRow();
-  await spotlight({ intro: { tool: 'proj', title: 'Sessions', text: 'Where your agents run.' } });
+  await spotlight({ intro: { tool: 'cast', title: 'Sessions', text: 'Where your agents run.' } });
   const start = document.querySelector('.kit-spot-start');
   assert(document.activeElement === start, 'Start has the focus');
   more.click();

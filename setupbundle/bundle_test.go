@@ -16,9 +16,9 @@ import (
 var (
 	manifest = []byte("schema = 2\n\n[packages.integration]\n")
 	files    = map[string][]byte{
-		"zsh/proj.zsh":                    []byte("proj() { command proj \"$@\"; }\n"),
-		"skills/proj/SKILL.md":            []byte("---\nname: proj\ndescription: the proj skill\n---\nbody\n"),
-		"skills/proj/references/hooks.md": []byte("# hooks\n"),
+		"zsh/cast.zsh":                    []byte("cast() { command cast \"$@\"; }\n"),
+		"skills/cast/SKILL.md":            []byte("---\nname: cast\ndescription: the cast skill\n---\nbody\n"),
+		"skills/cast/references/hooks.md": []byte("# hooks\n"),
 	}
 )
 
@@ -45,7 +45,7 @@ func fixture() fstest.MapFS {
 }
 
 func TestBuildThenReadKeepsIdentityAndFiles(t *testing.T) {
-	data, err := setupbundle.Build("proj", "1.2.3", manifest, fixture())
+	data, err := setupbundle.Build("cast", "1.2.3", manifest, fixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,8 +53,8 @@ func TestBuildThenReadKeepsIdentityAndFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if b.Tool != "proj" || b.Version != "1.2.3" {
-		t.Errorf("identity = %q %q, want proj 1.2.3", b.Tool, b.Version)
+	if b.Tool != "cast" || b.Version != "1.2.3" {
+		t.Errorf("identity = %q %q, want cast 1.2.3", b.Tool, b.Version)
 	}
 	if !bytes.Equal(b.Manifest, manifest) {
 		t.Errorf("manifest = %q, want %q", b.Manifest, manifest)
@@ -70,17 +70,17 @@ func TestBuildThenReadKeepsIdentityAndFiles(t *testing.T) {
 func TestBuildRefusesAToolFileAtAFamilySkillsPath(t *testing.T) {
 	m := fixture()
 	m["skills/using-the-tools/SKILL.md"] = &fstest.MapFile{Data: []byte("mine"), Mode: 0o644}
-	if _, err := setupbundle.Build("proj", "1.2.3", manifest, m); err == nil || !strings.Contains(err.Error(), "skills/using-the-tools/SKILL.md") {
+	if _, err := setupbundle.Build("cast", "1.2.3", manifest, m); err == nil || !strings.Contains(err.Error(), "skills/using-the-tools/SKILL.md") {
 		t.Fatalf("got %v", err)
 	}
 }
 
 func TestBuildIsDeterministic(t *testing.T) {
-	a, err := setupbundle.Build("proj", "1.2.3", manifest, fixture())
+	a, err := setupbundle.Build("cast", "1.2.3", manifest, fixture())
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := setupbundle.Build("proj", "1.2.3", manifest, fixture())
+	b, err := setupbundle.Build("cast", "1.2.3", manifest, fixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func archive(t *testing.T, entries ...entry) []byte {
 	return buf.Bytes()
 }
 
-const meta = `{"format":1,"tool":"proj","version":"1.2.3"}`
+const meta = `{"format":1,"tool":"cast","version":"1.2.3"}`
 
 func TestReadRejectsUnsupportedFormat(t *testing.T) {
 	ok := archive(t, entry{name: "setup.json", body: meta}, entry{name: "setup.toml", body: string(manifest)})
@@ -133,7 +133,7 @@ func TestReadRejectsUnsupportedFormat(t *testing.T) {
 		t.Fatalf("Read refused format 1: %v", err)
 	}
 	data := archive(t,
-		entry{name: "setup.json", body: `{"format":2,"tool":"proj","version":"1.2.3"}`},
+		entry{name: "setup.json", body: `{"format":2,"tool":"cast","version":"1.2.3"}`},
 		entry{name: "setup.toml", body: string(manifest)},
 	)
 	if _, err := setupbundle.Read(data); err == nil {
@@ -145,14 +145,14 @@ func TestReadRejectsSourceOutsideBundle(t *testing.T) {
 	ok := archive(t,
 		entry{name: "setup.json", body: meta},
 		entry{name: "setup.toml", body: string(manifest)},
-		entry{name: "files/zsh/proj.zsh", body: "x"},
+		entry{name: "files/zsh/cast.zsh", body: "x"},
 	)
 	if _, err := setupbundle.Read(ok); err != nil {
 		t.Fatalf("Read refused a regular file under files/: %v", err)
 	}
 	for name, e := range map[string]entry{
 		"path escaping files/": {name: "files/../../.zshrc", body: "x"},
-		"symlink out":          {name: "files/zsh/proj.zsh", typ: tar.TypeSymlink, link: "/etc/passwd"},
+		"symlink out":          {name: "files/zsh/cast.zsh", typ: tar.TypeSymlink, link: "/etc/passwd"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			data := archive(t,

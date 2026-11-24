@@ -455,7 +455,7 @@ func TestOpenMovesTheToolsFrontPageTabToThePage(t *testing.T) {
 		t.Fatalf("diazo: tabs = %v, want the front page moved to the plan", got)
 	}
 	// Behind, the front page still moves, and what shows stays.
-	_, _ = tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4007/", Title: "proj"})
+	_, _ = tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4007/", Title: "cast"})
 	_, _ = tabs.Select("s", other.Selected)
 	l, _ = tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4007/guide", Behind: true})
 	if got := addresses(l); len(got) != 4 || got[3] != "http://127.0.0.1:4007/guide" || l.Selected != other.Selected {

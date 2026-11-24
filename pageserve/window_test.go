@@ -13,7 +13,7 @@ import (
 
 var inTmux = Where{Socket: "/tmp/tmux-501/default", Pane: "%3"}
 
-// fakeProj replaces proj for the test: answer gives each call's output and
+// fakeProj replaces cast for the test: answer gives each call's output and
 // exit code by its subcommand, and every call is recorded.
 func fakeProj(t *testing.T, answer func(sub string) ([]byte, int, error)) *[][]string {
 	t.Helper()
@@ -106,7 +106,7 @@ func TestTerminalGoAsksProjToShowIt(t *testing.T) {
 	}
 }
 
-// A Where that knows its tmux session's name passes it, so proj can open that
+// A Where that knows its tmux session's name passes it, so cast can open that
 // session when the pane is gone; one without it asks as before.
 func TestTerminalPassesTheSession(t *testing.T) {
 	named := inTmux
@@ -149,7 +149,7 @@ func TestTerminalOfRefusesAnUnknownState(t *testing.T) {
 
 func TestTerminalOfSaysWhatProjSaid(t *testing.T) {
 	fakeProj(t, func(string) ([]byte, int, error) { return []byte("no such pane\n"), 3, nil })
-	if _, err := TerminalOf(inTmux); err == nil || err.Error() != "proj terminal exited 3: no such pane" {
+	if _, err := TerminalOf(inTmux); err == nil || err.Error() != "cast terminal exited 3: no such pane" {
 		t.Fatalf("%v", err)
 	}
 }
@@ -171,7 +171,7 @@ func TestWindowPutsThePageOnTheRight(t *testing.T) {
 
 func TestWindowSaysWhatProjSaid(t *testing.T) {
 	fakeProj(t, func(string) ([]byte, int, error) { return []byte("no chrome\n"), 2, nil })
-	if err := Window(inTmux, "u", false); err == nil || err.Error() != "proj window exited 2: no chrome" {
+	if err := Window(inTmux, "u", false); err == nil || err.Error() != "cast window exited 2: no chrome" {
 		t.Fatalf("%v", err)
 	}
 }
@@ -201,7 +201,7 @@ func TestShowOpensWithNoWindowAndNoTab(t *testing.T) {
 		t.Fatalf("%q", got)
 	}
 	if len(*calls) != 1 {
-		t.Fatalf("proj window ran: %v", *calls)
+		t.Fatalf("cast window ran: %v", *calls)
 	}
 }
 
@@ -248,7 +248,7 @@ func TestShowLeavesTabsOnOtherPages(t *testing.T) {
 	}
 }
 
-// Outside tmux there is no Where: proj never runs, and tabs answer.
+// Outside tmux there is no Where: cast never runs, and tabs answer.
 func TestShowOutsideTmuxUsesTabs(t *testing.T) {
 	calls := withTerminal(t, `{"state":"attached","window":true}`)
 	log := logged(t)
@@ -260,21 +260,21 @@ func TestShowOutsideTmuxUsesTabs(t *testing.T) {
 	}
 }
 
-// proj failing, at either step, falls to the tabs, and the error is logged.
+// cast failing, at either step, falls to the tabs, and the error is logged.
 func TestShowFallsToTabsWhenProjFails(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		answer func(string) ([]byte, int, error)
 		want   string
 	}{
-		{"not installed", func(string) ([]byte, int, error) { return nil, -1, errors.New("proj not found") }, "proj not found"},
-		{"terminal fails", func(string) ([]byte, int, error) { return []byte("bad"), 1, nil }, "proj terminal exited 1: bad"},
+		{"not installed", func(string) ([]byte, int, error) { return nil, -1, errors.New("cast not found") }, "cast not found"},
+		{"terminal fails", func(string) ([]byte, int, error) { return []byte("bad"), 1, nil }, "cast terminal exited 1: bad"},
 		{"window fails", func(sub string) ([]byte, int, error) {
 			if sub == "terminal" {
 				return []byte(`{"state":"attached","window":true}`), 0, nil
 			}
 			return []byte("no chrome"), 2, nil
-		}, "proj window exited 2: no chrome"},
+		}, "cast window exited 2: no chrome"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeProj(t, tc.answer)
@@ -302,7 +302,7 @@ func TestWhereInto(t *testing.T) {
 	}
 }
 
-// A location missing its socket or pane opens no window: proj isn't run.
+// A location missing its socket or pane opens no window: cast isn't run.
 func TestWindowOutsideTmuxRunsNoProj(t *testing.T) {
 	calls := withTerminal(t, `{}`)
 	for _, w := range []Where{{}, {Socket: "/tmp/s"}, {Pane: "%3"}} {

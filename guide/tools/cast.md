@@ -1,9 +1,9 @@
 ---
-name: proj
+name: cast
 summary: Opens each project in its own terminal session, with the agent you choose running in it and its pages beside the terminal.
 weight: core
 asks:
-  - Open a proj session for ‹project› so I can work on ‹what› there.
+  - Open a cast session for ‹project› so I can work on ‹what› there.
   - Start a new session for this in ‹project›, and hand it the task.
   - Which sessions are running, and which ones need me?
 ---
@@ -17,16 +17,16 @@ asks:
 ## When to skip it
 
 - One quick question in the terminal you already have open.
-- A project you only open once: there's no need to add it to proj's list.
+- A project you only open once: there's no need to add it to cast's list.
 
 ## Where it sits
 
-Underneath everything. Each session proj opens is where the rest happens: diazo, galley and muda pages open beside its terminal, and sessions it opens find each other over muster.
+Underneath everything. Each session cast opens is where the rest happens: diazo, galley and muda pages open beside its terminal, and sessions it opens find each other over muster.
 
 ## Pointers
 
 - **Your agent opens sessions without moving you.** A session it starts opens in the background; you switch to it when you're ready.
 - **One session per piece of work** is named ‹project›/‹work›, and that name is how other sessions address it.
-- **Pages open beside the terminal.** In proj's split view, the session's terminal is on the left and the tools' pages are tabs on the right.
-- **A session waiting on you glows** in proj's list, so you can see at a glance where you're needed.
-- **Projects are folders you name once.** Ask your agent to add a folder to proj's list of projects.
+- **Pages open beside the terminal.** In cast's split view, the session's terminal is on the left and the tools' pages are tabs on the right.
+- **A session waiting on you glows** in cast's list, so you can see at a glance where you're needed.
+- **Projects are folders you name once.** Ask your agent to add a folder to cast's list of projects.

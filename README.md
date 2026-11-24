@@ -304,7 +304,7 @@ for visual review.
 The words a person reads about the family live once, in `guide/`, and every
 binary built on tools-common embeds them. A person starts as
 [subaud.tools](https://subaud.tools/) says: after buying and
-setting up a machine, they say "Get me started with subaud." in the proj
+setting up a machine, they say "Get me started with subaud." in the cast
 session their agent opens, and the walks below run. After that, the Guide
 button on any tool's page says when to reach for each tool and what to ask.
 
@@ -318,18 +318,18 @@ button on any tool's page says when to reach for each tool and what to ask.
   `Data`, and the page kit's Guide button (`guide.js`, above) draws it over
   the page.
 - **Walks** (`guide/walks/<tool>.md`, `walk.go`): the getting-started walks
-  for the tools in `WalkTools` (proj, diazo, galley, in the order "Get me
+  for the tools in `WalkTools` (cast, diazo, galley, in the order "Get me
   started with subaud." runs them; "Show me around ‹tool›." runs one). Each
   has an intro card, its steps (the control a page lights, the agent's work,
   a preparing note and the note once the control is there) and an end card.
-  proj runs them (`proj guide start`) and the kit's spotlight draws them.
+  cast runs them (`cast guide start`) and the kit's spotlight draws them.
 - **Family skills** (`guide/templates/*.md.tmpl`, `Skills()`):
   `using-the-tools`, the agent's map of which tool a request calls for, from
   the tool sections and `fit.md`; and `getting-started-with-subaud`, how the
   agent runs the walks, from `walks/`. They carry `owner: family`, so every
   tool's `skills install` writes the same two.
 - **Lessons** (`guide/lessons/`, `intro.md`): the older lesson walk, which
-  proj's lesson tab still reads.
+  cast's lesson tab still reads.
 
 Every ask in the guide is something the person says to their agent; `load`
 refuses text that tells them to type a family command, naming the file and

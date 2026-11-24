@@ -29,7 +29,7 @@ func TestOpenTakesAPublicAddressWithTheSetting(t *testing.T) {
 	if _, err := tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4001/", Title: "Local"}); err != nil {
 		t.Fatalf("a loopback address beside it: %v", err)
 	}
-	if _, err := tabs.Replace("s", l.Tabs[0].ID, "https://proj.ws.example.com/term"); err != nil {
+	if _, err := tabs.Replace("s", l.Tabs[0].ID, "https://cast.ws.example.com/term"); err != nil {
 		t.Fatalf("replace with a public address: %v", err)
 	}
 }

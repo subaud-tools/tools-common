@@ -1,10 +1,10 @@
 package pageserve
 
 // The session's Chrome window: a session running in tmux has a terminal and,
-// through proj, a Chrome window holding its split page (splitpage: the terminal
+// through cast, a Chrome window holding its split page (splitpage: the terminal
 // on the left, its tabs on the right), and a page it opens goes there as a tab.
 // Moved from diazo's internal/serve/terminal.go and internal/channel/tools.go,
-// with the plan's owner as a Where. Anything in proj is used as it is.
+// with the plan's owner as a Where. Anything in cast is used as it is.
 
 import (
 	"context"
@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	tools "github.com/subaud-tools/tools-common"
 	"github.com/subaud-tools/tools-common/localweb"
 )
 
@@ -51,7 +52,7 @@ func (w Where) Into(body map[string]any) {
 	}
 }
 
-// TerminalState is where a session's tmux session stands, as proj terminal
+// TerminalState is where a session's tmux session stands, as cast terminal
 // reads it: a terminal attached, running with none, or gone.
 type TerminalState string
 
@@ -66,7 +67,7 @@ func (TerminalState) Values() []string {
 	return []string{string(TerminalAttached), string(TerminalDetached), string(TerminalEnded)}
 }
 
-// Terminal is proj terminal's answer for a session. Window says the session has
+// Terminal is cast terminal's answer for a session. Window says the session has
 // a Chrome window, whichever terminal shows it; Chrome says that window's page
 // is the view that shows it.
 type Terminal struct {
@@ -76,18 +77,18 @@ type Terminal struct {
 	Window  bool          `json:"window,omitempty"`
 }
 
-// How long proj may take to read a state, and to show or open a terminal
+// How long cast may take to read a state, and to show or open a terminal
 // (opening waits for the new window to attach).
 const (
 	terminalRead = 5 * time.Second
 	terminalGo   = 30 * time.Second
 )
 
-// Proj runs proj with args and returns its stdout, with stderr added when it
+// Proj runs cast with args and returns its stdout, with stderr added when it
 // fails, and its exit code; err when it could not run at all. A test replaces it
 // (a tool's too, for its own routes on these calls).
 var Proj = func(ctx context.Context, args ...string) ([]byte, int, error) {
-	out, err := exec.CommandContext(ctx, "proj", args...).Output()
+	out, err := exec.CommandContext(ctx, tools.CastName, args...).Output()
 	var ee *exec.ExitError
 	if errors.As(err, &ee) {
 		return append(out, ee.Stderr...), ee.ExitCode(), nil
@@ -98,12 +99,12 @@ var Proj = func(ctx context.Context, args ...string) ([]byte, int, error) {
 	return out, 0, nil
 }
 
-// TerminalOf runs proj terminal for the session at w. It is nil, with no error,
+// TerminalOf runs cast terminal for the session at w. It is nil, with no error,
 // outside tmux, which a w missing its socket or its pane is too; an error says
-// why proj gave no state.
+// why cast gave no state.
 func TerminalOf(w Where) (*Terminal, error) { return terminal(w, false) }
 
-// TerminalGo is TerminalOf with --go: proj shows the session in a terminal, or
+// TerminalGo is TerminalOf with --go: cast shows the session in a terminal, or
 // opens one, and this is the state after it.
 func TerminalGo(w Where) (*Terminal, error) { return terminal(w, true) }
 
@@ -127,14 +128,14 @@ func terminal(w Where, goTo bool) (*Terminal, error) {
 	case err != nil:
 		return nil, err
 	case code != 0:
-		return nil, fmt.Errorf("proj terminal exited %d: %s", code, strings.TrimSpace(string(out)))
+		return nil, fmt.Errorf("cast terminal exited %d: %s", code, strings.TrimSpace(string(out)))
 	}
 	var t Terminal
 	if err := json.Unmarshal(out, &t); err != nil {
-		return nil, fmt.Errorf("proj terminal: %w", err)
+		return nil, fmt.Errorf("cast terminal: %w", err)
 	}
 	if !slices.Contains(t.State.Values(), string(t.State)) {
-		return nil, fmt.Errorf("proj terminal: unknown state %q", t.State)
+		return nil, fmt.Errorf("cast terminal: unknown state %q", t.State)
 	}
 	return &t, nil
 }
@@ -147,11 +148,11 @@ var ErrNotInTmux = errors.New("the session isn't in tmux")
 // one whose location was only half recorded, has no window.
 func (w Where) Known() bool { return w.Socket != "" && w.Pane != "" }
 
-// Window runs proj window for the session at w, which opens the session's Chrome
+// Window runs cast window for the session at w, which opens the session's Chrome
 // window or brings it forward, and opens url as a tab of the session's split
 // page, beside the terminal; with keepView a terminal showing the session
-// elsewhere keeps it. proj refuses a url that isn't one of our pages on
-// 127.0.0.1. An error carries what proj said.
+// elsewhere keeps it. cast refuses a url that isn't one of our pages on
+// 127.0.0.1. An error carries what cast said.
 func Window(w Where, url string, keepView bool) error {
 	if !w.Known() {
 		return ErrNotInTmux
@@ -167,7 +168,7 @@ func Window(w Where, url string, keepView bool) error {
 	case err != nil:
 		return err
 	case code != 0:
-		return fmt.Errorf("proj window exited %d: %s", code, strings.TrimSpace(string(out)))
+		return fmt.Errorf("cast window exited %d: %s", code, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
@@ -180,7 +181,7 @@ const (
 	ShowOpened = "opened"
 )
 
-// showLog is where Show says why proj gave no window: stderr, which is serve's
+// showLog is where Show says why cast gave no window: stderr, which is serve's
 // log. Tests replace it.
 var showLog io.Writer = os.Stderr
 
@@ -188,7 +189,7 @@ var showLog io.Writer = os.Stderr
 // it has a window, and otherwise in a browser tab: one that shows it, a front-page tab asked through
 // events to move to it, or tabs on other pages, which list it in their bar. It
 // opens nothing itself: on ShowOpened the caller's channel opens the browser. A
-// proj that fails costs the window only, and is logged.
+// cast that fails costs the window only, and is logged.
 func Show(w Where, url string, events *Events, page string) string {
 	if showInWindow(w, url) {
 		return ShowWindow

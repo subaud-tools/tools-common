@@ -7,7 +7,7 @@ type Query struct {
 	Theme    *Resolved `json:"theme,omitempty"`
 }
 
-// Resolved identifies the remembered proj session, not an agent conversation.
+// Resolved identifies the remembered cast session, not an agent conversation.
 type Resolved struct {
 	SessionID  string     `json:"session_id"`
 	GroupID    string     `json:"group_id"`

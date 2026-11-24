@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	tools "github.com/subaud-tools/tools-common"
 )
 
 //go:embed walks/*.md
@@ -17,7 +19,7 @@ var walkContent embed.FS
 
 // WalkTools are the tools with a getting-started walk, in the order
 // "Get me started with subaud." runs them; walks/<tool>.md holds each.
-var WalkTools = []string{"proj", "diazo", "galley"}
+var WalkTools = []string{tools.CastName, "diazo", "galley"}
 
 // Walk is one tool's getting-started walk: its intro card, its clicks, then
 // the end card.
@@ -44,7 +46,7 @@ type WalkIntro struct {
 // the Ready element is when the control appears only after the learner acts
 // (galley's Add instruction, after a selection). The
 // learner's click on the control moves the walk on (the page posts
-// kit:spotlight-done to proj's split page), so a step names no tool event.
+// kit:spotlight-done to cast's split page), so a step names no tool event.
 // Its JSON is the body pageserve's POST /api/kit/spotlight takes and the
 // kit's spotlight() draws; Agent is for the agent and is left out of it.
 // N and Of count within the step's walk.
@@ -86,7 +88,7 @@ var walksLoaded = sync.OnceValues(func() ([]Walk, error) {
 	return out, errors.Join(errs...)
 })
 
-// Walks returns the getting-started walks: proj, diazo, galley, in that order.
+// Walks returns the getting-started walks: cast, diazo, galley, in that order.
 func Walks() ([]Walk, error) { return walksLoaded() }
 
 // WalkFor returns one tool's walk.

@@ -41,7 +41,7 @@ const closeStopped = 4410;
 
 // What the tool filled in (splitpage.Config). The page is authenticated by
 // localweb's cookie, so no address here carries a token. A page opened with
-// ?session= is for that session (proj serves many from one server), and its
+// ?session= is for that session (cast serves many from one server), and its
 // own query goes on to the terminal socket.
 const pageQuery = new URLSearchParams(location.search);
 pageQuery.delete('t');

@@ -9,7 +9,7 @@ import (
 	"testing/fstest"
 )
 
-// The walks are proj's, diazo's and galley's, in that order, each its clicks
+// The walks are cast's, diazo's and galley's, in that order, each its clicks
 // on hooks the tools put on their pages under these exact names, and each
 // ending on a card that leads to the next walk (galley's leads nowhere).
 func TestWalksAreProjDiazoGalley(t *testing.T) {
@@ -21,7 +21,7 @@ func TestWalksAreProjDiazoGalley(t *testing.T) {
 		tool, next string
 		targets    []string
 	}{
-		{"proj", "diazo", []string{"split", "proj-tab", "sessions-tab", "open-ghostty", "folders-tab", "saved-tab"}},
+		{"cast", "diazo", []string{"split", "cast-tab", "sessions-tab", "open-ghostty", "folders-tab", "saved-tab"}},
 		{"diazo", "galley", []string{"reply", "direction", "choose", "approve-spec", "approve-plan"}},
 		{"galley", "", []string{"add-instruction", "revise", "approve", "share"}},
 	}
@@ -65,33 +65,33 @@ func TestWalksAreProjDiazoGalley(t *testing.T) {
 			t.Errorf("%s: end card %+v, want next_tool %q", w.Tool, w.End, wt.next)
 		}
 	}
-	proj, diazo, galley := ws[0].Steps, ws[1].Steps, ws[2].Steps
-	if !proj[0].OK || !proj[3].OK || slices.ContainsFunc(append(append(append([]WalkStep{}, proj[1:3]...), proj[4:]...), append(diazo, galley...)...), func(s WalkStep) bool { return s.OK }) {
-		t.Error("only proj's split page and ghostty notes carry an ok button")
+	cast, diazo, galley := ws[0].Steps, ws[1].Steps, ws[2].Steps
+	if !cast[0].OK || !cast[3].OK || slices.ContainsFunc(append(append(append([]WalkStep{}, cast[1:3]...), cast[4:]...), append(diazo, galley...)...), func(s WalkStep) bool { return s.OK }) {
+		t.Error("only cast's split page and ghostty notes carry an ok button")
 	}
 	// "Nothing to prepare." in the file is a step with nothing to prepare.
-	if proj[0].Prepare != "" || !strings.Contains(proj[1].Prepare, "opening proj's own page") || diazo[0].Prepare == "" {
-		t.Errorf("prepare lines: %q / %q / %q", proj[0].Prepare, proj[1].Prepare, diazo[0].Prepare)
+	if cast[0].Prepare != "" || !strings.Contains(cast[1].Prepare, "opening cast's own page") || diazo[0].Prepare == "" {
+		t.Errorf("prepare lines: %q / %q / %q", cast[0].Prepare, cast[1].Prepare, diazo[0].Prepare)
 	}
-	if proj[0].Title != "Press OK." || !strings.HasPrefix(proj[0].Note, "This window is a session") {
-		t.Errorf("the note's first line is its title: %q / %q", proj[0].Title, proj[0].Note)
+	if cast[0].Title != "Press OK." || !strings.HasPrefix(cast[0].Note, "This window is a session") {
+		t.Errorf("the note's first line is its title: %q / %q", cast[0].Title, cast[0].Note)
 	}
-	all := append(append(append([]WalkStep{}, proj...), diazo...), galley...)
+	all := append(append(append([]WalkStep{}, cast...), diazo...), galley...)
 	if slices.ContainsFunc(all, func(s WalkStep) bool { return strings.Contains(s.Agent, "scratch place") }) {
 		t.Error("an agent line points at the scratch place; the plan folder and the practice README are separate paths (diazo writes its own README.md in a plan's folder)")
 	}
 	if !strings.Contains(diazo[0].Agent, "practice plan's folder") || !strings.Contains(galley[0].Agent, "practice README") {
-		t.Errorf("diazo's and galley's first steps name the paths proj guide start prints: %q / %q", diazo[0].Agent, galley[0].Agent)
+		t.Errorf("diazo's and galley's first steps name the paths cast guide start prints: %q / %q", diazo[0].Agent, galley[0].Agent)
 	}
 	// galley's first control appears only once a passage is selected; the
 	// editor being there is when the step is ready.
-	if galley[0].Ready != "select-passage" || slices.ContainsFunc(append(append([]WalkStep{}, proj...), diazo...), func(s WalkStep) bool { return s.Ready != "" }) {
+	if galley[0].Ready != "select-passage" || slices.ContainsFunc(append(append([]WalkStep{}, cast...), diazo...), func(s WalkStep) bool { return s.Ready != "" }) {
 		t.Errorf("only galley's first step carries ready: %q", galley[0].Ready)
 	}
 	if b, _ := json.Marshal(galley[0]); !strings.Contains(string(b), `"ready":"select-passage"`) {
 		t.Errorf("galley step 1 JSON has no ready: %s", b)
 	}
-	if b, _ := json.Marshal(proj[1]); strings.Contains(string(b), `"ready"`) {
+	if b, _ := json.Marshal(cast[1]); strings.Contains(string(b), `"ready"`) {
 		t.Errorf("a step with no ready has one in its JSON: %s", b)
 	}
 	// diazo cites decisions only (and, in a spec, the agent's calls): the
@@ -109,8 +109,8 @@ func TestWalksAreProjDiazoGalley(t *testing.T) {
 // kit's Start.
 func TestEachWalkOpensOnItsIntroCard(t *testing.T) {
 	want := map[string]WalkIntro{
-		"proj": {Tool: "proj", Title: "proj: your sessions.",
-			Text: "proj keeps your work in sessions: one terminal for each piece of work, in its project. In six clicks you'll see your session's split page and the tabs beside it, proj's lists of your sessions and projects, and how a session comes back after a restart."},
+		"cast": {Tool: "cast", Title: "cast: your sessions.",
+			Text: "cast keeps your work in sessions: one terminal for each piece of work, in its project. In six clicks you'll see your session's split page and the tabs beside it, cast's lists of your sessions and projects, and how a session comes back after a restart."},
 		"diazo": {Tool: "diazo", Title: "diazo: plan before you build.",
 			Text: "diazo is where you and your agent agree on a change before anything is built. Your agent is opening a small practice plan for a ten-line README. In five clicks you'll answer its take, make a decision, and approve a spec and a plan."},
 		"galley": {Tool: "galley", Title: "galley: edit with your agent.",
@@ -137,7 +137,7 @@ func TestEachWalkOpensOnItsIntroCard(t *testing.T) {
 		}
 	}
 	b, _ := json.Marshal(map[string]WalkIntro{"intro": ws[0].Intro})
-	if !strings.HasPrefix(string(b), `{"intro":{"tool":"proj","title":"proj: your sessions.","text":"proj keeps`) {
+	if !strings.HasPrefix(string(b), `{"intro":{"tool":"cast","title":"cast: your sessions.","text":"cast keeps`) {
 		t.Errorf("intro card JSON: %s", b)
 	}
 }
@@ -145,7 +145,7 @@ func TestEachWalkOpensOnItsIntroCard(t *testing.T) {
 // A step's JSON is the spotlight body interface.md names; the agent's line
 // stays out of it.
 func TestWalkStepJSONIsTheSpotlightBody(t *testing.T) {
-	w, err := WalkFor("proj")
+	w, err := WalkFor("cast")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestWalkStepJSONIsTheSpotlightBody(t *testing.T) {
 			t.Errorf("step JSON has no %s: %s", k, b)
 		}
 	}
-	if m["walk"] != "proj-tab" || m["agent"] != nil || m["target"] != nil {
+	if m["walk"] != "cast-tab" || m["agent"] != nil || m["target"] != nil {
 		t.Errorf("step JSON: %s", b)
 	}
 	b, _ = json.Marshal(w.Steps[0])
@@ -165,7 +165,7 @@ func TestWalkStepJSONIsTheSpotlightBody(t *testing.T) {
 		t.Errorf("ok step JSON: %s", b)
 	}
 	b, _ = json.Marshal(w.End)
-	for _, k := range []string{`"tool":"proj"`, `"learned":[`, `"next":"Plan`, `"next_tool":"diazo"`} {
+	for _, k := range []string{`"tool":"cast"`, `"learned":[`, `"next":"Plan`, `"next_tool":"diazo"`} {
 		if !strings.Contains(string(b), k) {
 			t.Errorf("end card JSON has no %s: %s", k, b)
 		}

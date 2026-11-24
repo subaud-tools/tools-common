@@ -22,12 +22,12 @@ asks:
 
 ## Where it sits
 
-Under everything else. billet gives a project its machine; proj, diazo, galley and the rest run on it as they do on your Mac. A diazo plan moves from your Mac to a workspace and back through GitHub, from the plan's own page.
+Under everything else. billet gives a project its machine; cast, diazo, galley and the rest run on it as they do on your Mac. A diazo plan moves from your Mac to a workspace and back through GitHub, from the plan's own page.
 
 ## Pointers
 
 - **One deploy, then the start page.** Your agent deploys billet into the AWS account you're signed in to and opens its start page, where you make each workspace.
 - **Sign in with a passkey,** in any browser or on your phone.
-- **A workspace opens on proj,** with your repos cloned and the suite kept current by kempt.
+- **A workspace opens on cast,** with your repos cloned and the suite kept current by kempt.
 - **A workspace costs only while it runs.** Stop one from the start page when you're done with it.
 - **Each person on a workspace needs their own suite,** as on any shared machine.

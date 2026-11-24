@@ -83,7 +83,7 @@ func TestServeSendsThePrepareNoteAndTheEndCard(t *testing.T) {
 	r := startRun(t, Options{Events: ev})
 	e, _ := LiveFor("cull").Running()
 
-	step := `{"n":2,"of":6,"tool":"cull","walk":"proj-tab","ready":"select-passage","press":"ok","ok":true,"prepare":"Your agent is opening it.","title":"Press the tab.","note":"Why."}`
+	step := `{"n":2,"of":6,"tool":"cull","walk":"cast-tab","ready":"select-passage","press":"ok","ok":true,"prepare":"Your agent is opening it.","title":"Press the tab.","note":"Why."}`
 	if code := postSpot(t, e, step, true); code != http.StatusOK {
 		t.Fatalf("step: %d", code)
 	}

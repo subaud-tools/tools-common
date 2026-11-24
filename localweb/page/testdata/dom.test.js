@@ -1255,7 +1255,7 @@ test('dom: the bar above 640px draws as before, with no ⋯', async () => {
 const PLACE = current => ({
   workspace: 'luminarymeridian',
   home: 'https://billet.subaud.io/?w=luminarymeridian',
-  tools: ['diazo', 'proj', 'galley'].map(name => ({ name, href: `https://${name}.luminarymeridian.billet.subaud.io/`, ...(name === current ? { current: true } : {}) })),
+  tools: ['diazo', 'cast', 'galley'].map(name => ({ name, href: `https://${name}.luminarymeridian.billet.subaud.io/`, ...(name === current ? { current: true } : {}) })),
 });
 const guideAt = data => 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
 
@@ -1269,9 +1269,9 @@ test('dom: the hosted bar starts with the workspace and the switch', async () =>
     eq([ws.getAttribute('href'), ws.textContent, ws.target], ['https://billet.subaud.io/?w=luminarymeridian', 'luminarymeridian', '_top']);
     assert(sw.matches('span.kit-bar-switch') && !sw.hidden, 'then the switch, shown');
     const links = [...sw.querySelectorAll('a')];
-    eq(links.map(a => a.textContent), ['diazo', 'proj', 'galley']);
+    eq(links.map(a => a.textContent), ['diazo', 'cast', 'galley']);
     eq(links.map(a => a.target), ['_top', '_top', '_top']);
-    eq(links.map(a => a.getAttribute('href')), ['https://diazo.luminarymeridian.billet.subaud.io/', 'https://proj.luminarymeridian.billet.subaud.io/', 'https://galley.luminarymeridian.billet.subaud.io/']);
+    eq(links.map(a => a.getAttribute('href')), ['https://diazo.luminarymeridian.billet.subaud.io/', 'https://cast.luminarymeridian.billet.subaud.io/', 'https://galley.luminarymeridian.billet.subaud.io/']);
     eq(links.map(a => a.classList.contains('on')), [true, false, false], 'only diazo is filled in');
     eq(links.map(a => a.getAttribute('aria-current')), ['page', null, null]);
     assert(b.el.querySelector('.kit-brand').hidden, 'the filled tool takes the brand\'s place');
@@ -1931,7 +1931,7 @@ test('dom: settingLine at 390px: the name has all of its row that the side does 
   const NAME = 'Claude Code permissions';
   eq(NAME.length, 23);
   const whole = el => el.scrollWidth <= el.clientWidth || (() => { throw new Error('DIAG ' + JSON.stringify([...el.parentNode.querySelectorAll('*')].map(n => [n.className || n.tagName, Math.round(n.getBoundingClientRect().left), Math.round(n.getBoundingClientRect().width), n.scrollWidth]))); })();
-  // proj's line: a dropdown whose current choice is long, so its least width is wide.
+  // cast's line: a dropdown whose current choice is long, so its least width is wide.
   const controls = { ...SETTING_CONTROLS, 'long dropdown': () => pickField({ label: 'Permissions', labelHidden: true, choices: [{ value: '', label: 'Claude Code\'s own setting, whatever it is' }] }).el };
   for (const kind of ['long dropdown', 'dropdown', 'chips', 'input']) {
     // A line before and one after: a card's first and last lines have less padding.

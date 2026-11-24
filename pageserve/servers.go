@@ -1,6 +1,6 @@
 package pageserve
 
-// Every family page server on the machine, for one place (proj) to list and
+// Every family page server on the machine, for one place (cast) to list and
 // control them. One rule, with no list of tool names: a folder under the
 // state root holding a live/ folder is a page server named by its folder, so
 // a new tool on pageserve appears by existing.

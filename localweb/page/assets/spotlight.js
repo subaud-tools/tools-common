@@ -10,7 +10,7 @@
 // done: a click on the ringed control (or, for a text box or a form, its form
 // being submitted, or another data-walk control in its form being pressed,
 // which the message names as also) clears the ring and posts {type:
-// "kit:spotlight-done", n, tool, walk, also?} to window.parent (proj's split
+// "kit:spotlight-done", n, tool, walk, also?} to window.parent (cast's split
 // page; the same channel as kit.forward). The listener runs in the capture phase, so the tool's own
 // handler still runs. A step with ok puts an ok button on the note, which is
 // the step's only done (the split page's first note). While the control isn't
@@ -28,7 +28,7 @@
 //
 // A walk's intro card is { intro: { tool, title, text } }: centred, no ring,
 // the tool, the title and the text, and one filled button, Start, which
-// clears it and posts {type: "kit:walk-start", tool} to window.parent (proj's
+// clears it and posts {type: "kit:walk-start", tool} to window.parent (cast's
 // split page shows it while the agent prepares the walk's first step).
 //
 // A walk's end card is { end: { tool, learned, next, next_tool } }: centred,

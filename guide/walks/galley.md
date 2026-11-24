@@ -11,7 +11,7 @@ tool: galley
 target: add-instruction
 ready: select-passage
 look: Add instruction, after you select a sentence
-agent: Write the practice README at the practice README path that proj guide start printed (outside the plan's folder: diazo keeps its own README.md there), ten lines as the spec says, and open it with galley_open.
+agent: Write the practice README at the practice README path that cast guide start printed (outside the plan's folder: diazo keeps its own README.md there), ten lines as the spec says, and open it with galley_open.
 prepare: Your agent is writing the README your plan asked for and opening it in galley. When it's there, you'll select a sentence and ask for a change.
 
 Select a sentence in the README, then press Add instruction.

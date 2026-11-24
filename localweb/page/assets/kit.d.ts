@@ -135,7 +135,7 @@ export interface LiveOptions {
   clearTimeout?: (id: unknown) => void;
   /** Takes visibilitychange; default globalThis.document. */
   document?: Pick<Document, 'visibilityState' | 'addEventListener' | 'removeEventListener'>;
-  /** Hears {type: "kit.shown", shown} from its parent (proj's split page); default globalThis.window. */
+  /** Hears {type: "kit.shown", shown} from its parent (cast's split page); default globalThis.window. */
   window?: Pick<Window, 'parent' | 'addEventListener' | 'removeEventListener'>;
   /** false: don't draw the step the serve holds (GET /api/kit/spotlight) when the stream first opens. Default true. */
   spotlight?: boolean;
@@ -219,7 +219,7 @@ export interface BarHandle {
   el: HTMLElement;
   /** Settles once the bar has asked the guide whether the page's tool is beta (and, if so, put " · beta" after the brand). */
   beta: Promise<void>;
-  /** Settles once the bar has drawn the hosted machine's place from the same guide answer (a.kit-bar-ws, the workspace linking to billet's start page, then span.kit-bar-switch, diazo | proj | galley with the page's tool filled in and the brand hidden), or knows there is none, as on a device, where both stay hidden. On a phone the workspace goes into the ⋯ and the switch stays. */
+  /** Settles once the bar has drawn the hosted machine's place from the same guide answer (a.kit-bar-ws, the workspace linking to billet's start page, then span.kit-bar-switch, diazo | cast | galley with the page's tool filled in and the brand hidden), or knows there is none, as on a device, where both stay hidden. On a phone the workspace goes into the ⋯ and the switch stays. */
   place: Promise<void>;
   themeControl: HTMLElement;
   /** The Guide button every page's bar has, left of the theme control: it opens openGuide(). */

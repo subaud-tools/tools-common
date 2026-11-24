@@ -411,7 +411,7 @@ test('live: a throwing onNewBuild does not stop the stream', () => {
   handle.stop();
 });
 
-// proj's split page posts {type: 'kit.shown', shown} to each frame: a tab it
+// cast's split page posts {type: 'kit.shown', shown} to each frame: a tab it
 // doesn't show lets go of its stream as a hidden tab does.
 function fakeWindow() {
   const listeners = [];

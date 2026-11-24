@@ -50,8 +50,8 @@ func TestPublicToolAcceptsOnlyOneLabelOnTheDomain(t *testing.T) {
 	if tool, ok := PublicTool("https://diazo.tools.subaud.dev/plan/x?f=1#a"); !ok || tool != "diazo" {
 		t.Fatalf("PublicTool = %q %v, want diazo", tool, ok)
 	}
-	if tool, ok := PublicTool("https://proj.tools.subaud.dev"); !ok || tool != "proj" {
-		t.Fatalf("PublicTool = %q %v, want proj", tool, ok)
+	if tool, ok := PublicTool("https://cast.tools.subaud.dev"); !ok || tool != "cast" {
+		t.Fatalf("PublicTool = %q %v, want cast", tool, ok)
 	}
 	for _, addr := range []string{
 		"http://diazo.tools.subaud.dev/",
@@ -85,14 +85,14 @@ func TestTheHomeToolIsTheBareDomain(t *testing.T) {
 	if got := PublicOrigin("diazo"); got != "https://tools.subaud.dev" {
 		t.Fatalf("PublicOrigin(diazo) = %q, want the bare domain", got)
 	}
-	if got := PublicOrigin("proj"); got != "https://proj.tools.subaud.dev" {
-		t.Fatalf("PublicOrigin(proj) = %q", got)
+	if got := PublicOrigin("cast"); got != "https://cast.tools.subaud.dev" {
+		t.Fatalf("PublicOrigin(cast) = %q", got)
 	}
 	if tool, ok := PublicTool("https://tools.subaud.dev/plan/x?f=1"); !ok || tool != "diazo" {
 		t.Fatalf("PublicTool(bare) = %q %v, want diazo", tool, ok)
 	}
-	if tool, ok := PublicTool("https://proj.tools.subaud.dev/term"); !ok || tool != "proj" {
-		t.Fatalf("PublicTool(proj) = %q %v, want proj", tool, ok)
+	if tool, ok := PublicTool("https://cast.tools.subaud.dev/term"); !ok || tool != "cast" {
+		t.Fatalf("PublicTool(cast) = %q %v, want cast", tool, ok)
 	}
 	for _, addr := range []string{"http://tools.subaud.dev/", "https://tools.subaud.dev:8443/", "https://u@tools.subaud.dev/", "https://xtools.subaud.dev/"} {
 		if tool, ok := PublicTool(addr); ok {

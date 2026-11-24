@@ -108,7 +108,7 @@ func TestValidationCatches(t *testing.T) {
 		{"intro lists a lesson by the wrong title", "intro.md", strings.Replace(goodIntro, "**Plan a change.**", "**Plan with diazo.**", 1), "lesson 3"},
 		{"intro lists a lesson there isn't", "intro.md", strings.Replace(goodIntro, "3. **Plan a change.**", "9. **Plan a change.**", 1), "lesson 9"},
 		{"angle-bracket placeholder in the intro", "intro.md", strings.Replace(goodIntro, "a README.", "<thing>.", 1), "placeholder"},
-		{"user told to type a command in the intro", "intro.md", goodIntro + "\n```\nproj guide start\n```\n", "family command"},
+		{"user told to type a command in the intro", "intro.md", goodIntro + "\n```\ncast guide start\n```\n", "family command"},
 		{"choose step", "lessons/3-plan.md", goodLesson + "\n   **Choose:**\n\n   - **It asks me first**: I think it asks me first. Am I right?\n   - **It writes code first**: I think it writes code first. Am I right?\n", "Choose"},
 	}
 	for _, c := range cases {

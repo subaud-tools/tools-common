@@ -37,7 +37,7 @@ func TestServeAnswersTheGuide(t *testing.T) {
 
 // On a hosted machine (PAGE_PUBLIC_DOMAIN set) the guide answer names the
 // machine's place, which the kit's bar draws as the workspace link and the
-// diazo | proj | galley switch; on a device it has no place at all. It asks
+// diazo | cast | galley switch; on a device it has no place at all. It asks
 // the handler a serve mounts at /api/kit/guide, for a serve of diazo.
 func TestTheGuideNamesTheMachinesPlaceOnlyWhenHosted(t *testing.T) {
 	was := guideInstalled
@@ -60,7 +60,7 @@ func TestTheGuideNamesTheMachinesPlaceOnlyWhenHosted(t *testing.T) {
 	}
 
 	t.Setenv(localweb.PublicDomainEnv, "luminarymeridian.billet.subaud.io")
-	want := `{"workspace":"luminarymeridian","home":"https://billet.subaud.io/?w=luminarymeridian","tools":[{"name":"diazo","href":"https://diazo.luminarymeridian.billet.subaud.io/","current":true},{"name":"proj","href":"https://proj.luminarymeridian.billet.subaud.io/"},{"name":"galley","href":"https://galley.luminarymeridian.billet.subaud.io/"}]}`
+	want := `{"workspace":"luminarymeridian","home":"https://billet.subaud.io/?w=luminarymeridian","tools":[{"name":"diazo","href":"https://diazo.luminarymeridian.billet.subaud.io/","current":true},{"name":"cast","href":"https://cast.luminarymeridian.billet.subaud.io/"},{"name":"galley","href":"https://galley.luminarymeridian.billet.subaud.io/"}]}`
 	if got := string(ask()["place"]); got != want {
 		t.Fatalf("place\n got %s\nwant %s", got, want)
 	}

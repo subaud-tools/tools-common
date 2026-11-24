@@ -2,7 +2,7 @@
 
 ## What subaud.tools are
 
-subaud.tools is a small family of tools for working with an AI agent on your own machine. You talk to your agent in a terminal, as you already do; the tools give the two of you places to work together that a terminal can't: a page where the agent lays out the choices in a change and you decide (diazo), a page where you mark up a document and the agent rewrites it (galley), and a way to keep each piece of work in its own session with its pages beside it (proj). Each tool runs on your laptop and keeps its work on your disk.
+subaud.tools is a small family of tools for working with an AI agent on your own machine. You talk to your agent in a terminal, as you already do; the tools give the two of you places to work together that a terminal can't: a page where the agent lays out the choices in a change and you decide (diazo), a page where you mark up a document and the agent rewrites it (galley), and a way to keep each piece of work in its own session with its pages beside it (cast). Each tool runs on your laptop and keeps its work on your disk.
 
 ## Why you're here
 
@@ -19,7 +19,7 @@ Each lesson is a short list of steps on this page. Every step has one thing to a
 ## What you'll do, in six lessons
 
 1. **What you have.** Your practice repo, the tools on your machine, and keeping them current.
-2. **Your sessions with proj.** A project and its session, the split page, Chrome or Ghostty, and saving a layout.
+2. **Your sessions with cast.** A project and its session, the split page, Chrome or Ghostty, and saving a layout.
 3. **Plan with diazo.** An idea to an approved plan, deciding on the page or in the terminal.
 4. **Build and finish with diazo.** Watch it built, do the step only you can do, sign off and share the record.
 5. **Write with galley.** Revise the README in rounds, read what changed, approve and share it.

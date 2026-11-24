@@ -24,7 +24,7 @@ export const edge = 120;
 export const layoutKey = 'splitpage.layout';
 
 // widthKey is where the divider's width is kept (localStorage): one per page
-// address, so proj's sessions share one width and lwc keeps its own.
+// address, so cast's sessions share one width and lwc keeps its own.
 export function widthKey(host: string, path: string): string {
   return `splitpage.width ${host}${path}`;
 }
