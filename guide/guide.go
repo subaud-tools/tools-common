@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	tools "github.com/subaud-tools/tools-common"
 )
 
 //go:embed fit.md intro.md tools/*.md lessons/*.md
@@ -28,7 +30,7 @@ var content embed.FS
 
 // Family is every family tool a guide text may name, by command name, in the
 // order the guide lists them.
-var Family = []string{"diazo", "galley", "muda", "proj", "scratch", "creel", "muster", "kempt", "casebook", "sift", "cull", "imprint", "billet"}
+var Family = []string{"diazo", "galley", "muda", tools.CastName, "scratch", "creel", "muster", "kempt", "casebook", "sift", "cull", "imprint", "billet"}
 
 // Tool is one tool's section. Core tools have every part; light ones have
 // a summary, When and one ask, and may leave the rest empty.

@@ -125,7 +125,9 @@ func (c Capture) Alias() string {
 // git checkout. For a linked worktree (.git is a pointer file, "gitdir:
 // <main>/.git/worktrees/<name>"), the project is the MAIN checkout's
 // directory name, so every worktree of one repo shares its project — the
-// same grouping the per-project tmux sockets ("proj-<project>") give
+// same grouping the per-project tmux sockets (tools.CastSocketPrefix, or
+// tools.LegacySocketPrefix for sessions started before the rename, then
+// "<project>"; see tools.CastSocketProject) give
 // pane-anchored agents. "" when CWD is not inside a git checkout.
 func (c Capture) Project() string {
 	dir := c.CWD

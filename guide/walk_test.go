@@ -21,7 +21,7 @@ func TestWalksAreProjDiazoGalley(t *testing.T) {
 		tool, next string
 		targets    []string
 	}{
-		{"proj", "diazo", []string{"split", "proj-tab", "sessions-tab", "open-ghostty", "folders-tab", "saved-tab"}},
+		{"cast", "diazo", []string{"split", "proj-tab", "sessions-tab", "open-ghostty", "folders-tab", "saved-tab"}},
 		{"diazo", "galley", []string{"reply", "direction", "choose", "approve-spec", "approve-plan"}},
 		{"galley", "", []string{"add-instruction", "revise", "approve", "share"}},
 	}
@@ -109,7 +109,7 @@ func TestWalksAreProjDiazoGalley(t *testing.T) {
 // kit's Start.
 func TestEachWalkOpensOnItsIntroCard(t *testing.T) {
 	want := map[string]WalkIntro{
-		"proj": {Tool: "proj", Title: "proj: your sessions.",
+		"cast": {Tool: "cast", Title: "proj: your sessions.",
 			Text: "proj keeps your work in sessions: one terminal for each piece of work, in its project. In six clicks you'll see your session's split page and the tabs beside it, proj's lists of your sessions and projects, and how a session comes back after a restart."},
 		"diazo": {Tool: "diazo", Title: "diazo: plan before you build.",
 			Text: "diazo is where you and your agent agree on a change before anything is built. Your agent is opening a small practice plan for a ten-line README. In five clicks you'll answer its take, make a decision, and approve a spec and a plan."},
@@ -137,7 +137,7 @@ func TestEachWalkOpensOnItsIntroCard(t *testing.T) {
 		}
 	}
 	b, _ := json.Marshal(map[string]WalkIntro{"intro": ws[0].Intro})
-	if !strings.HasPrefix(string(b), `{"intro":{"tool":"proj","title":"proj: your sessions.","text":"proj keeps`) {
+	if !strings.HasPrefix(string(b), `{"intro":{"tool":"cast","title":"proj: your sessions.","text":"proj keeps`) {
 		t.Errorf("intro card JSON: %s", b)
 	}
 }
@@ -145,7 +145,7 @@ func TestEachWalkOpensOnItsIntroCard(t *testing.T) {
 // A step's JSON is the spotlight body interface.md names; the agent's line
 // stays out of it.
 func TestWalkStepJSONIsTheSpotlightBody(t *testing.T) {
-	w, err := WalkFor("proj")
+	w, err := WalkFor("cast")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestWalkStepJSONIsTheSpotlightBody(t *testing.T) {
 		t.Errorf("ok step JSON: %s", b)
 	}
 	b, _ = json.Marshal(w.End)
-	for _, k := range []string{`"tool":"proj"`, `"learned":[`, `"next":"Plan`, `"next_tool":"diazo"`} {
+	for _, k := range []string{`"tool":"cast"`, `"learned":[`, `"next":"Plan`, `"next_tool":"diazo"`} {
 		if !strings.Contains(string(b), k) {
 			t.Errorf("end card JSON has no %s: %s", k, b)
 		}

@@ -7,7 +7,7 @@ title: proj: your sessions.
 text: proj keeps your work in sessions: one terminal for each piece of work, in its project. In six clicks you'll see your session's split page and the tabs beside it, proj's lists of your sessions and projects, and how a session comes back after a restart.
 
 ## 1
-tool: proj
+tool: cast
 target: split
 press: ok
 look: the divider between the terminal and the tabs
@@ -18,7 +18,7 @@ Press OK.
 This window is a session: a terminal for one piece of work in one project, named after both, like project/work. Your agent runs on the left. The session keeps running even if you close this window, so you can step away and come back to it.
 
 ## 2
-tool: proj
+tool: cast
 target: proj-tab
 look: the tab of proj's page in the tab bar
 agent: Nothing: proj opens its own page as a tab of this split page when the walk reaches this step.
@@ -28,7 +28,7 @@ Press the proj tab.
 The right side holds the pages your agent opens for this session, one tab each: a plan, a document, this list. Terminal on the left, pages on the right, in one Chrome window: that's the split page. Every session can have one.
 
 ## 3
-tool: proj
+tool: cast
 target: sessions-tab
 look: the sessions tab on proj's page
 agent: Nothing: wait for the learner's click.
@@ -38,7 +38,7 @@ Press sessions.
 These are the sessions running now, grouped by project; the one you're in is among them. Starting a new piece of work starts a new session, so each keeps its own terminal and pages. A session waiting on you is marked needs you, so you can see where you're wanted.
 
 ## 4
-tool: proj
+tool: cast
 target: open-ghostty
 press: ok
 look: ghostty and chrome on your session's row
@@ -49,7 +49,7 @@ Press OK; no need to press ghostty now.
 Every session can be shown two ways. Chrome, this window, puts the terminal beside its pages. Ghostty shows the same session in a plain terminal app, without the pages; use it for work that only needs a terminal. A session shows in one place at a time: pressing ghostty moves it there, and chrome brings it back with its pages where you left them.
 
 ## 5
-tool: proj
+tool: cast
 target: folders-tab
 look: the folders tab on proj's page
 agent: Nothing: wait for the learner's click.
@@ -59,7 +59,7 @@ Press folders.
 These are the folders proj knows. A folder of projects, like your GitHub folder, makes each folder inside it a project. A single project is one folder on its own. A workspace is a single project that holds several repos, so one session can work across all of them. Ask your agent to add a folder.
 
 ## 6
-tool: proj
+tool: cast
 target: saved-tab
 look: the saved tab on proj's page
 agent: Nothing: wait for the learner's click.

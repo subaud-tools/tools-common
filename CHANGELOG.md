@@ -4,6 +4,16 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.129.0
+
+### Added
+- `tools.CastName` ("cast"), `tools.CastSocketPrefix` ("cast-"), `tools.LegacySocketPrefix` ("proj-", still read for sessions started before the rename) and `tools.CastSettingsDir` ("cast", the folder under ~/.config and ~/.local/state), with `tools.CastSocketProject(socket) (project, ok)`: whether a tmux socket name or path belongs to the tool under either prefix, and its project.
+
+### Changed
+- guide: `Family` and `WalkTools` name the tool `cast` in place of `proj` (its section and walk are `guide/tools/cast.md` and `guide/walks/cast.md`; their prose is unchanged).
+- pageserve: the hosted switch lists `cast` in place of `proj` (`place.tools[].name` and its `cast.<ws>.<domain>` page), and `pageserve.Proj` runs the `cast` binary.
+- harness: `Capture.Project`'s doc names both socket prefixes.
+
 ## 0.128.0
 
 ### Added

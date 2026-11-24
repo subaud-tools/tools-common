@@ -149,7 +149,7 @@ func TestTerminalOfRefusesAnUnknownState(t *testing.T) {
 
 func TestTerminalOfSaysWhatProjSaid(t *testing.T) {
 	fakeProj(t, func(string) ([]byte, int, error) { return []byte("no such pane\n"), 3, nil })
-	if _, err := TerminalOf(inTmux); err == nil || err.Error() != "proj terminal exited 3: no such pane" {
+	if _, err := TerminalOf(inTmux); err == nil || err.Error() != "cast terminal exited 3: no such pane" {
 		t.Fatalf("%v", err)
 	}
 }
@@ -171,7 +171,7 @@ func TestWindowPutsThePageOnTheRight(t *testing.T) {
 
 func TestWindowSaysWhatProjSaid(t *testing.T) {
 	fakeProj(t, func(string) ([]byte, int, error) { return []byte("no chrome\n"), 2, nil })
-	if err := Window(inTmux, "u", false); err == nil || err.Error() != "proj window exited 2: no chrome" {
+	if err := Window(inTmux, "u", false); err == nil || err.Error() != "cast window exited 2: no chrome" {
 		t.Fatalf("%v", err)
 	}
 }
@@ -201,7 +201,7 @@ func TestShowOpensWithNoWindowAndNoTab(t *testing.T) {
 		t.Fatalf("%q", got)
 	}
 	if len(*calls) != 1 {
-		t.Fatalf("proj window ran: %v", *calls)
+		t.Fatalf("cast window ran: %v", *calls)
 	}
 }
 
@@ -268,13 +268,13 @@ func TestShowFallsToTabsWhenProjFails(t *testing.T) {
 		want   string
 	}{
 		{"not installed", func(string) ([]byte, int, error) { return nil, -1, errors.New("proj not found") }, "proj not found"},
-		{"terminal fails", func(string) ([]byte, int, error) { return []byte("bad"), 1, nil }, "proj terminal exited 1: bad"},
+		{"terminal fails", func(string) ([]byte, int, error) { return []byte("bad"), 1, nil }, "cast terminal exited 1: bad"},
 		{"window fails", func(sub string) ([]byte, int, error) {
 			if sub == "terminal" {
 				return []byte(`{"state":"attached","window":true}`), 0, nil
 			}
 			return []byte("no chrome"), 2, nil
-		}, "proj window exited 2: no chrome"},
+		}, "cast window exited 2: no chrome"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeProj(t, tc.answer)

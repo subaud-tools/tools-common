@@ -1,5 +1,5 @@
 ---
-name: proj
+name: cast
 summary: Opens each project in its own terminal session, with the agent you choose running in it and its pages beside the terminal.
 weight: core
 asks:

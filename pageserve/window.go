@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	tools "github.com/subaud-tools/tools-common"
 	"github.com/subaud-tools/tools-common/localweb"
 )
 
@@ -83,11 +84,11 @@ const (
 	terminalGo   = 30 * time.Second
 )
 
-// Proj runs proj with args and returns its stdout, with stderr added when it
+// Proj runs cast with args and returns its stdout, with stderr added when it
 // fails, and its exit code; err when it could not run at all. A test replaces it
 // (a tool's too, for its own routes on these calls).
 var Proj = func(ctx context.Context, args ...string) ([]byte, int, error) {
-	out, err := exec.CommandContext(ctx, "proj", args...).Output()
+	out, err := exec.CommandContext(ctx, tools.CastName, args...).Output()
 	var ee *exec.ExitError
 	if errors.As(err, &ee) {
 		return append(out, ee.Stderr...), ee.ExitCode(), nil
@@ -127,14 +128,14 @@ func terminal(w Where, goTo bool) (*Terminal, error) {
 	case err != nil:
 		return nil, err
 	case code != 0:
-		return nil, fmt.Errorf("proj terminal exited %d: %s", code, strings.TrimSpace(string(out)))
+		return nil, fmt.Errorf("cast terminal exited %d: %s", code, strings.TrimSpace(string(out)))
 	}
 	var t Terminal
 	if err := json.Unmarshal(out, &t); err != nil {
-		return nil, fmt.Errorf("proj terminal: %w", err)
+		return nil, fmt.Errorf("cast terminal: %w", err)
 	}
 	if !slices.Contains(t.State.Values(), string(t.State)) {
-		return nil, fmt.Errorf("proj terminal: unknown state %q", t.State)
+		return nil, fmt.Errorf("cast terminal: unknown state %q", t.State)
 	}
 	return &t, nil
 }
@@ -167,7 +168,7 @@ func Window(w Where, url string, keepView bool) error {
 	case err != nil:
 		return err
 	case code != 0:
-		return fmt.Errorf("proj window exited %d: %s", code, strings.TrimSpace(string(out)))
+		return fmt.Errorf("cast window exited %d: %s", code, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

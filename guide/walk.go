@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	tools "github.com/subaud-tools/tools-common"
 )
 
 //go:embed walks/*.md
@@ -17,7 +19,7 @@ var walkContent embed.FS
 
 // WalkTools are the tools with a getting-started walk, in the order
 // "Get me started with subaud." runs them; walks/<tool>.md holds each.
-var WalkTools = []string{"proj", "diazo", "galley"}
+var WalkTools = []string{tools.CastName, "diazo", "galley"}
 
 // Walk is one tool's getting-started walk: its intro card, its clicks, then
 // the end card.
