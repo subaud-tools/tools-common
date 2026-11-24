@@ -672,12 +672,13 @@ export function buttons(bs) {
 
 // card is a colour-edged card that holds its own actions. edge: signal (needs
 // you), agent (the agent's), wait (queued / draft). A head that is a string is
-// its crumb, so it gets the header's ellipsis when it doesn't fit.
+// its crumb, so it gets the header's ellipsis when it doesn't fit. stack puts
+// 12px between the body's parts and takes a paragraph's own margins away.
 export function card(o) {
   const head = typeof o.head === 'string' ? h('span', { class: 'kit-card-crumb' }, o.head) : o.head;
   return h('div', { class: 'kit-card' + (o.edge ? ' edge-' + o.edge : '') },
     head ? h('div', { class: 'kit-card-head' }, head) : null,
-    o.body !== undefined ? h('div', { class: 'kit-card-body' }, o.body) : null,
+    o.body !== undefined ? h('div', { class: 'kit-card-body' + (o.stack ? ' kit-stack' : '') }, o.body) : null,
     o.actions && o.actions.length ? buttons(o.actions) : null);
 }
 
@@ -773,6 +774,14 @@ export function textField(o) {
     input,
     o.hint ? h('p', { class: 'kit-field-hint' }, o.hint) : null);
   return { el, input };
+}
+
+// tick is a checkbox and its words in one label, the box centred on the
+// words; onChange gets checked on every change. It returns { el, input }.
+export function tick(o) {
+  const input = h('input', { type: 'checkbox', checked: !!o.checked, value: o.value !== undefined ? o.value : null });
+  if (o.onChange) input.addEventListener('change', () => o.onChange(input.checked));
+  return { el: h('label', { class: 'kit-tick' }, input, h('span', null, o.label)), input };
 }
 
 // The one pop-out open on the page (a row's ⋯ menu, a dropdown): opening
