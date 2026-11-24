@@ -87,7 +87,8 @@ test('dom: bar setSections redraws the sections in place', () => {
   b.setSections([{ id: 'plan', label: 'Plan' }, { id: 'record', label: 'Record', count: 2 }], 'record');
   eq(plans.isConnected, false);
   eq(el.querySelectorAll('.kit-ctl[data-id]').length, 2);
-  const ids = [...el.children].map(n => n.dataset.id || n.className);
+  // the shown parts: a device's bar keeps the workspace and switch hidden
+  const ids = [...el.children].filter(n => !n.hidden).map(n => n.dataset.id || n.className);
   eq(ids.slice(0, 3), ['kit-brand', 'kit-bar-sections', 'kit-status']);
   eq([...el.querySelector('.kit-bar-sections').children].map(n => n.dataset.id), ['plan', 'record'], 'the sections, in the place they had');
   const rec = el.querySelector('.kit-ctl[data-id="record"]');
@@ -1247,6 +1248,123 @@ test('dom: the bar above 640px draws as before, with no ⋯', async () => {
     }
     const tops = [...b.el.children].filter(shown).map(c => Math.round(c.getBoundingClientRect().top + c.getBoundingClientRect().height / 2));
     eq(new Set(tops).size, 1, 'one line');
+  } finally { fixture().replaceChildren(); }
+});
+
+// The guide answer on a hosted machine (pageserve's place) and on a device.
+const PLACE = current => ({
+  workspace: 'luminarymeridian',
+  home: 'https://billet.subaud.io/?w=luminarymeridian',
+  tools: ['diazo', 'proj', 'galley'].map(name => ({ name, href: `https://${name}.luminarymeridian.billet.subaud.io/`, ...(name === current ? { current: true } : {}) })),
+});
+const guideAt = data => 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
+
+test('dom: the hosted bar starts with the workspace and the switch', async () => {
+  const b = bar({ brand: { name: 'diazo', href: '/' }, guideUrl: guideAt({ tool: 'diazo', tools: [], place: PLACE('diazo') }) });
+  fixture().append(b.el);
+  try {
+    await b.place;
+    const [ws, sw] = b.el.children;
+    assert(ws.matches('a.kit-bar-ws') && !ws.hidden, 'the workspace comes first, shown');
+    eq([ws.getAttribute('href'), ws.textContent, ws.target], ['https://billet.subaud.io/?w=luminarymeridian', 'luminarymeridian', '_top']);
+    assert(sw.matches('span.kit-bar-switch') && !sw.hidden, 'then the switch, shown');
+    const links = [...sw.querySelectorAll('a')];
+    eq(links.map(a => a.textContent), ['diazo', 'proj', 'galley']);
+    eq(links.map(a => a.target), ['_top', '_top', '_top']);
+    eq(links.map(a => a.getAttribute('href')), ['https://diazo.luminarymeridian.billet.subaud.io/', 'https://proj.luminarymeridian.billet.subaud.io/', 'https://galley.luminarymeridian.billet.subaud.io/']);
+    eq(links.map(a => a.classList.contains('on')), [true, false, false], 'only diazo is filled in');
+    eq(links.map(a => a.getAttribute('aria-current')), ['page', null, null]);
+    assert(b.el.querySelector('.kit-brand').hidden, 'the filled tool takes the brand\'s place');
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: a tool outside the switch keeps its brand', async () => {
+  const b = bar({ brand: { name: 'cull' }, guideUrl: guideAt({ tool: 'cull', tools: [], place: PLACE(null) }) });
+  fixture().append(b.el);
+  try {
+    await b.place;
+    const sw = b.el.querySelector('.kit-bar-switch');
+    assert(!sw.hidden, 'the switch shows');
+    eq(sw.querySelectorAll('a.on').length, 0, 'with none filled in');
+    const brand = b.el.querySelector('.kit-brand');
+    assert(!brand.hidden, 'the brand shows');
+    assert(sw.compareDocumentPosition(brand) & Node.DOCUMENT_POSITION_FOLLOWING, 'after the switch');
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: a device\'s bar is unchanged', async () => {
+  for (const url of [guideAt({ tool: 'diazo', tools: [] }), 'data:application/json,not json']) {
+    const b = bar({ brand: { name: 'diazo' }, guideUrl: url });
+    fixture().append(b.el);
+    try {
+      await b.place;
+      await b.beta;
+      assert(b.el.querySelector('.kit-bar-ws').hidden, 'no workspace');
+      assert(b.el.querySelector('.kit-bar-switch').hidden, 'no switch');
+      assert(!b.el.querySelector('.kit-brand').hidden, 'the brand shows');
+    } finally { fixture().replaceChildren(); }
+  }
+});
+
+test('dom: the bar asks the guide once for the beta mark and the place', async () => {
+  const real = window.fetch;
+  const asked = [];
+  window.fetch = async url => { asked.push(url); return new Response(JSON.stringify({ tool: 'galley', tools: [{ name: 'galley', beta: true }], place: PLACE('galley') })); };
+  try {
+    const b = bar({ brand: { name: 'galley' } });
+    fixture().append(b.el);
+    await Promise.all([b.beta, b.place]);
+    eq(asked, ['/api/kit/guide'], 'one fetch, of the default guide');
+    assert(b.el.querySelector('.kit-brand').textContent.endsWith(' · beta'), 'the beta mark');
+    assert(!b.el.querySelector('.kit-bar-switch').hidden, 'and the switch, from the same answer');
+  } finally {
+    window.fetch = real;
+    fixture().replaceChildren();
+  }
+});
+
+test('dom: on a phone the workspace goes into the bar\'s ⋯', async () => {
+  const doc = await bandWindow(390);
+  const b = bar({
+    brand: { name: 'diazo', href: '/' },
+    sections: [{ id: 'plans', label: 'Plans', count: 7 }, { id: 'later', label: 'Later', count: 2 }],
+    active: 'plans', primary: { label: 'New plan', run() {} },
+    guideUrl: guideAt({ tool: 'diazo', tools: [], place: PLACE('diazo') }),
+  });
+  doc.body.append(b.el);
+  try {
+    await b.place;
+    const ws = b.el.querySelector('.kit-bar-ws'), sw = b.el.querySelector('.kit-bar-switch');
+    eq(b.el.getBoundingClientRect().height, 52, 'the bar stays 52px');
+    assert(!shown(ws), 'the workspace is not on the bar');
+    assert(shown(sw) && sw.parentNode === b.el, 'the switch stays on the bar');
+    insideWindow(doc, b.el, 'the bar');
+    b.moreControl.click();
+    const tray = b.el.querySelector('.kit-bar-tray');
+    assert(tray.contains(ws) && shown(ws), 'the workspace is in the tray');
+    assert(sw.parentNode === b.el, 'the switch is not');
+    doc.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert(b.el.firstElementChild === ws, 'closed, the workspace is back first');
+  } finally { fixture().replaceChildren(); }
+});
+
+test('dom: a tool outside the switch on a phone: nothing past the edge, the primary whole', async () => {
+  const doc = await bandWindow(390);
+  const b = bar({
+    brand: { name: 'casebook' },
+    sections: [{ id: 'label', label: 'label', count: '37/150' }, { id: 'eval', label: 'eval', count: 12 }],
+    active: 'label', primary: { label: 'Next unlabeled', run() {} },
+    guideUrl: guideAt({ tool: 'casebook', tools: [], place: PLACE(null) }),
+  });
+  doc.body.append(b.el);
+  try {
+    await b.place;
+    eq(b.el.getBoundingClientRect().height, 52, 'the bar stays 52px');
+    insideWindow(doc, b.el, 'the bar');
+    const prim = b.el.querySelector('.kit-primary');
+    assert(shown(prim) && prim.scrollWidth <= prim.clientWidth, 'the primary is whole');
+    assert(shown(b.el.querySelector('.kit-brand')), 'the brand shows');
+    assert(shown(b.el.querySelector('.kit-bar-switch')), 'the switch shows');
   } finally { fixture().replaceChildren(); }
 });
 

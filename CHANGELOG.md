@@ -4,6 +4,14 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.128.0
+
+### Added
+- pageserve: on a hosted machine (`PAGE_PUBLIC_DOMAIN` set to `<ws>.<domain>`) the answer to `GET /api/kit/guide` carries `place`: `{workspace, home, tools}`, where `home` is billet's start page for the workspace (`https://<domain>/?w=<ws>`) and `tools` is diazo, proj and galley in order, each with its page (`localweb.PublicOrigin(name) + "/"`) and `current` on the serve's own tool. The list is one slice, `switchTools`, in `pageserve/place.go`. On a device the answer has no `place` key, and `guide.GuideData` is unchanged.
+- kit: the bar draws `place`: first `a.kit-bar-ws`, the workspace's name linking to `home` (with " ›" after it), then `span.kit-bar-switch`, one link per tool with the page's tool filled in (`.on`, `aria-current="page"`); both links open in the top window. When the page's tool is in the switch its brand is hidden, the filled tool taking its place; a tool outside it (cull on a machine) keeps its brand after the switch. On a phone the workspace goes into the bar's ⋯ and the switch stays; beside a brand that shows, the switch gives way and scrolls sideways like the sections, so the primary stays whole. On a device both stay hidden and the bar draws as before.
+- kit: the bar fetches the guide once for the beta mark and the place (`guideForBar`, `markIfBeta` in `guide.js`; `badgeIfBeta` keeps its signature). `bar` takes `guideUrl` (tests; `/api/kit/guide` by default) and its handle has `place`, a promise that settles once the place is drawn or known absent. `GuideData` in `kit.d.ts` gains `place?: GuidePlace`.
+- `PAGE-STANDARD.md`: a row for the workspace and the switch; the layout skill's Bar and Phone rows say the same.
+
 ## 0.127.0
 
 ### Added

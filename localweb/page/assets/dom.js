@@ -1,7 +1,7 @@
 import { createSelection } from './selection.js';
 import { MESSAGE_STATES } from './msgstate.js';
 import { submitOnEnter } from './enter.js';
-import { openGuide, badgeIfBeta } from './guide.js';
+import { openGuide, guideForBar, markIfBeta } from './guide.js';
 import { rowMenu } from './frontpage.js';
 
 // DOM builders for the kit's components. Each returns plain elements styled by
@@ -92,7 +92,10 @@ function alsoOpen() {
 
 // bar is the top bar: brand, section controls with counts, status text, the
 // "also open" button, the live pill, Guide, theme, and the one filled primary
-// button.
+// button. On a hosted machine (the guide answer carries pageserve's place) it
+// starts with the workspace, a link to billet's start page for it, and the
+// diazo | proj | galley switch with the page's tool filled in; on a device
+// both stay hidden and the bar is as it was.
 export function bar(o) {
   const ctls = new Map();
   let sectionsShown = true;
@@ -175,14 +178,38 @@ export function bar(o) {
   let run = null;
   primary.addEventListener('click', () => run && run());
 
-  // A beta tool (its guide entry says so) carries " · beta" after its name.
   const brand = h(o.brand.href ? 'a' : 'span', { class: 'kit-brand', href: o.brand.href || null }, o.brand.mark || null, o.brand.name);
-  const beta = badgeIfBeta(brand);
-  const more = barMore([status, also.el, pill, guideControl, themeControl]);
+  // The workspace and the switch, hidden until the guide says the page is on
+  // a hosted machine. Their links open in the top window: inside proj's split
+  // page a tool's page is a frame.
+  const ws = h('a', { class: 'kit-bar-ws', target: '_top', hidden: true });
+  const toolSwitch = h('span', { class: 'kit-bar-switch', hidden: true });
+  // One guide fetch for both: a beta tool (its guide entry says so) carries
+  // " · beta" after its name, and a hosted machine's place draws the
+  // workspace and the switch. A guide that doesn't load draws neither.
+  const guide = guideForBar({ url: o.guideUrl });
+  const beta = guide.then(d => markIfBeta(brand, d));
+  const place = guide.then(d => {
+    const p = d && d.place;
+    if (!p) return;
+    ws.href = p.home;
+    ws.textContent = p.workspace;
+    ws.hidden = false;
+    const tools = p.tools || [];
+    toolSwitch.replaceChildren(...tools.map(t => h('a', {
+      href: t.href, target: '_top', class: t.current ? 'on' : null, 'aria-current': t.current ? 'page' : null,
+    }, t.name)));
+    toolSwitch.hidden = false;
+    // the filled tool takes the brand's place; a tool outside the switch
+    // (cull on a machine) keeps its brand, after the switch
+    if (tools.some(t => t.current)) brand.hidden = true;
+  });
+  const more = barMore([ws, status, also.el, pill, guideControl, themeControl]);
   const handle = {
     beta,
+    place,
     el: h('header', { class: 'kit-bar' },
-      brand,
+      ws, toolSwitch, brand,
       sectionsEl, status, h('span', { class: 'kit-sp' }), also.el, pill, guideControl, themeControl, more.el, primary),
     themeControl,
     guideControl,
@@ -248,9 +275,9 @@ export function bar(o) {
 }
 
 // barMore is the bar's ⋯ on a phone (640px wide or less), where the bar
-// keeps one 52px line: the brand, the sections and the primary stay, and the
-// parts given (the status, the also-open switcher, the live pill, Guide and
-// theme) are hidden on the bar (kit.css) and shown in the ⋯'s tray, a
+// keeps one 52px line: the switch, the brand, the sections and the primary
+// stay, and the parts given (the workspace, the status, the also-open
+// switcher, the live pill, Guide and theme) are hidden on the bar (kit.css) and shown in the ⋯'s tray, a
 // top-layer pop. They are the same elements, moved into the tray while it is
 // open and back to their places (a marker each) when it closes, so each keeps
 // working and a page that reaches them by reference changes nothing. Above

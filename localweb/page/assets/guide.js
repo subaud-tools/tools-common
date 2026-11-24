@@ -26,21 +26,34 @@ export function betaMark() {
   return h('span', { class: 'kit-meta' }, ' · beta');
 }
 
-// badgeIfBeta loads the guide and, when the page's tool is beta, puts the
-// mark at the end of el (the bar's brand). A tool with no guide entry, or a
-// guide that doesn't load, draws nothing. A page not served over http(s) (a
+// guideForBar loads the guide once for the bar, which draws both the beta
+// mark and the hosted machine's place (pageserve's place) from it: the
+// answer, or null when it doesn't load. A page not served over http(s) (a
 // downloaded Record opened from disk) has no guide and asks for none: the
 // browser would log the failed fetch as a console error. o.url and
 // o.protocol (location.protocol by default) are for tests.
-export async function badgeIfBeta(el, o = {}) {
-  if (!/^https?:$/.test(o.protocol || location.protocol)) return;
+export async function guideForBar(o = {}) {
+  if (!/^https?:$/.test(o.protocol || location.protocol)) return null;
   try {
-    const data = await load(o.url);
-    const t = (data.tools || []).find(x => x.name === data.tool);
-    if (t && t.beta) el.append(betaMark());
+    return await load(o.url);
   } catch {
-    // no guide here: no mark
+    return null; // no guide here
   }
+}
+
+// markIfBeta puts the beta mark at the end of el (the bar's brand) when data
+// (a guide answer, or null) says the page's tool is beta. A tool with no
+// guide entry draws nothing.
+export function markIfBeta(el, data) {
+  const t = data && (data.tools || []).find(x => x.name === data.tool);
+  if (t && t.beta) el.append(betaMark());
+}
+
+// badgeIfBeta loads the guide and, when the page's tool is beta, puts the
+// mark at the end of el. A guide that doesn't load, or a page not served over
+// http(s), draws nothing (guideForBar). o.url and o.protocol are for tests.
+export async function badgeIfBeta(el, o = {}) {
+  markIfBeta(el, await guideForBar(o));
 }
 
 async function clip(text) {
