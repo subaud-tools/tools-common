@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture, blurEl } from './harness.js';
-import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, settingLine, textField, confirmBox, emptyCard, keyedRows, pickField, chipPick } from '/_kit/dom.js';
+import { h, bar, band, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, cardLine, settingLine, textField, confirmBox, emptyCard, keyedRows, pickField, chipPick, tick } from '/_kit/dom.js';
 import { createKeys } from '/_kit/keys.js';
 import { sheet } from '/_kit/sheet.js';
 import { fakeFetch, fakeTimers, flush } from './fakes.js';
@@ -2570,4 +2570,66 @@ test('dom: chipPick redrawn by its press gives the focus back to the chip presse
   x = chipParts(group()).xs[1];
   x.click();
   eq(document.activeElement.getAttribute('aria-label'), 'Unpin a', 'the last one removed: the ✕ before it');
+});
+
+test('dom: a stacked card puts 12px between its parts and none around a paragraph', () => {
+  const fx = fixture();
+  const field = textField({ label: 'Name' });
+  const c = card({ stack: true, body: [h('p', null, 'First words.'), h('p', null, 'Second words.'), buttons([{ label: 'go' }]), field.el, fold('more', 'x')] });
+  const plain = card({ body: [h('p', null, 'a'), h('p', null, 'b')] });
+  fx.append(c, plain);
+  const body = c.querySelector('.kit-card-body');
+  assert(body.classList.contains('kit-stack'), 'stack: true adds kit-stack');
+  assert(!plain.querySelector('.kit-card-body').classList.contains('kit-stack'), 'a card without stack has none');
+  const parts = [...body.children];
+  const gaps = parts.slice(1).map((n, i) => Math.round(n.getBoundingClientRect().top - parts[i].getBoundingClientRect().bottom));
+  eq(gaps, [12, 12, 12, 12], 'each part sits 12px under the one before');
+  eq(Math.round(parts[0].getBoundingClientRect().top), Math.round(body.getBoundingClientRect().top), 'the first part has no margin above it');
+  const hid = card({ stack: true, body: [h('p', { hidden: true }, 'status'), h('p', null, 'shown'), h('p', { hidden: true }, 'gone'), h('p', null, 'next')] });
+  fx.append(hid);
+  const [, shown, , next] = hid.querySelector('.kit-card-body').children;
+  const inCard = (n, c) => Math.round(n.getBoundingClientRect().top - c.getBoundingClientRect().top);
+  eq(inCard(shown, hid), inCard(parts[0], c), 'a hidden part leaves no gap above the first part shown');
+  eq(Math.round(next.getBoundingClientRect().top - shown.getBoundingClientRect().bottom), 12, 'nor a double gap between two shown parts');
+  assert(parseFloat(cs(plain.querySelector('p')).marginBottom) > 0, 'an unstacked card keeps its paragraphs\' margins');
+});
+
+test('dom: a kit-input in a kit-next row grows and shrinks with its row', () => {
+  const fx = fixture();
+  const input = h('input', { class: 'kit-input', type: 'search' });
+  const count = h('span', { class: 'kit-next-words' }, '3 chosen');
+  const btn = h('button', { class: 'kit-btn fill', type: 'button' }, 'Use 3 repos');
+  const row = h('div', { class: 'kit-next' }, input, count, btn);
+  fx.append(row);
+  const top = n => Math.round(n.getBoundingClientRect().top);
+  const width = n => Math.round(n.getBoundingClientRect().width);
+  row.style.width = '700px';
+  const mid = n => { const r = n.getBoundingClientRect(); return Math.round((r.top + r.bottom) / 2); };
+  eq([mid(count), mid(btn)], [mid(input), mid(input)], 'at 700px the field, the count and the button share one line');
+  const wide = width(input);
+  eq(Math.round(input.getBoundingClientRect().right + 10 + width(count) + 10 + width(btn)), Math.round(row.getBoundingClientRect().right), 'the field takes the room the count and the button leave');
+  row.style.width = '520px';
+  const narrow = width(input);
+  assert(narrow < wide && narrow >= 220, `the field shrinks with its row, to its 220px basis (${wide} → ${narrow})`);
+  row.style.width = '300px';
+  assert(top(btn) > top(input), 'too narrow for all three, the row wraps');
+  row.style.width = '200px';
+  eq(width(input), 200, 'narrower than its basis, the field takes its line whole and no more');
+});
+
+test('dom: a kit-tick centres its box on its words', () => {
+  const fx = fixture();
+  const seen = [];
+  const t = tick({ label: 'subaud-tools/billet', value: 'billet', checked: true, onChange: v => seen.push(v) });
+  const plain = h('label', { class: 'kit-tick' }, h('input', { type: 'checkbox' }), h('span', null, 'by hand'));
+  fx.append(t.el, plain);
+  eq([t.el.tagName, t.el.className, t.input.type, t.input.value, t.input.checked], ['LABEL', 'kit-tick', 'checkbox', 'billet', true]);
+  eq(t.el.textContent, 'subaud-tools/billet');
+  for (const el of [t.el, plain]) {
+    const box = el.querySelector('input').getBoundingClientRect(), words = el.querySelector('span').getBoundingClientRect();
+    assert(Math.abs((box.top + box.bottom) / 2 - (words.top + words.bottom) / 2) <= 0.5, `the box's middle is the words' middle (${box.top}/${box.bottom} vs ${words.top}/${words.bottom})`);
+    eq(Math.round(words.left - box.right - parseFloat(cs(el.querySelector('input')).marginRight)), 8, 'with 8px between them');
+  }
+  t.el.querySelector('span').click();
+  eq([t.input.checked, seen], [false, [false]], 'a press on the words ticks the box and calls onChange');
 });

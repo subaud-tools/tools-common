@@ -4,6 +4,14 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.127.0
+
+### Added
+- kit: `card({ stack: true })` gives its body the class `kit-stack`: 12px between the body's parts, paragraphs with no margins of their own, and a fold's label without its own 22px above. A hidden part leaves no gap (`.kit-card-body.kit-stack > :not([hidden]) ~ *`). A card without `stack` draws as before.
+- kit: a `.kit-input` in a `.kit-next` row grows into the room the row's other parts leave, down to a 220px basis, then the row wraps (`flex: 1 1 220px; width: auto; min-width: 0`): a search beside a count and a button on one line.
+- kit: `tick({ label, checked, value, onChange })` in `dom.js` returns `{ el, input }`: a checkbox and its words in one `label.kit-tick` (`inline-flex`, 8px gap, centred), so the box sits on the words' middle. The class alone works on a hand-made label.
+- `PAGE-STANDARD.md`: a row for the three.
+
 ## 0.126.0
 
 ### Fixed

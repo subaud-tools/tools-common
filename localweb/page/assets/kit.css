@@ -454,6 +454,12 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-card.edge-wait .kit-card-head { color: var(--kit-wait); }
 .kit-card-body { font-size: 15px; margin: 0 0 12px; }
 .kit-card-body:last-child { margin-bottom: 0; }
+/* a stacked card body (dom.js card({ stack: true })): 12px between its parts,
+   paragraphs without margins of their own; a fold's label takes its place in
+   the stack rather than its own 22px above. A hidden part leaves no gap. */
+.kit-card-body.kit-stack > :not([hidden]) ~ * { margin-top: 12px; }
+.kit-stack > p { margin: 0; }
+.kit-card-body.kit-stack > .kit-fold > summary { margin-top: 0; }
 
 /* buttons: lowercase mono, outlined; one fill per card; red text destroys */
 .kit-btns { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -537,6 +543,9 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-input::placeholder { color: var(--kit-muted); }
 .kit-input:focus-visible { outline: 1px solid var(--kit-signal); outline-offset: 0; }
 .kit-field-hint { font-size: 13px; color: var(--kit-muted); margin: 6px 0 0; }
+
+/* a checkbox and its words in one label (dom.js tick), the box centred on them */
+.kit-tick { display: inline-flex; gap: 8px; align-items: center; }
 
 /* the kit's dropdown (dom.js pickField): a kit-input button with a chevron
    that opens the row menu's surface in the top layer, placed by pickField
@@ -1127,6 +1136,9 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-needs-row > * { grid-column: 1; }
 .kit-next { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .kit-next-words { font: 12px var(--kit-mono); color: var(--kit-muted); }
+/* a field in a kit-next row (a search beside a count and a button) grows into
+   the room the rest leave, down to 220px, then the row wraps */
+.kit-next > .kit-input { flex: 1 1 220px; width: auto; min-width: 0; }
 
 /* rendered markdown (prose.js): a document's or a card's text */
 .kit-prose { font-size: 15px; line-height: 1.65; }

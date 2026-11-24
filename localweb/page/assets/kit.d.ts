@@ -423,7 +423,8 @@ export interface Button {
 
 export function buttons(bs: Button[]): HTMLElement;
 
-export function card(o: { edge?: 'signal' | 'agent' | 'wait'; head?: string; body?: Node | string; actions?: Button[] }): HTMLElement;
+/** A colour-edged card. With stack, its body (div.kit-card-body.kit-stack) puts 12px between its parts, gives its paragraphs no margins of their own, and leaves no gap for a hidden part. */
+export function card(o: { edge?: 'signal' | 'agent' | 'wait'; head?: string; body?: Node | string | Array<Node | string>; actions?: Button[]; stack?: boolean }): HTMLElement;
 
 export interface CardLineAction {
   label: string;
@@ -478,6 +479,15 @@ export function textField(o: {
   id?: string;
   onInput?(value: string): void;
 }): { el: HTMLElement; input: HTMLInputElement };
+
+/** A checkbox and its words in one label.kit-tick, the box centred on the words, 8px between them; a press on the words ticks the box. onChange gets checked on every change. */
+export function tick(o: {
+  label: Node | string;
+  checked?: boolean;
+  /** The input's value attribute. */
+  value?: string;
+  onChange?(checked: boolean): void;
+}): { el: HTMLLabelElement; input: HTMLInputElement };
 
 /** One choice of a pickField. */
 export interface PickChoice {
