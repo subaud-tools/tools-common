@@ -219,10 +219,12 @@ export interface BarHandle {
   el: HTMLElement;
   /** Settles once the bar has asked the guide whether the page's tool is beta (and, if so, put " · beta" after the brand). */
   beta: Promise<void>;
+  /** Settles once the bar has drawn the hosted machine's place from the same guide answer (a.kit-bar-ws, the workspace linking to billet's start page, then span.kit-bar-switch, diazo | proj | galley with the page's tool filled in and the brand hidden), or knows there is none, as on a device, where both stay hidden. On a phone the workspace goes into the ⋯ and the switch stays. */
+  place: Promise<void>;
   themeControl: HTMLElement;
   /** The Guide button every page's bar has, left of the theme control: it opens openGuide(). */
   guideControl: HTMLElement;
-  /** The bar's ⋯, shown only at 640px wide or less, where the bar stays one 52px line: the brand, the section buttons and the primary stay, and the status, the also-open switcher, the live pill, Guide and themeControl go into its tray. They are the same elements, moved there while the tray is open and back whenever it closes, so each keeps working. themeControl carries the class kit-bar-theme for it. The section buttons sit in span.kit-bar-sections (display: contents wider than a phone); on a phone they keep their whole labels and that span scrolls sideways when they don't fit. */
+  /** The bar's ⋯, shown only at 640px wide or less, where the bar stays one 52px line: the switch, the brand, the section buttons and the primary stay, and the workspace, the status, the also-open switcher, the live pill, Guide and themeControl go into its tray. They are the same elements, moved there while the tray is open and back whenever it closes, so each keeps working. themeControl carries the class kit-bar-theme for it. The section buttons sit in span.kit-bar-sections (display: contents wider than a phone); on a phone they keep their whole labels and that span scrolls sideways when they don't fit. */
   moreControl: HTMLElement;
   setSection(id: string): void;
   /** Show or hide every section button, for one bar kept across pages. */
@@ -265,6 +267,8 @@ export function bar(o: {
   staleText?: string;
   /** Swaps what Sign in again uses after its press (tests): the requests, the one-second checks, and closing or reloading the tab. */
   signIn?: { fetch?: typeof fetch; setTimeout?: (fn: () => void, ms: number) => unknown; close?(): void; reload?(): void };
+  /** Where the bar loads the guide for the beta mark and the place (tests); /api/kit/guide by default. */
+  guideUrl?: string;
 }): BarHandle;
 
 export interface BandHandle {
@@ -1612,6 +1616,17 @@ export interface GuideData {
   family: string;
   fit: string;
   tools: GuideTool[];
+  /** Only on a hosted machine (PAGE_PUBLIC_DOMAIN set): where the page sits, which the bar draws as the workspace link and the tool switch. */
+  place?: GuidePlace;
+}
+
+/** A hosted machine's place, from pageserve: the workspace, billet's start page for it, and the tools of the bar's switch in order. */
+export interface GuidePlace {
+  workspace: string;
+  /** billet's start page for the workspace: https://<domain>/?w=<ws>. */
+  home: string;
+  /** Each tool's page on the machine; current marks the page's own tool, when it is one of them. */
+  tools: { name: string; href: string; current?: boolean }[];
 }
 
 export interface GuideViewOptions {
@@ -1636,6 +1651,10 @@ export function guideAsks(el: HTMLElement, o?: { url?: string; copy?: (text: str
 export function betaMark(): HTMLSpanElement;
 /** Loads /api/kit/guide and, when the page's tool is beta, appends betaMark() to el. The bar calls it on its brand. A page not served over http(s) (a Record opened from disk) asks for nothing. */
 export function badgeIfBeta(el: HTMLElement, o?: { url?: string; protocol?: string }): Promise<void>;
+/** Loads /api/kit/guide once for the bar, which draws the beta mark and the place from it: the answer, or null when it doesn't load or the page isn't served over http(s). */
+export function guideForBar(o?: { url?: string; protocol?: string }): Promise<GuideData | null>;
+/** Appends betaMark() to el when data (a guide answer, or null) says the page's tool is beta. */
+export function markIfBeta(el: HTMLElement, data: GuideData | null): void;
 /** Draws the Guide as the whole page in root, as /_kit/guide/ does. */
 export function guidePage(root: HTMLElement, o?: { url?: string; copy?: (text: string) => unknown }): Promise<void>;
 

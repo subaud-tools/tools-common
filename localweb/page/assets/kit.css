@@ -161,6 +161,14 @@ code { font: .88em var(--kit-mono); }
 .kit-brand svg { width: 18px; height: 18px; }
 a.kit-brand { color: inherit; text-decoration: none; }
 a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
+/* on a hosted machine the bar starts with the workspace, a link back to
+   billet's start page for it, and the diazo | proj | galley switch with the
+   page's tool filled in (dom.js bar); a device's bar has neither */
+.kit-bar-ws { font-size: 13px; color: var(--kit-muted); text-decoration: none; white-space: nowrap; }
+.kit-bar-ws::after { content: " ›"; }
+.kit-bar-switch { display: inline-flex; flex: none; border: 1px solid var(--kit-line); border-radius: 6px; overflow: hidden; }
+.kit-bar-switch a { padding: 3px 12px; font-weight: 700; font-size: 14px; color: var(--kit-muted); text-decoration: none; }
+.kit-bar-switch a.on { background: var(--kit-signal-soft); color: var(--kit-fg); }
 .kit-ctl {
   font: 13px var(--kit-mono); color: var(--kit-fg); background: transparent;
   border: 1px solid var(--kit-line); border-radius: 6px; padding: 4px 14px; cursor: pointer;
@@ -206,9 +214,10 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 }
 .kit-bar-tray[popover] { position: fixed; inset: auto; margin: 0; overflow: hidden auto; overscroll-behavior: contain; }
 .kit-bar-tray > .kit-status { margin-left: 0; overflow-wrap: anywhere; }
-/* the bar on a phone: one 52px line in every tool. The brand, the section
-   buttons, the ⋯ and the primary stay; the status, the also-open switcher,
-   the live pill, Guide and theme go into the ⋯. The section buttons keep
+/* the bar on a phone: one 52px line in every tool. The switch, the brand,
+   the section buttons, the ⋯ and the primary stay; the workspace, the
+   status, the also-open switcher, the live pill, Guide and theme go into
+   the ⋯. The section buttons keep
    their whole labels (tighter padding first); when they still don't fit,
    their line scrolls sideways, so nothing ends past the window's right edge. */
 @media (width <= 640px) {
@@ -216,7 +225,7 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   .kit-bar .kit-ctl { padding: 4px 8px; }
   .kit-bar .kit-status:empty { display: none; }
   .kit-primary { flex: none; padding: 7px 12px; white-space: nowrap; }
-  .kit-bar > :is(.kit-status, .kit-also, .kit-live, .kit-guide-btn, .kit-bar-theme) { display: none; }
+  .kit-bar > :is(.kit-bar-ws, .kit-status, .kit-also, .kit-live, .kit-guide-btn, .kit-bar-theme) { display: none; }
   .kit-bar > .kit-bar-more { display: block; }
   .kit-bar > .kit-bar-sections {
     display: flex; gap: 4px; flex: 0 1 auto; min-width: 0;
@@ -226,6 +235,14 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   .kit-bar-sections > .kit-ctl { flex: none; padding: 4px 6px; white-space: nowrap; }
   .kit-bar-sections > .kit-ctl .kit-n { margin-left: 4px; }
   .kit-bar > .kit-brand { flex: none; }
+  /* a tool outside the switch (cull, casebook) keeps its brand beside it:
+     there the switch gives way too, scrolling sideways like the sections,
+     so the primary stays whole; diazo, proj and galley hide the brand and
+     their switch fits whole */
+  .kit-bar:has(> .kit-brand:not([hidden])) > .kit-bar-switch {
+    flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+  }
+  .kit-bar-switch > a { flex: none; white-space: nowrap; }
 }
 /* the bar's "also open" area: other work a click away, before the live pill.
    Chips keep their size; what doesn't fit folds into "+N more" (dom.js).
