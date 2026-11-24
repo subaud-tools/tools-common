@@ -162,7 +162,7 @@ code { font: .88em var(--kit-mono); }
 a.kit-brand { color: inherit; text-decoration: none; }
 a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 /* on a hosted machine the bar starts with the workspace, a link back to
-   billet's start page for it, and the diazo | proj | galley switch with the
+   billet's start page for it, and the diazo | cast | galley switch with the
    page's tool filled in (dom.js bar); a device's bar has neither */
 .kit-bar-ws { font-size: 13px; color: var(--kit-muted); text-decoration: none; white-space: nowrap; }
 .kit-bar-ws::after { content: " ›"; }
@@ -237,7 +237,7 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   .kit-bar > .kit-brand { flex: none; }
   /* a tool outside the switch (cull, casebook) keeps its brand beside it:
      there the switch gives way too, scrolling sideways like the sections,
-     so the primary stays whole; diazo, proj and galley hide the brand and
+     so the primary stays whole; diazo, cast and galley hide the brand and
      their switch fits whole */
   .kit-bar:has(> .kit-brand:not([hidden])) > .kit-bar-switch {
     flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
@@ -1053,7 +1053,7 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-sorted .kit-group-head::before { content: none; }
 .kit-sorted .kit-group-head:hover { color: var(--kit-muted); }
 /* the sort switch (frontpage.js sortSwitch): one line over the list it orders,
-   the muted label then a chip per order; lifted from proj's Saved view. */
+   the muted label then a chip per order; lifted from cast's Saved view. */
 .kit-sort { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
 .kit-sort-label { color: var(--kit-muted); font-size: 13px; }
 .kit-sort .kit-chip { margin: 0; }

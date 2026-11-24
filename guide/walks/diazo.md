@@ -10,7 +10,7 @@ text: diazo is where you and your agent agree on a change before anything is bui
 tool: diazo
 target: reply
 look: the reply box under the agent's take, and Send
-agent: Open the practice plan with diazo_open on the practice plan's folder that proj guide start printed, titled Practice plan, and post a short take on a ten-line README with one recommended direction.
+agent: Open the practice plan with diazo_open on the practice plan's folder that cast guide start printed, titled Practice plan, and post a short take on a ten-line README with one recommended direction.
 prepare: Your agent is opening a practice plan and writing a short take on it: what it understood you want, and the way it would go. When it's there, you'll reply to it.
 
 Type a few words in the box under the take, like "Sounds good", then press Send.

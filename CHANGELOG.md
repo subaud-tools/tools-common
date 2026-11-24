@@ -10,7 +10,9 @@ tags and PRs.
 - `tools.CastName` ("cast"), `tools.CastSocketPrefix` ("cast-"), `tools.LegacySocketPrefix` ("proj-", still read for sessions started before the rename) and `tools.CastSettingsDir` ("cast", the folder under ~/.config and ~/.local/state), with `tools.CastSocketProject(socket) (project, ok)`: whether a tmux socket name or path belongs to the tool under either prefix, and its project.
 
 ### Changed
-- guide: `Family` and `WalkTools` name the tool `cast` in place of `proj` (its section and walk are `guide/tools/cast.md` and `guide/walks/cast.md`; their prose is unchanged).
+- guide: `Family` and `WalkTools` name the tool `cast` in place of `proj` (its section and walk are `guide/tools/cast.md` and `guide/walks/cast.md`), and the guide's words say cast throughout: the intro, fit, the tool sections, the walks, the lessons (`lessons/2-your-sessions-with-cast.md`), the skill templates and the commands they name (`cast guide start`, `cast guide show`, `cast new`).
+- The getting-started walk's hook `proj-tab` is now `cast-tab`: the tool's page carries `data-walk="cast-tab"`, and walk steps and the spotlight's `tool` say `cast`. The page's own tool must match (tackle's cast page).
+- Prose and comments in the README, PAGE-STANDARD.md, the kit's CSS and JS and pageserve say cast in place of proj.
 - pageserve: the hosted switch lists `cast` in place of `proj` (`place.tools[].name` and its `cast.<ws>.<domain>` page), and `pageserve.Proj` runs the `cast` binary.
 - harness: `Capture.Project`'s doc names both socket prefixes.
 

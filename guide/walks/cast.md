@@ -1,17 +1,17 @@
-# proj's walk
+# cast's walk
 
-Six clicks on the split page and proj's own page. Each step has two notes: `prepare` shows while the agent is still getting the step ready (what it is doing, what the learner will do next; "Nothing to prepare." means the step has none), then the note once the control is there: its first line is what to press, the rest what is happening. The end card says what the learner learned and leads to the next walk. The intro card opens the walk: what the tool is for and what the learner will do, with Start, while the agent prepares step 1.
+Six clicks on the split page and cast's own page. Each step has two notes: `prepare` shows while the agent is still getting the step ready (what it is doing, what the learner will do next; "Nothing to prepare." means the step has none), then the note once the control is there: its first line is what to press, the rest what is happening. The end card says what the learner learned and leads to the next walk. The intro card opens the walk: what the tool is for and what the learner will do, with Start, while the agent prepares step 1.
 
 ## intro
-title: proj: your sessions.
-text: proj keeps your work in sessions: one terminal for each piece of work, in its project. In six clicks you'll see your session's split page and the tabs beside it, proj's lists of your sessions and projects, and how a session comes back after a restart.
+title: cast: your sessions.
+text: cast keeps your work in sessions: one terminal for each piece of work, in its project. In six clicks you'll see your session's split page and the tabs beside it, cast's lists of your sessions and projects, and how a session comes back after a restart.
 
 ## 1
 tool: cast
 target: split
 press: ok
 look: the divider between the terminal and the tabs
-agent: Nothing more: proj guide start opened this split page beside the terminal.
+agent: Nothing more: cast guide start opened this split page beside the terminal.
 prepare: Nothing to prepare.
 
 Press OK.
@@ -19,18 +19,18 @@ This window is a session: a terminal for one piece of work in one project, named
 
 ## 2
 tool: cast
-target: proj-tab
-look: the tab of proj's page in the tab bar
-agent: Nothing: proj opens its own page as a tab of this split page when the walk reaches this step.
-prepare: Your agent is opening proj's own page as a tab on the right. When it's there, you'll press its tab.
+target: cast-tab
+look: the tab of cast's page in the tab bar
+agent: Nothing: cast opens its own page as a tab of this split page when the walk reaches this step.
+prepare: Your agent is opening cast's own page as a tab on the right. When it's there, you'll press its tab.
 
-Press the proj tab.
+Press the cast tab.
 The right side holds the pages your agent opens for this session, one tab each: a plan, a document, this list. Terminal on the left, pages on the right, in one Chrome window: that's the split page. Every session can have one.
 
 ## 3
 tool: cast
 target: sessions-tab
-look: the sessions tab on proj's page
+look: the sessions tab on cast's page
 agent: Nothing: wait for the learner's click.
 prepare: Nothing to prepare.
 
@@ -51,27 +51,27 @@ Every session can be shown two ways. Chrome, this window, puts the terminal besi
 ## 5
 tool: cast
 target: folders-tab
-look: the folders tab on proj's page
+look: the folders tab on cast's page
 agent: Nothing: wait for the learner's click.
 prepare: Nothing to prepare.
 
 Press folders.
-These are the folders proj knows. A folder of projects, like your GitHub folder, makes each folder inside it a project. A single project is one folder on its own. A workspace is a single project that holds several repos, so one session can work across all of them. Ask your agent to add a folder.
+These are the folders cast knows. A folder of projects, like your GitHub folder, makes each folder inside it a project. A single project is one folder on its own. A workspace is a single project that holds several repos, so one session can work across all of them. Ask your agent to add a folder.
 
 ## 6
 tool: cast
 target: saved-tab
-look: the saved tab on proj's page
+look: the saved tab on cast's page
 agent: Nothing: wait for the learner's click.
 prepare: Nothing to prepare.
 
 Press saved.
-proj remembers every session it has seen. After a restart, restore brings one back in its folder, and its agent picks up the conversation where it left off. Closing a window never ends a session; only reap does. Save layout keeps how your Ghostty windows were arranged.
+cast remembers every session it has seen. After a restart, restore brings one back in its folder, and its agent picks up the conversation where it left off. Closing a window never ends a session; only reap does. Save layout keeps how your Ghostty windows were arranged.
 
 ## end
 learned: A session is a terminal for one piece of work in one project, and it keeps running when you close its window.
 learned: In Chrome a session has its pages beside it; in Ghostty it's a plain terminal. It shows in one at a time.
-learned: proj's page lists your projects, your live sessions and the saved ones.
+learned: cast's page lists your projects, your live sessions and the saved ones.
 learned: After a restart, saved sessions come back with their conversations.
 learned: A workspace is one project holding several repos, so one session can work across them.
 next: Plan a small change on diazo's page.

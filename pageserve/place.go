@@ -11,7 +11,7 @@ import (
 // Place is where a hosted machine's page sits, as GET /api/kit/guide answers
 // it beside the guide: the workspace, billet's start page for it, and the
 // tools of the bar's switch. The kit's bar draws it as the workspace link and
-// the diazo | proj | galley switch. A device has none.
+// the diazo | cast | galley switch. A device has none.
 type Place struct {
 	Workspace string      `json:"workspace"`
 	Home      string      `json:"home"`

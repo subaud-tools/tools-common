@@ -35,7 +35,7 @@
 // step the serve holds now is drawn (resumeSpotlight), so a page opened after
 // it was sent shows it too; spotlight: false turns that off. The tab the
 // event names as forward asks to come forward: it focuses its window and, in
-// a frame (proj's split page), posts {type: "kit.forward", tool} to its parent.
+// a frame (cast's split page), posts {type: "kit.forward", tool} to its parent.
 //
 // A 401 from the poll means this page's cookie no longer matches the token
 // (it is kept across restarts, so it changed or the cookie went): status
@@ -53,7 +53,7 @@
 // since its cursor, such as a show. A tab that loads hidden checks in at once.
 // When shown, it stops polling and reopens the stream from its cursor.
 //
-// A frame in proj's split page is visible to the browser even when its tab
+// A frame in cast's split page is visible to the browser even when its tab
 // isn't selected, so the split page tells it: it posts {type: "kit.shown",
 // shown: true|false} to each frame's window when the frame loads and when the
 // selection changes (the other way from kit.forward). live() takes it only

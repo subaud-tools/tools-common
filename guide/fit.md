@@ -19,7 +19,7 @@ Most changes don't need every step. A one-line fix needs none of them: just ask 
 ## Off to the side
 
 - **muda** looks at the pipeline itself: slow or wasteful CI, or cloud cost. Reach for it when delivery is the problem, not the change.
-- **proj** opens each project in its own session and window, with its pages beside the terminal. **scratch** holds quick notes and **creel** keeps secrets out of the chat.
+- **cast** opens each project in its own session and window, with its pages beside the terminal. **scratch** holds quick notes and **creel** keeps secrets out of the chat.
 - **casebook** sorts old branches, pull requests and repos, **sift** tidies your agent's instruction files, and **cull** weeds out tests that don't earn their place.
 
 ## One at a time

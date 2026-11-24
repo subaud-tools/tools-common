@@ -132,8 +132,8 @@ func TestSplitArgsInterspersed(t *testing.T) {
 	fs := flag.NewFlagSet("new", flag.ContinueOnError)
 	fs.String("agent", "", "agent")
 	fs.Bool("no-sidebar", false, "suppress")
-	flagArgs, pos := SplitArgs(fs, []string{"proj/work", "--agent", "claude", "--no-sidebar"})
-	if len(pos) != 1 || pos[0] != "proj/work" {
+	flagArgs, pos := SplitArgs(fs, []string{"cast/work", "--agent", "claude", "--no-sidebar"})
+	if len(pos) != 1 || pos[0] != "cast/work" {
 		t.Fatalf("positional = %v", pos)
 	}
 	// --agent claude paired; --no-sidebar recognized as bool (no value swallowed)

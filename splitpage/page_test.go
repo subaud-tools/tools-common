@@ -27,12 +27,12 @@ func get(t *testing.T, c Config, path string) (int, http.Header, string) {
 }
 
 func TestPageCarriesTheConfig(t *testing.T) {
-	code, _, body := get(t, Config{Title: `proj <s1>`, Socket: "/api/term", Session: `s"1`, Restart: true, Take: true, Script: `first"run.js`}, "/")
+	code, _, body := get(t, Config{Title: `cast <s1>`, Socket: "/api/term", Session: `s"1`, Restart: true, Take: true, Script: `first"run.js`}, "/")
 	if code != http.StatusOK {
 		t.Fatalf("GET /: %d", code)
 	}
 	for _, want := range []string{
-		`<title>proj &lt;s1&gt;</title>`,
+		`<title>cast &lt;s1&gt;</title>`,
 		`data-socket="/api/term"`,
 		`data-session="s&#34;1"`,
 		`data-restart="true"`,

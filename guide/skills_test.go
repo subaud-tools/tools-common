@@ -98,12 +98,12 @@ func TestSkillsRenderFromTheContent(t *testing.T) {
 			}
 		}
 	}
-	for _, want := range []string{"Get me started with subaud.", "`proj guide start`: it runs all three walks in order", "Show me around ‹tool›.", "`proj guide start ‹tool›`", "proj guide show", "never watch a tool's events", "proj guide back", "proj guide skip", "proj guide stop", "never types anything", "one short line"} {
+	for _, want := range []string{"Get me started with subaud.", "`cast guide start`: it runs all three walks in order", "Show me around ‹tool›.", "`cast guide start ‹tool›`", "cast guide show", "never watch a tool's events", "cast guide back", "cast guide skip", "cast guide stop", "never types anything", "one short line"} {
 		if !strings.Contains(walk, want) {
 			t.Errorf("getting-started does not say %q", want)
 		}
 	}
-	for _, gone := range []string{"lesson", "Lesson", "proj guide result", "Send to Claude", "Advance", "advance event"} {
+	for _, gone := range []string{"lesson", "Lesson", "cast guide result", "Send to Claude", "Advance", "advance event"} {
 		if strings.Contains(walk, gone) {
 			t.Errorf("getting-started still says %q", gone)
 		}
