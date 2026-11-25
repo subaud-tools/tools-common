@@ -12,7 +12,6 @@ export interface State {
   layout: Layout; // the wide layout, kept for the browser tab (sessionStorage)
   narrow: boolean; // the window is the page kit's narrow width or less
   view: View; // the side a narrow page shows
-  dot: boolean; // a tab opened behind that Pages hasn't shown yet
   known: boolean; // the page has heard its tabs, so a narrow page knows its side
 }
 
@@ -46,6 +45,30 @@ export function storedWidth(v: string | null): number | null {
 export function arrow(layout: Layout, dir: 'left' | 'right'): Layout {
   if (dir === 'left') return layout === 'tabs-closed' ? 'split' : 'term-closed';
   return layout === 'term-closed' ? 'split' : 'tabs-closed';
+}
+
+// toggleTerminal is the layout after the Terminal button or the terminal's ×:
+// a closed terminal opens the split, the split closes the terminal, and a
+// terminal that fills the window (the tabs closed) stays. The same layouts
+// as the divider's arrows.
+export function toggleTerminal(layout: Layout): Layout {
+  if (layout === 'term-closed') return 'split';
+  if (layout === 'split') return 'term-closed';
+  return layout;
+}
+
+// terminalPress is the state after the Terminal button or ×: wide, the layout
+// toggles; narrow, the side shown does, the terminal or the pages.
+export function terminalPress(s: State): State {
+  if (s.narrow) return show(s, s.view === 'terminal' ? 'pages' : 'terminal');
+  return { ...s, layout: toggleTerminal(s.layout) };
+}
+
+// afterTool is the state once a tool is pressed in the bar's switch: its page
+// shows, so closed tabs open, and a narrow page shows Pages.
+export function afterTool(s: State): State {
+  if (s.narrow) return show(s, 'pages');
+  return s.layout === 'tabs-closed' ? { ...s, layout: 'split' } : s;
 }
 
 // released is the side a drag let go at x closes, or null: within edge of
@@ -99,14 +122,14 @@ export function tabChange(prev: TabList | null, next: TabList, again = false): C
 
 // afterTabs is the state after a change to the tabs: wide, a tab in front or
 // the first opens closed tabs and closing the last closes them; narrow, the
-// same are switches, and a tab opened behind marks Pages.
+// same switch the side shown. A tab opened behind changes nothing: the tab
+// marks itself, on the switch or the row of tabs.
 export function afterTabs(s: State, c: Change): State {
   if (c.last) return s.narrow ? { ...s, view: 'terminal' } : { ...s, layout: 'tabs-closed' };
   if (c.front || c.first) {
     if (s.narrow) return show(s, 'pages');
     return s.layout === 'tabs-closed' ? { ...s, layout: 'split' } : s;
   }
-  if (c.behind && s.narrow && s.view === 'terminal') return { ...s, dot: true };
   return s;
 }
 
@@ -116,7 +139,7 @@ export function afterTyped(s: State): State {
   return s.layout === 'term-closed' ? { ...s, layout: 'split' } : s;
 }
 
-// show switches a narrow page to view; Pages showing clears its mark.
+// show switches a narrow page to view.
 export function show(s: State, view: View): State {
-  return { ...s, view, dot: view === 'pages' ? false : s.dot };
+  return { ...s, view };
 }

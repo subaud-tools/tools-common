@@ -10,6 +10,9 @@ const clip = q.get('clip');
 const send = q.get('send');
 const elsewhere = q.get('elsewhere'); // send.html on another origin
 const restart = q.get('restart') === '1';
+// The place's switch tools' front pages: diazo is up, cast fails to start,
+// galley starts on a press.
+const tool = { diazo: q.get('diazo'), cast: q.get('cast'), galley: q.get('galley') };
 const phone = q.get('phone') === '1';
 const session = 's1';
 const frame = document.getElementById('page');
@@ -120,6 +123,32 @@ const resizes = async () => (await fetch('/api/test/resizes')).json();
 const closeTerm = () => doc().getElementById('close-term'); // ◀
 const closeTabs = () => doc().getElementById('close-tabs'); // ▶
 
+// The bar across the top: the switch's links, the Terminal button, the
+// terminal's ×, and the slim row of tabs.
+const switchLink = (name) => doc().querySelector(`#bar-switch a[data-tool="${name}"]`);
+const termToggle = () => doc().getElementById('term-toggle');
+const termX = () => doc().getElementById('term-close');
+const slimRow = () => doc().getElementById('tabbar');
+const rowShows = () => rect('tabbar').height > 0;
+const hostOf = (address) => new URL(address).host;
+// press clicks a switch tool as a plain click does.
+function press(name) {
+  switchLink(name).dispatchEvent(new (win().MouseEvent)('click', { bubbles: true, cancelable: true, button: 0, view: win() }));
+}
+const shownHost = () => {
+  const src = shownFrame()?.getAttribute('src');
+  return src ? hostOf(src) : '';
+};
+// barShows checks the bar: the kit's 52px, the window's whole width, at its top.
+function assertBar() {
+  const b = rect('bar');
+  assert(b.height === 52, `the bar is ${b.height}px high`);
+  assert(b.left === 0 && near(b.width, pageWidth()) && b.top === 0, `the bar at ${b.left}..${b.right} of ${pageWidth()}`);
+  const t = rect('term');
+  const p = rect('tabs-panel');
+  assert((t.width === 0 || t.top >= b.bottom) && (p.width === 0 || p.top >= b.bottom), 'a side under the bar');
+}
+
 // termClosed and tabsClosed say one side is gone and the other fills the
 // window beside the divider, which sits at the window's edge.
 function termClosed() {
@@ -154,7 +183,7 @@ function drag(x) {
 // has, whose cells fill the terminal's panel.
 function fitsPanel(size) {
   const s = doc().querySelector('#term .xterm-screen').getBoundingClientRect();
-  const t = rect('term');
+  const t = rect('term-screen');
   const term = split().term;
   return (
     size.cols === term.cols && size.rows === term.rows &&
@@ -168,20 +197,16 @@ async function pageReady() {
 }
 
 if (phone) {
-  // A narrow page shows one side at a time, full width. The page starts wide
-  // (run.html's 1200px) to leave a closed side and a width narrow must keep.
-  const showTerminal = () => doc().getElementById('show-terminal');
-  const showPages = () => doc().getElementById('show-pages');
+  // A narrow page shows one side at a time, full width, under the bar. The
+  // page starts wide (run.html's 1280px) to leave a closed side and a width
+  // narrow must keep.
   const shows = (id) => {
     const r = rect(id);
     return r.width > 0 && r.height > 0;
   };
   const onTerminal = () => near(rect('term').width, pageWidth()) && rect('tabs-panel').width === 0;
   const onPages = () => near(rect('tabs-panel').width, pageWidth()) && rect('term').width === 0;
-  const dotShows = () => {
-    const dot = showPages().querySelector('.switch-new');
-    return dot.getBoundingClientRect().width > 0 && win().getComputedStyle(dot).display !== 'none';
-  };
+  const marked = (name) => switchLink(name).classList.contains('new') && win().getComputedStyle(switchLink(name), '::before').content !== 'none';
   const wideKeys = () =>
     JSON.stringify([Object.entries(win().sessionStorage).sort(), Object.entries(win().localStorage).sort()]);
   let kept;
@@ -197,68 +222,82 @@ if (phone) {
     kept = wideKeys();
   });
 
-  test('at 390px the switch shows, the divider does not, and with no tab the terminal fills the width', async () => {
+  test('at 390px the bar stays 52px with the switch and ▣, the divider goes, and with no tab the terminal fills the width', async () => {
     // A phone lays a page out at its own width only when the page says so.
     const viewport = doc().querySelector('meta[name="viewport"]')?.content ?? '';
     assert(viewport.includes('width=device-width'), `viewport: ${JSON.stringify(viewport)}`);
     frame.style.width = '390px';
     frame.style.height = '844px';
-    await until(() => shows('switch') && !shows('divider'), 'the page goes narrow');
-    assert(pageWidth() === 390, `page width ${pageWidth()}`);
+    await until(() => !shows('divider') && pageWidth() === 390, 'the page goes narrow');
     assert(onTerminal(), `terminal ${rect('term').width}, tabs ${rect('tabs-panel').width}`);
     await load(); // a new window with no tab
+    await until(() => switchLink('diazo'), 'the switch draws');
     await sleep(200);
-    assert(shows('switch') && !shows('divider') && onTerminal(), 'a new window with no tab opens on Terminal');
+    assert(!shows('divider') && onTerminal(), 'a new window with no tab opens on the terminal');
+    assertBar();
+    assert(!shows('bar-ws'), 'the workspace on a phone\'s bar');
+    assert(shows('bar-switch') && shows('term-toggle'), 'the switch and ▣ on the bar');
+    assert(termToggle().textContent.trim().startsWith('\u25a3') && rect('term-toggle').width < 60, `▣ is ${rect('term-toggle').width}px: its label shows`);
+    assert(rect('term-toggle').right <= pageWidth(), '▣ past the edge');
   });
 
-  test('each switch button shows its side, and only Terminal says a size', async () => {
+  test('a tool shows its page, ▣ the terminal, and only the terminal says a size', async () => {
     await until(() => split().canSend(), 'the replay is written');
     await sleep(300);
     const n = (await resizes()).length;
-    showPages().click();
-    await until(onPages, 'Pages shows, full width');
+    press('diazo');
+    await until(() => onPages() && shownHost() === hostOf(tool.diazo), 'diazo shows, full width');
+    assert(switchLink('diazo').classList.contains('on'), 'diazo is not filled in');
+    assert(termToggle().getAttribute('aria-pressed') === 'false', '▣ is pressed while the pages show');
     await sleep(300);
-    assert((await resizes()).length === n, 'a resize while Pages shows');
-    showTerminal().click();
-    await until(onTerminal, 'Terminal shows, full width');
-    await until(async () => (await resizes()).length > n, 'a resize as Terminal shows');
+    assert((await resizes()).length === n, 'a resize while the pages show');
+    termToggle().click();
+    await until(onTerminal, 'the terminal shows, full width');
+    assert(termToggle().getAttribute('aria-pressed') === 'true', '▣ is not pressed while the terminal shows');
+    assert(!switchLink('diazo').classList.contains('on'), 'diazo is filled in while the terminal shows');
+    await until(async () => (await resizes()).length > n, 'a resize as the terminal shows');
     await sleep(300);
     const got = (await resizes()).slice(n);
-    assert(got.length === 1 && fitsPanel(got[0]), `resizes as Terminal shows: ${JSON.stringify(got)}`);
+    assert(got.length === 1 && fitsPanel(got[0]), `resizes as the terminal shows: ${JSON.stringify(got)}`);
+    termToggle().click();
+    await until(onPages, '▣ again shows the pages');
+    termToggle().click();
+    await until(onTerminal, 'and the terminal');
   });
 
-  test('a tab opened in front switches to Pages, and one opened behind puts a dot on Pages', async () => {
+  test('a tab opened in front switches to the pages, and a tool\'s tab opened behind marks its tool', async () => {
     let res = await post('/api/split/open', { session, address: one, title: 'One' });
     assert(res.ok, `open one: ${res.status}`);
-    await until(onPages, 'a tab opened in front switches to Pages');
-    showTerminal().click();
-    await until(onTerminal, 'Terminal shows');
-    assert(!dotShows(), 'a dot before any tab opened behind');
-    res = await post('/api/split/open', { session, address: two, title: 'Two', behind: true });
-    assert(res.ok, `open two: ${res.status}`);
-    const behind = (await res.json()).tabs.find((t) => t.address === two).id;
-    await until(() => barTab(behind), 'the behind tab in the bar');
-    await until(dotShows, 'a tab opened behind puts a dot on Pages');
-    assert(onTerminal(), 'a tab opened behind switched to Pages');
-    showPages().click();
-    await until(onPages, 'Pages shows');
-    assert(!dotShows(), 'the dot stays once Pages shows');
+    await until(onPages, 'a tab opened in front switches to the pages');
+    await until(rowShows, 'the slim row shows the page');
+    termToggle().click();
+    await until(onTerminal, 'the terminal shows');
+    assert(!marked('galley'), 'galley marked before any tab opened behind');
+    res = await post('/api/split/open', { session, address: tool.galley, title: 'galley', behind: true });
+    assert(res.ok, `open galley behind: ${res.status}`);
+    await until(() => marked('galley'), 'a tool\'s tab opened behind marks its tool');
+    assert(onTerminal(), 'a tab opened behind switched to the pages');
+    press('galley');
+    await until(() => onPages() && shownHost() === hostOf(tool.galley), 'galley shows');
+    assert(!marked('galley'), 'the mark stays once galley shows');
+    termToggle().click();
+    await until(onTerminal, 'the terminal shows again');
   });
 
-  test('typed text switches to Terminal', async () => {
+  test('typed text switches to the terminal', async () => {
     await until(() => split().canSend(), 'the replay is written');
     const res = await post('/api/split/open', { session, address: send, title: 'Types', types: true });
     const typer = (await res.json()).selected;
-    await until(onPages, 'Pages shows');
+    await until(onPages, 'the pages show');
     const before = await input();
     await tell(typer, { post: { type: 'send', text: 'switched' } });
-    await until(onTerminal, 'typed text switches to Terminal');
+    await until(onTerminal, 'typed text switches to the terminal');
     await until(async () => (await input()).slice(before.length) === 'switched', 'the text is typed');
   });
 
-  test('a new window with a tab opens on Pages', async () => {
+  test('a new window with a tab opens on the pages', async () => {
     await load();
-    await until(onPages, 'a new window with a tab opens on Pages');
+    await until(onPages, 'a new window with a tab opens on the pages');
   });
 
   test('a narrow load with a tab never shows, fits or focuses the terminal, and says no size', async () => {
@@ -280,21 +319,22 @@ if (phone) {
     watch();
     await loaded;
     await pageReady();
-    await until(onPages, 'the page settles on Pages');
+    await until(onPages, 'the page settles on the pages');
     await until(() => split().canSend(), 'the replay is written');
     await sleep(300);
     watching = false;
-    assert(!terminalShowed, 'the terminal showed before Pages');
+    assert(!terminalShowed, 'the terminal showed before the pages');
     assert(!doc().activeElement?.classList.contains('xterm-helper-textarea'), 'the terminal took the focus');
     const got = (await resizes()).slice(n);
-    assert(got.length === 0, `resizes while Pages shows: ${JSON.stringify(got)}`);
+    assert(got.length === 0, `resizes while the pages show: ${JSON.stringify(got)}`);
   });
 
   test('narrow keeps the wide layout as it was, and widening to 1280px brings it back', async () => {
     assert(wideKeys() === kept, `narrow wrote ${wideKeys()}, was ${kept}`);
     frame.style.width = '1280px';
     frame.style.height = '700px';
-    await until(() => !shows('switch') && pageWidth() === 1280 && tabsClosed(), 'the tabs are closed again at 1280px');
+    await until(() => shows('divider') && pageWidth() === 1280 && tabsClosed(), 'the tabs are closed again at 1280px');
+    assertBar();
     closeTerm().click();
     await until(() => splitOpen() && near(rect('term').width, 400), `the split at ${rect('term').width}, want 400`);
   });
@@ -780,6 +820,104 @@ if (phone) {
     win().sessionStorage.clear(); // what a new window starts with
     await load();
     await until(() => splitOpen() && near(rect('term').width, 420), `a new window at ${rect('term').width}, want 420`);
+  });
+
+  // The bar across the top, from the test host's place.
+  const note = () => doc().getElementById('tool-note');
+  const noteText = () => doc().getElementById('tool-note-text').textContent;
+  const filled = (name) => switchLink(name).classList.contains('on');
+
+  test('the bar spans the window at 52px, with the workspace, the switch and Terminal', async () => {
+    await until(() => switchLink('galley'), 'the switch draws');
+    assertBar();
+    const ws = doc().getElementById('bar-ws');
+    assert(!ws.hidden && ws.textContent === 'tools-workspace', `workspace: ${ws.textContent}`);
+    const names = [...doc().querySelectorAll('#bar-switch a')].map((a) => a.textContent);
+    assert(JSON.stringify(names) === '["diazo","cast","galley"]', `switch: ${names}`);
+    // Real links, so a middle-click opens the tool in a browser tab.
+    for (const n of names) assert(switchLink(n).href === tool[n], `${n} links ${switchLink(n).href}`);
+    assert(termToggle().getAttribute('aria-pressed') === 'true' && termToggle().classList.contains('on'), 'Terminal is not highlighted');
+    assert(doc().getElementById('term-name').textContent === `terminal · ${xs}`, `header: ${doc().getElementById('term-name').textContent}`);
+    assert(rect('term-head').height === 28 && rect('term-head').top === rect('bar').bottom, `header ${rect('term-head').height}px at ${rect('term-head').top}`);
+  });
+
+  test('pressing diazo shows its page on the right, once, and leaves the terminal as it was', async () => {
+    if (bar().length === 0) await post('/api/split/open', { session: xs, address: `${one}?other`, title: 'Other' });
+    await until(() => bar().length > 0, 'a page that is not a tool\'s');
+    const w0 = rect('term').width;
+    const before = (await tabs_(xs)).tabs.length;
+    press('diazo');
+    await until(() => shownHost() === hostOf(tool.diazo), 'diazo shows');
+    assert(filled('diazo') && !filled('cast') && !filled('galley'), 'diazo is not the one filled in');
+    let l = await tabs_(xs);
+    assert(l.tabs.length === before + 1, `tabs ${l.tabs.length}, want ${before + 1}`);
+    assert(near(rect('term').width, w0), `the terminal moved: ${rect('term').width}, was ${w0}`);
+    assert(!barTab(l.selected), "diazo's tab is in the slim row");
+    bar()[0].click();
+    await until(() => shownHost() !== hostOf(tool.diazo), 'the other page shows');
+    assert(!filled('diazo'), 'diazo is filled in with another page in front');
+    press('diazo');
+    await until(() => shownHost() === hostOf(tool.diazo), 'diazo shows again');
+    l = await tabs_(xs);
+    assert(l.tabs.length === before + 1, `a second diazo tab: ${l.tabs.length}`);
+  });
+
+  test('pressing galley, which is down, starts it: Starting galley… on the right, then its page', async () => {
+    press('galley');
+    await until(() => !note().hidden && rect('tool-note').width > 0 && noteText() === 'Starting galley…', 'Starting galley… shows');
+    assert(filled('galley'), 'galley is not filled in while it starts');
+    await until(() => shownHost() === hostOf(tool.galley) && note().hidden, 'galley shows');
+    assert(filled('galley'), 'galley is not filled in');
+  });
+
+  test('pressing cast, which fails to start, says why on the right', async () => {
+    press('cast');
+    await until(() => !note().hidden && rect('tool-note').width > 0 && noteText().includes('could not bind'), 'why cast did not start');
+    assert(!filled('cast'), 'cast is filled in after it failed');
+    press('diazo');
+    await until(() => shownHost() === hostOf(tool.diazo) && note().hidden, 'diazo shows and the note goes');
+  });
+
+  test('× closes the terminal, Terminal brings it back at its width, and the arrows agree', async () => {
+    const w0 = rect('term').width;
+    termX().click();
+    await until(termClosed, '× closes the terminal');
+    assert(termToggle().getAttribute('aria-pressed') === 'false' && !termToggle().classList.contains('on'), 'Terminal is highlighted with the terminal closed');
+    assertBar();
+    termToggle().click();
+    await until(() => splitOpen() && near(rect('term').width, w0), `Terminal opens it at ${rect('term').width}, want ${w0}`);
+    assert(termToggle().getAttribute('aria-pressed') === 'true', 'Terminal is not highlighted');
+    termToggle().click();
+    await until(termClosed, 'Terminal closes it');
+    closeTabs().click();
+    await until(() => splitOpen() && near(rect('term').width, w0), 'and ▶ opens it again');
+  });
+
+  test('with the pages closed, pressing a tool opens the split with it', async () => {
+    const w0 = rect('term').width;
+    closeTabs().click();
+    await until(tabsClosed, 'the pages close');
+    assert(!filled('diazo'), 'a tool is filled in while the terminal fills the window');
+    press('galley');
+    await until(() => splitOpen() && near(rect('term').width, w0) && shownHost() === hostOf(tool.galley), 'the split opens with galley');
+  });
+
+  test("a page that isn't a tool's shows the slim row, and closing it removes the row", async () => {
+    while (bar().length > 0) {
+      const count = bar().length;
+      bar()[0].querySelector('.tab-close').click();
+      await until(() => bar().length < count, 'a page closes');
+    }
+    await until(() => !rowShows(), 'the row goes with the last page that is not a tool\'s');
+    assert(splitOpen(), "the tools' tabs closed the pages");
+    const res = await post('/api/split/open', { session: xs, address: `${one}?slim`, title: 'Slim' });
+    const id = (await res.json()).selected;
+    await until(() => rowShows() && bar().length === 1 && barTab(id), 'the row shows the page');
+    const r = rect('tabbar');
+    const p = rect('tabs-panel');
+    assert(r.top === rect('bar').bottom && near(r.left, p.left) && near(r.width, p.width), `the row at ${r.left},${r.top} ${r.width}, over the pages at ${p.left} ${p.width}`);
+    barTab(id).querySelector('.tab-close').click();
+    await until(() => !rowShows(), 'closing it removes the row');
   });
 } else {
   test('without a Script nothing extra loads', async () => {

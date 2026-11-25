@@ -1,5 +1,6 @@
-// The split page: xterm.js over the tool's terminal websocket on the left, the
-// tabs on the right, and a divider between them. The wire is splitpage's
+// The split page: the kit's bar across the top (bar.ts), xterm.js over the
+// tool's terminal websocket on the left under its own header, the tabs on the
+// right, and a divider between them. The wire is splitpage's
 // (wire.go): binary frames carry terminal bytes both ways, a text frame from
 // here is a resize, and the first frame from the server is the replay.
 
@@ -9,9 +10,11 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
 import type { Resize } from '../wire.d.ts';
+import { type BarView, startBar } from './bar.ts';
 import { handleKey } from './keys.ts';
 import {
   afterTabs,
+  afterTool,
   afterTyped,
   arrow,
   edge,
@@ -19,17 +22,17 @@ import {
   layoutKey,
   narrowQuery,
   released,
-  show,
   type State,
   storedLayout,
   storedWidth,
   tabChange,
   termShows,
+  terminalPress,
   widthKey,
 } from './layout.ts';
 import { sentText } from './relay.ts';
 import { socketScheme } from './socket.ts';
-import { startTabs } from './tabs.ts';
+import { startTabs, type TabsView } from './tabs.ts';
 
 const fontFamily =
   'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
@@ -121,7 +124,6 @@ let state: State = {
   layout: storedLayout(stored(() => sessionStorage, layoutKey)),
   narrow: narrowMedia.matches,
   view: 'terminal',
-  dot: false,
   known: false,
 };
 const keptWidth = storedWidth(stored(() => localStorage, widthAt));
@@ -132,19 +134,24 @@ let termShown = (): void => {};
 
 const closeTerm = document.getElementById('close-term') as HTMLButtonElement;
 const closeTabs = document.getElementById('close-tabs') as HTMLButtonElement;
-const showTerminal = document.getElementById('show-terminal') as HTMLButtonElement;
-const showPages = document.getElementById('show-pages') as HTMLButtonElement;
+const termToggle = document.getElementById('term-toggle') as HTMLButtonElement;
+const termClose = document.getElementById('term-close') as HTMLButtonElement;
+document.getElementById('term-name')!.textContent = `terminal · ${session}`;
+// Set once the tabs and the bar have started; draw runs before.
+let tabs: TabsView | null = null;
+let bar: BarView | null = null;
 
 function draw(): void {
   body.dataset.layout = state.layout;
   // A narrow page shows neither side until it has heard its tabs.
   body.dataset.view = state.known || !state.narrow ? state.view : '';
   body.classList.toggle('narrow', state.narrow);
-  showTerminal.classList.toggle('on', body.dataset.view === 'terminal');
-  showTerminal.setAttribute('aria-selected', String(body.dataset.view === 'terminal'));
-  showPages.classList.toggle('on', body.dataset.view === 'pages');
-  showPages.setAttribute('aria-selected', String(body.dataset.view === 'pages'));
-  showPages.classList.toggle('new', state.dot);
+  // The Terminal button is highlighted while the terminal shows.
+  const shows = termShows(state);
+  termToggle.classList.toggle('on', shows);
+  termToggle.setAttribute('aria-pressed', String(shows));
+  const pagesShow = state.narrow ? body.dataset.view === 'pages' : state.layout !== 'tabs-closed';
+  if (tabs && bar) bar.draw(tabs.list(), pagesShow);
   const left = state.layout === 'tabs-closed' ? 'Bring the tabs back' : 'Close the terminal: the tabs fill the window';
   const right = state.layout === 'term-closed' ? 'Bring the terminal back' : 'Close the tabs: the terminal fills the window';
   closeTerm.title = left;
@@ -179,7 +186,7 @@ function startTerminal(): void {
   // from a link).
   term.loadAddon(new WebLinksAddon((_ev, uri) => window.open(uri, '_blank', 'noopener')));
   term.unicode.activeVersion = '11';
-  term.open(document.getElementById('term')!);
+  term.open(document.getElementById('term-screen')!);
   try {
     const webgl = new WebglAddon();
     webgl.onContextLoss(() => webgl.dispose());
@@ -245,7 +252,7 @@ function startTerminal(): void {
     }
     return true;
   });
-  new ResizeObserver(fitShown).observe(document.getElementById('term')!);
+  new ResizeObserver(fitShown).observe(document.getElementById('term-screen')!);
   termShown = (): void => {
     // A fit that changes the size says it (onResize); one that doesn't still
     // says it once, since nothing was said while closed.
@@ -263,7 +270,7 @@ function startTerminal(): void {
   // does, with no Enter: the user reads it and sends it. A closed terminal
   // opens first.
   addEventListener('message', (ev) => {
-    const text = sentText(ev.data, ev.origin, tabs.from(ev.source));
+    const text = sentText(ev.data, ev.origin, tabs?.from(ev.source));
     if (text !== null) {
       apply(afterTyped(state));
       term.paste(text);
@@ -387,19 +394,24 @@ function startDivider(): void {
   closeTabs.addEventListener('click', () => apply({ ...state, layout: arrow(state.layout, 'right') }));
 }
 
-// Narrow, a switch shows one side at a time; the page goes narrow and wide
-// again as the window changes.
-showTerminal.addEventListener('click', () => apply(show(state, 'terminal')));
-showPages.addEventListener('click', () => apply(show(state, 'pages')));
+// The Terminal button and the terminal's × close and open it (narrow, they
+// switch the side shown); the page goes narrow and wide again as the window
+// changes.
+termToggle.addEventListener('click', () => apply(terminalPress(state)));
+termClose.addEventListener('click', () => apply(terminalPress(state)));
 narrowMedia.addEventListener('change', () => apply({ ...state, narrow: narrowMedia.matches }));
 
 draw();
 // A tab opened in front, or the first, opens closed tabs; closing the last
 // closes them. The first list the page hears picks a narrow page's side.
-const tabs = startTabs(session, (prev, next, again) => {
+tabs = startTabs(session, (prev, next, again) => {
   if (prev === null) apply({ ...state, view: firstView(next.tabs?.length ?? 0), known: true });
   else apply(afterTabs(state, tabChange(prev, next, again)));
 });
+// A tool pressed in the switch shows the pages side, then its page.
+const shownTabs = tabs;
+bar = startBar(session, () => apply(afterTool(state)), (l) => shownTabs.take(l));
+draw();
 startTerminal();
 startDivider();
 // The tool's own script (Config.Script), from its own assets, once

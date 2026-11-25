@@ -3,20 +3,22 @@ import { test } from 'node:test';
 import type { Tab, TabList } from '../wire.d.ts';
 import {
   afterTabs,
+  afterTool,
   afterTyped,
   arrow,
   firstView,
   released,
-  show,
   type State,
   storedLayout,
   storedWidth,
   tabChange,
   termShows,
+  toggleTerminal,
+  terminalPress,
   widthKey,
 } from './layout.ts';
 
-const wide: State = { layout: 'split', narrow: false, view: 'terminal', dot: false, known: true };
+const wide: State = { layout: 'split', narrow: false, view: 'terminal', known: true };
 const narrow: State = { ...wide, narrow: true };
 const tab = (id: string): Tab => ({ id, address: `http://127.0.0.1:1/${id}`, title: id, pinned: false, types: false });
 const list = (selected: string, ...ids: string[]): TabList => ({ session: 's', tabs: ids.map(tab), selected });
@@ -106,7 +108,7 @@ test('wide: a tab in front or the first opens closed tabs; closing the last clos
   assert.equal(afterTabs(wide, { ...none, last: true }).layout, 'tabs-closed');
   assert.equal(afterTabs({ ...wide, layout: 'term-closed' }, { ...none, last: true }).layout, 'tabs-closed');
   assert.equal(afterTabs({ ...wide, layout: 'term-closed' }, { ...none, front: true }).layout, 'term-closed');
-  assert.equal(afterTabs(wide, { ...none, behind: true }).dot, false);
+  assert.deepEqual(afterTabs(wide, { ...none, behind: true }), wide);
 });
 
 test('wide: typed text opens a closed terminal', () => {
@@ -118,16 +120,35 @@ test('narrow: the returns are switches, and never touch the wide layout', () => 
   const s: State = { ...narrow, layout: 'tabs-closed', view: 'terminal' };
   assert.deepEqual(afterTabs(s, { ...none, front: true }), { ...s, view: 'pages' });
   assert.deepEqual(afterTabs(s, { ...none, first: true }), { ...s, view: 'pages' });
-  assert.deepEqual(afterTabs(s, { ...none, behind: true }), { ...s, dot: true });
+  assert.deepEqual(afterTabs(s, { ...none, behind: true }), s);
   assert.deepEqual(afterTabs({ ...s, view: 'pages' }, { ...none, behind: true }), { ...s, view: 'pages' });
   assert.deepEqual(afterTabs({ ...s, view: 'pages' }, { ...none, last: true }), s);
   const t: State = { ...narrow, layout: 'term-closed', view: 'pages' };
   assert.deepEqual(afterTyped(t), { ...t, view: 'terminal' });
 });
 
-test('the dot on Pages goes when Pages shows', () => {
-  const s: State = { ...narrow, view: 'terminal', dot: true };
-  assert.deepEqual(show(s, 'pages'), { ...s, view: 'pages', dot: false });
-  assert.deepEqual(show(s, 'terminal'), s);
-  assert.deepEqual(afterTabs(s, { ...none, front: true }), { ...s, view: 'pages', dot: false });
+test('the Terminal button and × close and open the terminal, as the arrows do', () => {
+  assert.equal(toggleTerminal('split'), 'term-closed');
+  assert.equal(toggleTerminal('term-closed'), 'split');
+  // The terminal fills the window: it stays.
+  assert.equal(toggleTerminal('tabs-closed'), 'tabs-closed');
+  // The same layouts the divider's arrows reach.
+  assert.equal(toggleTerminal('split'), arrow('split', 'left'));
+  assert.equal(toggleTerminal('term-closed'), arrow('term-closed', 'right'));
+});
+
+test('wide, a press of the Terminal button toggles the layout; narrow, the side shown', () => {
+  assert.deepEqual(terminalPress(wide), { ...wide, layout: 'term-closed' });
+  assert.deepEqual(terminalPress({ ...wide, layout: 'term-closed' }), wide);
+  const s: State = { ...narrow, layout: 'tabs-closed', view: 'pages' };
+  assert.deepEqual(terminalPress(s), { ...s, view: 'terminal' });
+  assert.deepEqual(terminalPress({ ...s, view: 'terminal' }), s);
+});
+
+test('a tool pressed in the switch shows the pages: closed tabs open, narrow shows Pages', () => {
+  assert.equal(afterTool({ ...wide, layout: 'tabs-closed' }).layout, 'split');
+  assert.deepEqual(afterTool(wide), wide);
+  assert.deepEqual(afterTool({ ...wide, layout: 'term-closed' }), { ...wide, layout: 'term-closed' });
+  const s: State = { ...narrow, layout: 'tabs-closed', view: 'terminal' };
+  assert.deepEqual(afterTool(s), { ...s, view: 'pages' });
 });

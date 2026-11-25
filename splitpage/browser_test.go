@@ -23,10 +23,13 @@ import (
 	"time"
 
 	"github.com/subaud-tools/tools-common/localweb"
+	"github.com/subaud-tools/tools-common/localweb/page"
 )
 
 // The page is tested in the system's headless Chrome, as localweb/page's
-// suites are: a localweb server serves Page, Tabs and a stand-in terminal,
+// suites are: a localweb server serves Page with the kit's assets at /_kit/
+// (as cast does), Tabs with a place (the switch's diazo up, galley down and
+// started on a press, cast down and failing to start), a stand-in terminal,
 // testdata/run.html frames the page and runs testdata/suite.js against it,
 // and the suite posts its result back. Without Chrome the tests skip, unless
 // KIT_BROWSER=required (CI), where a missing browser is a failure.
@@ -99,6 +102,28 @@ func runSuiteAt(t *testing.T, restart, phone bool) {
 	result := make(chan string, 1)
 	api := http.NewServeMux()
 	tabs := NewTabs()
+	// The switch's tools, each a server of its own: a tab on one's host is
+	// that tool's.
+	tool := func() string {
+		s := httptest.NewServer(http.FileServerFS(os.DirFS("testdata")))
+		t.Cleanup(s.Close)
+		return s.URL + "/tool.html"
+	}
+	diazo, cast, galley := tool(), tool(), tool()
+	tabs.Place(func(string) (Place, bool) {
+		return Place{Workspace: "tools-workspace", Home: "/", Tools: []PlaceTool{
+			{Name: "diazo", Href: diazo, Up: true},
+			{Name: "cast", Href: cast},
+			{Name: "galley", Href: galley},
+		}}, true
+	})
+	tabs.Start(func(_ context.Context, name string) (string, error) {
+		if name != "galley" {
+			return "", errors.New(name + ": the serve's log says it could not bind")
+		}
+		time.Sleep(400 * time.Millisecond) // long enough to see it start
+		return galley, nil
+	})
 	api.Handle("/api/split/", tabs.Handler())
 	// What a tool does when its own page moves: Replace, which Handler doesn't serve.
 	api.HandleFunc("POST /api/test/replace-tab", func(w http.ResponseWriter, r *http.Request) {
@@ -143,8 +168,8 @@ func runSuiteAt(t *testing.T, restart, phone bool) {
 	if restart {
 		c.Script = "test/script.js"
 	}
-	page := Page(c)
-	srv, err := localweb.Start(ctx, localweb.Config{Tool: "splitpage-test", Assets: withTestdata{page}, API: api})
+	split := Page(c)
+	srv, err := localweb.Start(ctx, localweb.Config{Tool: "splitpage-test", Assets: page.With(withTestdata{split}), API: api})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +181,8 @@ func runSuiteAt(t *testing.T, restart, phone bool) {
 		return s.URL + "/" + name
 	}
 	q := url.Values{"t": {srv.Token}, "one": {framed("one.html")}, "two": {framed("two.html")}, "clip": {framed("clip.html")},
-		"send": {framed("send.html")}, "elsewhere": {framed("send.html")}}
+		"send": {framed("send.html")}, "elsewhere": {framed("send.html")},
+		"diazo": {diazo}, "cast": {cast}, "galley": {galley}}
 	if restart {
 		q.Set("restart", "1")
 	}
