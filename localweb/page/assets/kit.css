@@ -138,7 +138,7 @@ code { font: .88em var(--kit-mono); }
   display: grid; height: 100%; min-height: 0;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-columns: auto minmax(320px, 1fr) auto;
-  overflow-x: auto; /* three columns: narrower than 1320px without narrowMode, it scrolls sideways */
+  overflow-x: auto; /* three columns from 1320px; narrower, narrowMode shows one or two, and without it the page scrolls sideways once the columns no longer fit */
 }
 .kit-app > .kit-bar { grid-column: 1 / -1; }
 .kit-app > .kit-list, .kit-app > .kit-read, .kit-app > .kit-rail { min-height: 0; }
