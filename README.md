@@ -243,8 +243,11 @@ srv, err := localweb.Start(ctx, localweb.Config{
   `onNewBuild`, so the `stale` event after a new install reaches the same callback.
 - **Layout:** `.kit-app` is the page grid: the bar across the top, then
   `.kit-list` | `.kit-read` | an optional `.kit-rail` (360px, the tool's own
-  dock). `.kit-page` + `.kit-main` is the same without a rail. It is a desktop layout:
-  below about 1080px wide it scrolls sideways rather than squeezing the reading column.
+  dock). `.kit-page` + `.kit-main` is the same without a rail. On its own it is a desktop
+  layout: below about 992px wide, where the columns no longer fit, it scrolls sideways
+  rather than squeezing the reading column. A page that turns on `narrowMode` gets the
+  kit's three layouts at `KIT_WIDTHS` instead: one column at a time at 999px or less, two
+  from 1000px to 1319px, all three from 1320px.
 - **Selection:** by row `id`, so it covers rows that aren't rendered.
   `selectedIds()`, `selectAll(ids)`, `deselect(ids)`, `clearSelection()`.
   `selected()` is the rendered selected items. Lists are tested to 500 rendered

@@ -112,13 +112,26 @@
   </main>
 </div>
 
-<script>
-// ?page=front shows the front page; at 1080 wide or less one column shows at
-// a time (narrowMode's kit-narrow), the sides as strips.
+<script type="module">
+// ?page=front shows the front page. The layout follows the kit's two width
+// lines, KIT_WIDTHS: at oneAtATime (999) wide or less one column shows at a
+// time (narrowMode's kit-narrow), the sides as strips; up to twoColumns (1319)
+// two columns (kit-two), the right side open beside the middle on an item
+// page, the left on a front page, the other side a strip; wider, all three.
+import { KIT_WIDTHS } from '/_kit/frame.js';
 const page = new URLSearchParams(location.search).get('page') === 'front' ? 'front' : 'item';
 document.getElementById(page === 'front' ? 'item' : 'front').style.display = 'none';
-const narrow = matchMedia('(width <= 1080px)');
-const follow = () => document.querySelectorAll('.kit-app').forEach(a => a.classList.toggle('kit-narrow', narrow.matches));
+const narrow = matchMedia(`(width <= ${KIT_WIDTHS.oneAtATime}px)`);
+const two = matchMedia(`(width <= ${KIT_WIDTHS.twoColumns}px)`);
+const follow = () => document.querySelectorAll('.kit-app').forEach(a => {
+  const inTwo = two.matches && !narrow.matches;
+  const open = a.querySelector(':scope > .kit-right-col') ? 'right' : 'left';
+  a.classList.toggle('kit-narrow', narrow.matches);
+  a.classList.toggle('kit-two', inTwo);
+  a.classList.toggle('kit-two-right', inTwo && open === 'right');
+  a.classList.toggle('kit-two-left', inTwo && open === 'left');
+});
 narrow.addEventListener('change', follow);
+two.addEventListener('change', follow);
 follow();
 </script>

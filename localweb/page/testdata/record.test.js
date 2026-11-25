@@ -151,6 +151,24 @@ test('recordPage: a press on a tab shows it; a link to a card opens its tab with
   history.replaceState(null, '', location.pathname + location.search);
 });
 
+test('recordPage: in two columns it opens with its right side open and keeps it through a hash change', async () => {
+  history.replaceState(null, '', location.pathname + location.search);
+  const real = window.matchMedia;
+  window.matchMedia = q => ({ matches: 1180 <= Number(/(\d+)px/.exec(q)[1]), addEventListener() {}, removeEventListener() {} });
+  try {
+    const { root, page } = demo();
+    assert(root.classList.contains('kit-two-right'), `opens on the right: ${root.className}`);
+    location.hash = '#F3';
+    await tick();
+    eq(page.selected(), 'F3');
+    assert(root.classList.contains('kit-two-right'), `still open after the hash change: ${root.className}`);
+    page.stop();
+  } finally {
+    window.matchMedia = real;
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+});
+
 test('recordPage: search reads every tab, and a hit opens its tab at it', () => {
   history.replaceState(null, '', location.pathname + location.search);
   const { root, page } = demo();

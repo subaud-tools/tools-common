@@ -185,7 +185,7 @@ export function recordPage(o) {
       const card = id.startsWith('card-') ? id.slice('card-'.length) : null;
       go(`#${card ?? id}`);
       selected = card;
-      narrow.show(null);
+      narrow.centre();
       show(a.dataset.tab, id);
       hitsEl.replaceChildren();
     });
@@ -252,7 +252,7 @@ export function recordPage(o) {
   };
 
   function route() {
-    narrow.show(null);
+    narrow.centre();
     const t = target(location.hash);
     selected = t?.id.startsWith('card-') ? t.id.slice('card-'.length) : null;
     if (t) show(t.tab, t.id.startsWith('tab-') ? null : t.id);

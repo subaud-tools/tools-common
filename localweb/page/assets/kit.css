@@ -138,7 +138,7 @@ code { font: .88em var(--kit-mono); }
   display: grid; height: 100%; min-height: 0;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-columns: auto minmax(320px, 1fr) auto;
-  overflow-x: auto; /* desktop layout: below ~1080px it scrolls sideways */
+  overflow-x: auto; /* three columns from 1320px; narrower, narrowMode shows one or two, and without it the page scrolls sideways once the columns no longer fit */
 }
 .kit-app > .kit-bar { grid-column: 1 / -1; }
 .kit-app > .kit-list, .kit-app > .kit-read, .kit-app > .kit-rail { min-height: 0; }
@@ -688,12 +688,12 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    runs to the window's edge. The wide view (frame's wide) runs the middle
    over the right column's space; the band, the left column and the middle's
    left edge stay where they are. */
-/* on a narrow page (narrowMode) one column shows at a time and the wide view
-   changes nothing: the right column stays, as a strip or open, so wide never
-   leaves the page blank */
-.kit-app:not(.kit-narrow) > .kit-mid.kit-wide { grid-column: 2 / -1; }
-.kit-app:not(.kit-narrow):has(> .kit-mid.kit-wide) > .kit-right-col { display: none; }
-.kit-app:not(.kit-narrow) > .kit-mid.kit-wide .kit-card { max-width: none; }
+/* on a page narrowMode shows in one or two columns the wide view changes
+   nothing: the right column stays, as a strip or open, so wide never leaves
+   the page blank */
+.kit-app:not(.kit-narrow, .kit-two) > .kit-mid.kit-wide { grid-column: 2 / -1; }
+.kit-app:not(.kit-narrow, .kit-two):has(> .kit-mid.kit-wide) > .kit-right-col { display: none; }
+.kit-app:not(.kit-narrow, .kit-two) > .kit-mid.kit-wide .kit-card { max-width: none; }
 .kit-col-toggle {
   position: sticky; top: 8px; z-index: 3; display: block;
   margin: 8px 12px 0 auto; width: 25px; min-height: 25px; padding: 0;
@@ -707,7 +707,8 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 .kit-col.kit-collapsed > .kit-col-body { display: none; }
 .kit-col.kit-collapsed > .kit-col-toggle { margin: 8px auto; }
 
-/* narrow mode (frame.js narrowMode): one thing at a time at 1080 wide or less.
+/* narrow mode (frame.js narrowMode): one thing at a time at 999 wide or less
+   (KIT_WIDTHS.oneAtATime).
    Closed sides are strips whatever kit-collapsed says. An open side covers the
    centre's track and the centre keeps its size under it, hidden, so its scroll
    and what it measures survive. The fold's rules stay for the wide page, and
@@ -748,6 +749,64 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   .kit-narrow-left > .kit-left-col > .kit-col-body { grid-column: 2; border-left: 1px solid var(--kit-line); }
   .kit-narrow-right > .kit-right-col > .kit-col-body { grid-column: 1; border-right: 1px solid var(--kit-line); }
   .kit-narrow-left > .kit-left-col > .kit-col-count, .kit-narrow-right > .kit-right-col > .kit-col-count { display: none; }
+}
+
+/* two columns (frame.js narrowMode): from 1000 to 1319 wide (up to
+   KIT_WIDTHS.twoColumns) one side is open beside the centre at its usual
+   width, not over it, and a closed side is a 44px strip with its count,
+   whatever kit-collapsed says. With both closed the centre has the rest. */
+@media screen {
+  .kit-app.kit-two { grid-template-columns: auto minmax(0, 1fr) auto; overflow-x: hidden; }
+  .kit-two > .kit-col { grid-row: -2; transition: none; }
+  .kit-two > .kit-mid { grid-column: 2; min-width: 0; }
+  .kit-two > .kit-left-col { grid-column: 1; }
+  .kit-two > .kit-right-col { grid-column: 3; }
+  .kit-app.kit-two:not(.kit-two-left) > .kit-left-col,
+  .kit-app.kit-two:not(.kit-two-right) > .kit-right-col { width: 44px; overflow: hidden; padding: 0; }
+  .kit-app.kit-two:not(.kit-two-left) > .kit-left-col > .kit-col-body,
+  .kit-app.kit-two:not(.kit-two-right) > .kit-right-col > .kit-col-body { display: none; }
+  .kit-app.kit-two:not(.kit-two-left) > .kit-left-col > .kit-col-toggle,
+  .kit-app.kit-two:not(.kit-two-right) > .kit-right-col > .kit-col-toggle { margin: 8px auto; }
+  .kit-app.kit-two:not(.kit-two-left) > .kit-left-col > .kit-col-count,
+  .kit-app.kit-two:not(.kit-two-right) > .kit-right-col > .kit-col-count {
+    display: block; box-sizing: border-box; width: fit-content; min-width: 22px; margin: 0 auto;
+    padding: 2px 5px; border-radius: 10px; text-align: center;
+    background: var(--kit-signal); color: var(--kit-signal-ink); font: 700 11px/16px var(--kit-mono);
+  }
+  .kit-app.kit-two-left > .kit-left-col { width: 288px; overflow: auto; padding: 0 0 32px; }
+  .kit-app.kit-two-right > .kit-right-col { width: 384px; overflow: auto; }
+  .kit-app.kit-two-left > .kit-left-col > .kit-col-body,
+  .kit-app.kit-two-right > .kit-right-col > .kit-col-body { display: block; }
+  .kit-app.kit-two-left > .kit-left-col > .kit-col-toggle,
+  .kit-app.kit-two-right > .kit-right-col > .kit-col-toggle { margin: 8px 12px 0 auto; }
+  .kit-app.kit-two-left > .kit-left-col > .kit-col-count,
+  .kit-app.kit-two-right > .kit-right-col > .kit-col-count { display: none; }
+}
+
+/* touch (a coarse pointer): a column toggle takes a press 44px across and
+   down, Apple's minimum, through a ::before larger than the drawn button, and
+   every strip is 44px wide so it holds that. The button is drawn as with a
+   mouse; the ::before starts at the column's top edge, 8px above it, and is
+   placed from inside the button's 1px border. A strip draws its edge line as
+   an inset shadow rather than a border, so all 44px of it are inside, where
+   the ::before can reach, and keeps no scrollbar gutter: with classic
+   scrollbars (Windows, Linux) the column's stable gutter would take 15px of
+   a strip that never scrolls, pushing the toggle aside and clipping its press. */
+@media (pointer: coarse) {
+  .kit-col-toggle::before { content: ""; position: absolute; top: -9px; bottom: -12px; left: -10.5px; right: -10.5px; }
+  .kit-col.kit-collapsed,
+  .kit-narrow:not(.kit-narrow-left) > .kit-left-col, .kit-narrow:not(.kit-narrow-right) > .kit-right-col { width: 44px; }
+  .kit-app:not(.kit-narrow, .kit-two) > .kit-col.kit-collapsed,
+  .kit-narrow:not(.kit-narrow-left) > .kit-left-col, .kit-narrow:not(.kit-narrow-right) > .kit-right-col,
+  .kit-two:not(.kit-two-left) > .kit-left-col, .kit-two:not(.kit-two-right) > .kit-right-col { scrollbar-gutter: auto; }
+  .kit-narrow-left > .kit-left-col { grid-template-columns: 44px minmax(0, 1fr); }
+  .kit-narrow-right > .kit-right-col { grid-template-columns: minmax(0, 1fr) 44px; }
+  .kit-app:not(.kit-narrow, .kit-two) > .kit-list.kit-collapsed,
+  .kit-narrow:not(.kit-narrow-left) > .kit-list.kit-left-col,
+  .kit-two:not(.kit-two-left) > .kit-list.kit-left-col { border-right-width: 0; box-shadow: inset -1px 0 var(--kit-line); }
+  .kit-app:not(.kit-narrow, .kit-two) > .kit-rail.kit-collapsed,
+  .kit-narrow:not(.kit-narrow-right) > .kit-rail.kit-right-col,
+  .kit-two:not(.kit-two-right) > .kit-rail.kit-right-col { border-left-width: 0; box-shadow: inset 1px 0 var(--kit-line); }
 }
 
 /* the page's one pop-out (tip.js): fixed, so nothing that scrolls clips it */
@@ -868,8 +927,10 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    its toggle in a strip of its own, and a folded one only the toggle. */
 .kit-rail-tabs { padding-top: 16px; }
 .kit-rail-tabrow { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px; }
-:not(.kit-narrow) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-toggle { margin-top: 17px; }
-:not(.kit-narrow) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-body { margin-top: -42px; }
+:not(.kit-narrow, .kit-two) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-toggle,
+.kit-two-right > .kit-right-col:has(> .kit-col-body > .kit-rail-tabs) > .kit-col-toggle { margin-top: 17px; }
+:not(.kit-narrow, .kit-two) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-body,
+.kit-two-right > .kit-right-col:has(> .kit-col-body > .kit-rail-tabs) > .kit-col-body { margin-top: -42px; }
 :not(.kit-narrow) > .kit-right-col > .kit-col-body > .kit-rail-tabs > .kit-rail-tabrow { padding-right: 49px; }
 .kit-rail-panel { padding: 0 16px 16px; }
 .kit-right-col > .kit-col-body .kit-rail-panel .kit-thread { padding: 0; }
