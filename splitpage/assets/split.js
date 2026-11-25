@@ -13991,9 +13991,7 @@ function arrow(layout, dir) {
   return layout === "term-closed" ? "split" : "tabs-closed";
 }
 function toggleTerminal(layout) {
-  if (layout === "term-closed") return "split";
-  if (layout === "split") return "term-closed";
-  return layout;
+  return layout === "term-closed" ? "split" : "term-closed";
 }
 function terminalPress(s15) {
   if (s15.narrow) return show(s15, s15.view === "terminal" ? "pages" : "terminal");

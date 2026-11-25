@@ -130,8 +130,8 @@ test('narrow: the returns are switches, and never touch the wide layout', () => 
 test('the Terminal button and × close and open the terminal, as the arrows do', () => {
   assert.equal(toggleTerminal('split'), 'term-closed');
   assert.equal(toggleTerminal('term-closed'), 'split');
-  // The terminal fills the window: it stays.
-  assert.equal(toggleTerminal('tabs-closed'), 'tabs-closed');
+  // The terminal fills the window: × closes it and the pages fill it instead.
+  assert.equal(toggleTerminal('tabs-closed'), 'term-closed');
   // The same layouts the divider's arrows reach.
   assert.equal(toggleTerminal('split'), arrow('split', 'left'));
   assert.equal(toggleTerminal('term-closed'), arrow('term-closed', 'right'));

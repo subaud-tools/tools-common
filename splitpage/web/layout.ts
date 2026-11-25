@@ -48,13 +48,10 @@ export function arrow(layout: Layout, dir: 'left' | 'right'): Layout {
 }
 
 // toggleTerminal is the layout after the Terminal button or the terminal's ×:
-// a closed terminal opens the split, the split closes the terminal, and a
-// terminal that fills the window (the tabs closed) stays. The same layouts
-// as the divider's arrows.
+// a closed terminal opens the split, and a terminal that shows closes, the
+// pages filling the window (from the split, as the divider's ◀ does).
 export function toggleTerminal(layout: Layout): Layout {
-  if (layout === 'term-closed') return 'split';
-  if (layout === 'split') return 'term-closed';
-  return layout;
+  return layout === 'term-closed' ? 'split' : 'term-closed';
 }
 
 // terminalPress is the state after the Terminal button or ×: wide, the layout
