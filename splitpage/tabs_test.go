@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -617,5 +618,69 @@ func TestATabOnAToolsHostSaysItsTool(t *testing.T) {
 	l := list(t, srv, "s1")
 	if len(l.Tabs) != 2 || l.Tabs[0].Tool != "diazo" || l.Tabs[1].Tool != "" {
 		t.Fatalf("tools: %+v", l.Tabs)
+	}
+}
+
+// Only the first tab on a tool's host is the tool's: a later page on that
+// host (diazo opened at a second plan) is an other page, in the slim row, so
+// it can be reached; pressing the tool shows the first.
+func TestOnlyTheFirstTabOnAToolsHostIsTheTools(t *testing.T) {
+	_, srv := serveTabsWith(t, nil)
+	first := open(t, srv, "s1", diazoHref+"?plan=p1", false).Selected
+	second := open(t, srv, "s1", diazoHref+"?plan=p2", false).Selected
+	l := list(t, srv, "s1")
+	if len(l.Tabs) != 2 || l.Tabs[0].Tool != "diazo" || l.Tabs[1].Tool != "" {
+		t.Fatalf("tools: %+v", l.Tabs)
+	}
+	code, l, body := postTool(t, srv, "diazo")
+	if code != http.StatusOK || l.Selected != first {
+		t.Fatalf("tool diazo: %d %s, selected %q, want the first tab %q (not %q)", code, body, l.Selected, first, second)
+	}
+}
+
+// Two presses of a tool that is down while it starts start it once, and both
+// show its one tab.
+func TestToolStartsOnceForPressesWhileItStarts(t *testing.T) {
+	var mu sync.Mutex
+	calls := 0
+	release := make(chan struct{})
+	_, srv := serveTabsWith(t, func(context.Context, string) (string, error) {
+		mu.Lock()
+		calls++
+		mu.Unlock()
+		<-release
+		return galleyHref, nil
+	})
+	type answer struct {
+		code int
+		l    TabList
+	}
+	answers := make(chan answer, 2)
+	for range 2 {
+		go func() {
+			b, _ := json.Marshal(ToolRequest{Session: "s1", Name: "galley"})
+			res, err := http.Post(srv.URL+"/api/split/tool", "application/json", bytes.NewReader(b))
+			if err != nil {
+				answers <- answer{}
+				return
+			}
+			defer func() { _ = res.Body.Close() }()
+			var l TabList
+			_ = json.NewDecoder(res.Body).Decode(&l)
+			answers <- answer{res.StatusCode, l}
+		}()
+	}
+	time.Sleep(200 * time.Millisecond) // both calls are in
+	close(release)
+	for range 2 {
+		a := <-answers
+		if a.code != http.StatusOK || len(a.l.Tabs) != 1 || a.l.Tabs[0].Address != galleyHref {
+			t.Fatalf("a press: %d %+v", a.code, a.l)
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if calls != 1 {
+		t.Fatalf("Start called %d times, want 1", calls)
 	}
 }

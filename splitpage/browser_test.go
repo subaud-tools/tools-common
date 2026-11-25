@@ -125,6 +125,44 @@ func runSuiteAt(t *testing.T, restart, phone bool) {
 		return galley, nil
 	})
 	api.Handle("/api/split/", tabs.Handler())
+	// The tool route, counted, and answered once with a set status when the
+	// suite asks (a refusal other than a failed start).
+	var toolMu sync.Mutex
+	toolCalls := 0
+	var toolAnswer *struct {
+		Status int
+		Text   string
+	}
+	api.HandleFunc("POST /api/split/tool", func(w http.ResponseWriter, r *http.Request) {
+		toolMu.Lock()
+		toolCalls++
+		a := toolAnswer
+		toolAnswer = nil
+		toolMu.Unlock()
+		if a != nil {
+			http.Error(w, a.Text, a.Status)
+			return
+		}
+		tabs.Handler().ServeHTTP(w, r)
+	})
+	api.HandleFunc("GET /api/test/tool-calls", func(w http.ResponseWriter, _ *http.Request) {
+		toolMu.Lock()
+		defer toolMu.Unlock()
+		_ = json.NewEncoder(w).Encode(toolCalls)
+	})
+	api.HandleFunc("POST /api/test/tool-answer", func(w http.ResponseWriter, r *http.Request) {
+		a := &struct {
+			Status int
+			Text   string
+		}{}
+		if json.NewDecoder(r.Body).Decode(a) != nil {
+			http.Error(w, "bad body", http.StatusBadRequest)
+			return
+		}
+		toolMu.Lock()
+		toolAnswer = a
+		toolMu.Unlock()
+	})
 	// What a tool does when its own page moves: Replace, which Handler doesn't serve.
 	api.HandleFunc("POST /api/test/replace-tab", func(w http.ResponseWriter, r *http.Request) {
 		var req struct{ Session, ID, Address string }

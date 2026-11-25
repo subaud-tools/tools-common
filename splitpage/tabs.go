@@ -40,6 +40,41 @@ type Tabs struct {
 	next     int // the last tab id's number, across every session
 	place    func(session string) (Place, bool)
 	start    func(ctx context.Context, name string) (href string, err error)
+	starting map[string]*flight // the tools being started, by name
+}
+
+// flight is one Start of a tool, which later presses of it wait for.
+type flight struct {
+	done chan struct{}
+	href string
+	err  error
+}
+
+// started starts tool name once at a time: a call while its Start runs waits
+// for that Start and takes its answer, never calling start again.
+func (t *Tabs) started(ctx context.Context, start func(context.Context, string) (string, error), name string) (string, error) {
+	t.mu.Lock()
+	if t.starting == nil {
+		t.starting = map[string]*flight{}
+	}
+	if f := t.starting[name]; f != nil {
+		t.mu.Unlock()
+		select {
+		case <-f.done:
+			return f.href, f.err
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
+	f := &flight{done: make(chan struct{})}
+	t.starting[name] = f
+	t.mu.Unlock()
+	f.href, f.err = start(ctx, name)
+	t.mu.Lock()
+	delete(t.starting, name)
+	t.mu.Unlock()
+	close(f.done)
+	return f.href, f.err
 }
 
 // Place sets where the split page sits, which the host knows: f gives a
@@ -81,10 +116,14 @@ func hostOf(address string) string {
 	return strings.ToLower(u.Host)
 }
 
-// marked is l with each tab on a place's tool's host marked with the tool.
+// marked is l with each tool's tab marked with the tool: the first tab, in
+// bar order, on the host of the tool's Href. A later tab on that host (a
+// second diazo plan) is an other page, listed in the slim row with its ×, so
+// it stays reachable: the switch reaches only the tool's one tab.
 func (t *Tabs) marked(l TabList) TabList {
 	p, ok := t.placeOf(l.Session)
 	l = copyList(l)
+	taken := map[string]bool{} // the tools whose tab is found
 	for i := range l.Tabs {
 		l.Tabs[i].Tool = ""
 		if !ok {
@@ -92,8 +131,9 @@ func (t *Tabs) marked(l TabList) TabList {
 		}
 		h := hostOf(l.Tabs[i].Address)
 		for _, tool := range p.Tools {
-			if h != "" && hostOf(tool.Href) == h {
+			if h != "" && hostOf(tool.Href) == h && !taken[tool.Name] {
 				l.Tabs[i].Tool = tool.Name
+				taken[tool.Name] = true
 				break
 			}
 		}
@@ -346,9 +386,10 @@ func (s *session) show(id string) {
 	}
 }
 
-// tool shows switch tool r.Name's page for r.Session: the session's tab on
-// the tool's host if it has one, else the tool's front page as a new tab in
-// front, once the host has started the tool if it was down. A tool's host is
+// tool shows switch tool r.Name's page for r.Session: the tool's tab (the
+// session's first tab on the tool's host) if it has one, else the tool's
+// front page as a new tab in front, once the host has started the tool if it
+// was down; presses while it starts wait for that one Start. A tool's host is
 // the host of its Href.
 func (t *Tabs) tool(ctx context.Context, r ToolRequest) (TabList, error) {
 	p, ok := t.placeOf(r.Session)
@@ -382,7 +423,7 @@ func (t *Tabs) tool(ctx context.Context, r ToolRequest) (TabList, error) {
 			return TabList{}, ErrNoStart
 		}
 		var err error
-		if href, err = start(ctx, tool.Name); err != nil {
+		if href, err = t.started(ctx, start, tool.Name); err != nil {
 			return TabList{}, startError{err}
 		}
 	}

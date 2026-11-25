@@ -38,7 +38,9 @@ export function startBar(session: string, pressed: () => void, take: (list: TabL
 
   const press = async (name: string): Promise<void> => {
     const tool = place?.tools?.find((t) => t.name === name);
-    if (!tool) return;
+    // One press at a time: a press while one is answered (a tool starting)
+    // asks nothing more.
+    if (!tool || pending !== '') return;
     pending = name;
     pressed();
     const open = (last.list.tabs ?? []).some((t) => t.tool === name);
@@ -57,8 +59,11 @@ export function startBar(session: string, pressed: () => void, take: (list: TabL
         tool.up = true;
         take(list);
       } else {
+        // Only a 500 is the host's Start failing; any other refusal (no such
+        // tool, no Start, a page it won't frame) is the tool not opening.
+        const why = (await res.text()).trim();
         pending = '';
-        say(`Couldn’t start ${name}: ${(await res.text()).trim()}`);
+        say(res.status === 500 ? `Couldn’t start ${name}: ${why}` : `Couldn’t open ${name}: ${why}`);
       }
     } catch {
       pending = '';

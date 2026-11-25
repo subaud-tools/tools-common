@@ -13888,7 +13888,7 @@ function startBar(session2, pressed, take) {
   };
   const press = async (name) => {
     const tool = place?.tools?.find((t) => t.name === name);
-    if (!tool) return;
+    if (!tool || pending !== "") return;
     pending = name;
     pressed();
     const open = (last.list.tabs ?? []).some((t) => t.tool === name);
@@ -13907,8 +13907,9 @@ function startBar(session2, pressed, take) {
         tool.up = true;
         take(list);
       } else {
+        const why = (await res.text()).trim();
         pending = "";
-        say(`Couldn’t start ${name}: ${(await res.text()).trim()}`);
+        say(res.status === 500 ? `Couldn’t start ${name}: ${why}` : `Couldn’t open ${name}: ${why}`);
       }
     } catch {
       pending = "";

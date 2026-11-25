@@ -862,20 +862,50 @@ if (phone) {
     assert(l.tabs.length === before + 1, `a second diazo tab: ${l.tabs.length}`);
   });
 
+  const toolCalls = async () => (await fetch('/api/test/tool-calls')).json();
+
   test('pressing galley, which is down, starts it: Starting galley… on the right, then its page', async () => {
+    const calls = await toolCalls();
     press('galley');
+    press('galley'); // a second press while it starts asks nothing more
     await until(() => !note().hidden && rect('tool-note').width > 0 && noteText() === 'Starting galley…', 'Starting galley… shows');
     assert(filled('galley'), 'galley is not filled in while it starts');
     await until(() => shownHost() === hostOf(tool.galley) && note().hidden, 'galley shows');
     assert(filled('galley'), 'galley is not filled in');
+    const n = (await toolCalls()) - calls;
+    assert(n === 1, `a double press called the tool route ${n} times`);
   });
 
   test('pressing cast, which fails to start, says why on the right', async () => {
     press('cast');
     await until(() => !note().hidden && rect('tool-note').width > 0 && noteText().includes('could not bind'), 'why cast did not start');
     assert(!filled('cast'), 'cast is filled in after it failed');
+    assert(noteText().startsWith('Couldn’t start cast: '), `a failed start says: ${noteText()}`);
     press('diazo');
     await until(() => shownHost() === hostOf(tool.diazo) && note().hidden, 'diazo shows and the note goes');
+  });
+
+  test('a refusal that is not a failed start says the tool could not open', async () => {
+    await post('/api/test/tool-answer', { Status: 409, Text: 'splitpage: the tool isn\'t running, and this host can\'t start it' });
+    press('cast');
+    await until(() => !note().hidden && noteText().includes('can\'t start it'), 'the refusal shows');
+    assert(noteText().startsWith('Couldn’t open cast: '), `a 409 says: ${noteText()}`);
+    press('diazo');
+    await until(() => shownHost() === hostOf(tool.diazo) && note().hidden, 'diazo shows and the note goes');
+  });
+
+  test('a second page on diazo\'s host is an other page, in the slim row with ×; diazo shows its first', async () => {
+    const diazoTab = (await tabs_(xs)).selected;
+    const res = await post('/api/split/open', { session: xs, address: `${tool.diazo}?plan=p2`, title: 'Plan two' });
+    const second = (await res.json()).selected;
+    await until(() => barTab(second) && rowShows(), 'the second diazo page is in the slim row');
+    assert(barTab(second).querySelector('.tab-close'), 'the second diazo page has no ×');
+    assert(!filled('diazo'), 'diazo is filled in with its second page in front');
+    press('diazo');
+    await until(async () => (await tabs_(xs)).selected === diazoTab, 'pressing diazo shows its first tab');
+    assert(filled('diazo'), 'diazo is not filled in');
+    barTab(second).querySelector('.tab-close').click();
+    await until(() => !barTab(second), 'the second diazo page closes');
   });
 
   test('× closes the terminal, Terminal brings it back at its width, and the arrows agree', async () => {

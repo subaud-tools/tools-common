@@ -395,8 +395,9 @@ body:not([data-layout='split']) #grip button:hover {
 /* Narrow (the page kit's 640px): no divider, and one side at a time, full
    width, under the bar: Terminal shows the terminal, a tool the pages. The
    wide layout's rules above are kept for when the window widens again; these
-   win while it is narrow. The kit puts the workspace in its ⋯ on a phone, and
-   Terminal keeps only its mark. */
+   win while it is narrow. On a phone the kit's rules hide the workspace, and
+   the split's bar has no ⋯ to hold it, so the workspace is not shown inside
+   the split; Terminal keeps only its mark. */
 @media (width <= 640px) {
   .term-toggle-label {
     display: none;
