@@ -180,8 +180,9 @@ export function bar(o) {
 
   const brand = h(o.brand.href ? 'a' : 'span', { class: 'kit-brand', href: o.brand.href || null }, o.brand.mark || null, o.brand.name);
   // The workspace and the switch, hidden until the guide says the page is on
-  // a hosted machine. Their links open in the top window: inside cast's split
-  // page a tool's page is a frame.
+  // a hosted machine, and always inside a frame: inside cast's split page the
+  // split's own bar carries the workspace and the switch. Their links open in
+  // the top window.
   const ws = h('a', { class: 'kit-bar-ws', target: '_top', hidden: true });
   const toolSwitch = h('span', { class: 'kit-bar-switch', hidden: true });
   // One guide fetch for both: a beta tool (its guide entry says so) carries
@@ -192,17 +193,18 @@ export function bar(o) {
   const place = guide.then(d => {
     const p = d && d.place;
     if (!p) return;
+    const tools = p.tools || [];
+    // the filled tool takes the brand's place; a tool outside the switch
+    // (cull on a machine) keeps its brand, after the switch
+    if (tools.some(t => t.current)) brand.hidden = true;
+    if (window.self !== window.top) return;
     ws.href = p.home;
     ws.textContent = p.workspace;
     ws.hidden = false;
-    const tools = p.tools || [];
     toolSwitch.replaceChildren(...tools.map(t => h('a', {
       href: t.href, target: '_top', class: t.current ? 'on' : null, 'aria-current': t.current ? 'page' : null,
     }, t.name)));
     toolSwitch.hidden = false;
-    // the filled tool takes the brand's place; a tool outside the switch
-    // (cull on a machine) keeps its brand, after the switch
-    if (tools.some(t => t.current)) brand.hidden = true;
   });
   const more = barMore([ws, status, also.el, pill, guideControl, themeControl]);
   const handle = {

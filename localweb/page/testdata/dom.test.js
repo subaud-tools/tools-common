@@ -1278,6 +1278,27 @@ test('dom: the hosted bar starts with the workspace and the switch', async () =>
   } finally { fixture().replaceChildren(); }
 });
 
+// Inside cast's split page a tool's page is a frame, and the split's own bar
+// carries the workspace and the switch: the framed bar leaves both out, and
+// its brand stays hidden as on its own (the tool is in the switch).
+test('dom: inside a frame the hosted bar leaves out the workspace and the switch', async () => {
+  const win = document.createElement('iframe');
+  win.style.cssText = 'width:1280px; height:200px; border:0; display:block';
+  win.src = '/framedbar.html?' + new URLSearchParams({ guide: guideAt({ tool: 'diazo', tools: [], place: PLACE('diazo') }) });
+  fixture().append(win);
+  try {
+    const end = Date.now() + 3000;
+    while (!win.contentWindow?.barDone) {
+      assert(Date.now() < end, 'the framed bar never drew its place');
+      await new Promise(r => setTimeout(r, 20));
+    }
+    const el = win.contentDocument.querySelector('.kit-bar');
+    assert(el.querySelector('.kit-bar-ws').hidden, 'the framed bar shows the workspace');
+    assert(el.querySelector('.kit-bar-switch').hidden, 'the framed bar shows the switch');
+    assert(el.querySelector('.kit-brand').hidden, 'the framed bar shows the brand of a tool in the switch');
+  } finally { fixture().replaceChildren(); }
+});
+
 test('dom: a tool outside the switch keeps its brand', async () => {
   const b = bar({ brand: { name: 'cull' }, guideUrl: guideAt({ tool: 'cull', tools: [], place: PLACE(null) }) });
   fixture().append(b.el);
