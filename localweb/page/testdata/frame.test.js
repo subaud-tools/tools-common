@@ -113,20 +113,33 @@ test('collapsible: folded starts it folded and leaves what the page remembers al
   eq(localStorage.getItem('tooltest.collapsed.index'), null);
 });
 
-// A window whose width the test sets: fire(true) drags it to 1080 or less.
+// A window whose width the test sets, 800 to start: fire(true) drags it to
+// 800 (one at a time), fire(false) to 1600 (wide), fire(n) to n. Each query is
+// a (width <= Npx), and a listener hears only a change of its own query.
 function withWidth(run) {
   const real = window.matchMedia;
-  const heard = new Set();
-  const mq = {
-    matches: true,
-    addEventListener: (_, f) => heard.add(f),
-    removeEventListener: (_, f) => heard.delete(f),
-  };
+  let width = 800;
+  const heard = [];
   const queries = [];
-  window.matchMedia = q => { queries.push(q); return mq; };
-  const fire = on => {
-    mq.matches = on;
-    for (const f of [...heard]) f({ matches: on });
+  const mqs = [];
+  window.matchMedia = q => {
+    queries.push(q);
+    const max = Number(/\(width <= (\d+)px\)/.exec(q)[1]);
+    const mq = {
+      get matches() { return width <= max; },
+      addEventListener: (_, f) => heard.push([mq, f]),
+      removeEventListener: (_, f) => {
+        const i = heard.findIndex(([m, g]) => m === mq && g === f);
+        if (i >= 0) heard.splice(i, 1);
+      },
+    };
+    mqs.push(mq);
+    return mq;
+  };
+  const fire = w => {
+    const was = new Map(mqs.map(m => [m, m.matches]));
+    width = w === true ? 800 : w === false ? 1600 : w;
+    for (const [m, f] of [...heard]) if (m.matches !== was.get(m)) f({ matches: m.matches });
   };
   try {
     return run(fire, { queries, heard });
@@ -147,10 +160,10 @@ function narrowed(extra = {}) {
 const stateOf = ({ app }) => (app.classList.contains('kit-narrow-left') ? 'left' : app.classList.contains('kit-narrow-right') ? 'right' : null);
 const stored = () => Object.keys(localStorage).filter(k => k.includes('.collapsed.')).sort().map(k => [k, localStorage.getItem(k)]);
 
-test('narrowMode: at 1080 or less the page is narrow on the card, and it follows the window', () => {
+test('narrowMode: at 999 or less the page is narrow on the card, and it follows the window', () => {
   withWidth((fire, { queries }) => {
     const p = narrowed();
-    eq(queries, ['(width <= 1080px)']);
+    eq(queries, ['(width <= 999px)', '(width <= 1319px)']);
     assert(p.app.classList.contains('kit-narrow'), 'narrow');
     eq(stateOf(p), null);
     fire(false);
@@ -340,10 +353,125 @@ test('narrowMode: a page with one side has only that strip', () => {
 test('narrowMode: stop lets go of the window', () => {
   withWidth((fire, { heard }) => {
     const { n } = narrowed();
-    eq(heard.size, 1);
+    eq(heard.length, 2);
     n.stop();
-    eq(heard.size, 0);
+    eq(heard.length, 0);
   });
+});
+
+// The two-column layout (kit-two), from 1000 to 1319 wide: one side open
+// beside the centre, the other a strip.
+const twoOf = ({ app }) => (app.classList.contains('kit-two-left') ? 'left' : app.classList.contains('kit-two-right') ? 'right' : null);
+
+test('narrowMode: from 1000 to 1319 the page is two columns, and it follows the window', () => {
+  withWidth(fire => {
+    fire(1180);
+    const p = narrowed();
+    assert(p.app.classList.contains('kit-two') && !p.app.classList.contains('kit-narrow'), 'two columns at 1180');
+    fire(1000);
+    assert(p.app.classList.contains('kit-two'), 'two columns at 1000');
+    fire(999);
+    assert(p.app.classList.contains('kit-narrow') && !p.app.classList.contains('kit-two'), 'one at a time at 999');
+    fire(1319);
+    assert(p.app.classList.contains('kit-two'), 'two columns at 1319');
+    fire(1320);
+    assert(!p.app.classList.contains('kit-two') && !p.app.classList.contains('kit-narrow'), 'three columns at 1320');
+  });
+});
+
+test('narrowMode: in two columns an item page opens on its right side, a front page on its left', () => {
+  withWidth(fire => {
+    fire(1180);
+    const p = narrowed();
+    eq(twoOf(p), 'right');
+    eq(p.seen, ['right']);
+    clean();
+    const f = frame(parts({ right: undefined }));
+    const app = document.createElement('div');
+    app.className = 'kit-app';
+    app.append(document.createElement('div'), f.left, f.centre);
+    fixture().append(app);
+    narrowMode({ root: app, left: f.left });
+    eq(twoOf({ app }), 'left');
+  });
+});
+
+test('narrowMode: in two columns a press on a strip opens it and folds the other', () => {
+  withWidth(fire => {
+    fire(1180);
+    const p = narrowed();
+    p.f.left.firstChild.click();
+    eq(twoOf(p), 'left');
+    p.f.right.firstChild.click();
+    eq(twoOf(p), 'right');
+    eq(p.seen, ['right', 'left', 'right']);
+  });
+});
+
+test('narrowMode: in two columns a press on the open side\'s toggle leaves two strips', () => {
+  withWidth(fire => {
+    fire(1180);
+    const p = narrowed();
+    p.app.style.width = '1180px';
+    p.f.right.firstChild.click();
+    eq(twoOf(p), null);
+    eq(p.seen, ['right', null]);
+    eq([p.f.left.offsetWidth, p.f.right.offsetWidth, p.f.centre.offsetWidth], [44, 44, 1180 - 88]);
+    p.n.show('right');
+    eq(twoOf(p), 'right');
+    p.n.show(null);
+    eq(twoOf(p), null);
+  });
+});
+
+test('narrowMode: moving between the three layouts goes back to each one\'s default', () => {
+  withWidth(fire => {
+    const p = narrowed();
+    p.f.left.firstChild.click();
+    eq(stateOf(p), 'left');
+    fire(1180);
+    eq([stateOf(p), twoOf(p)], [null, 'right']);
+    p.f.left.firstChild.click();
+    fire(1600);
+    eq([stateOf(p), twoOf(p)], [null, null]);
+    fire(1180);
+    eq(twoOf(p), 'right');
+    p.f.right.firstChild.click();
+    fire(800);
+    eq([stateOf(p), twoOf(p)], [null, null]);
+    fire(1180);
+    eq(twoOf(p), 'right');
+  });
+});
+
+test('narrowMode: in two columns presses leave what is remembered untouched', () => {
+  withWidth(fire => {
+    fire(1180);
+    const p = narrowed();
+    const before = stored();
+    p.f.left.firstChild.click();
+    p.f.right.firstChild.click();
+    p.f.right.firstChild.click();
+    eq(stored(), before);
+    assert(!p.f.left.classList.contains('kit-collapsed') && !p.f.right.classList.contains('kit-collapsed'), 'the folds stay');
+  });
+});
+
+test('layout: at 1180 the middle column is the window less the 384px right column and a 44px strip', async () => {
+  const p = await layoutPage(1180);
+  const real = window.matchMedia;
+  window.matchMedia = q => p.doc.defaultView.matchMedia(q);
+  try {
+    const n = narrowMode({ root: p.app, left: p.f.left, right: p.f.right });
+    assert(p.app.classList.contains('kit-two-right'), 'the right side is open');
+    near(box(p.f.left).width, 44, 'the left strip');
+    near(box(p.f.right).width, 384, 'the right column');
+    near(box(p.f.centre).width, 1180 - 384 - 44, 'the middle');
+    eq(p.doc.documentElement.scrollWidth, 1180);
+    n.stop();
+  } finally {
+    window.matchMedia = real;
+  }
 });
 
 function tipped(when) {
@@ -478,7 +606,7 @@ async function footPage(w, long, { css = '', wrapped = false, place = true } = {
   if (css) doc.head.append(Object.assign(doc.createElement('style'), { textContent: css }));
   const f = frame(parts());
   const app = doc.createElement('div');
-  app.className = w <= 1080 ? 'kit-app kit-narrow' : 'kit-app';
+  app.className = w <= 999 ? 'kit-app kit-narrow' : 'kit-app';
   const top = doc.createElement('div');
   top.className = 'kit-bar';
   app.append(top, f.left, f.centre, f.right);

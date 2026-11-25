@@ -715,7 +715,7 @@ export interface Frame {
   rightBody: HTMLElement | null;
   /** Locks node (a sendBar) to the centre's bottom edge: a kit-sendfoot, full width, made the centre's last child, so call it after drawing the centre. null takes it away. The band spans the kit's 24px side padding, so keep it. */
   foot(node: Node | null): void;
-  /** The wide view (a system design's topic chat): true runs the centre over the right column's space, the right column hidden, and lifts the 1100px cap on its cards; the band, the left column and the centre's left edge and first item stay where they are. On a narrow page (narrowMode's kit-narrow) it changes nothing: one column shows at a time there, the right one included. false puts it back. */
+  /** The wide view (a system design's topic chat): true runs the centre over the right column's space, the right column hidden, and lifts the 1100px cap on its cards; the band, the left column and the centre's left edge and first item stay where they are. On a page narrowMode shows in one or two columns (kit-narrow, kit-two) it changes nothing: the right column stays there, as a strip or open. false puts it back. */
   wide(on: boolean): void;
 }
 
@@ -741,15 +741,23 @@ export interface NarrowOptions {
 }
 
 export interface NarrowMode {
-  /** Gives the frame to a side, or to the centre with null. Does nothing while the page is wide. */
+  /** Gives the frame to a side, or to the centre with null; in two columns null folds both sides. Does nothing while the page is wide. */
   show(side: NarrowSide): void;
-  /** Puts n under a strip's toggle, none at zero. It shows on a closed strip while narrow, and on a closed right strip at wide widths. */
+  /** Puts n under a strip's toggle, none at zero. It shows on a closed strip in one or two columns, and on a closed right strip at wide widths. */
   setCount(side: 'left' | 'right', n: number): void;
   /** Lets go of the window, when the page goes. */
   stop(): void;
 }
 
-/** One thing at a time at 1080 wide or less: the centre, or a side in its place with the other a strip. A page opens on the centre. The fold and what is remembered of it are ignored and never written while narrow, so they come back when the window widens. */
+/** The kit's two width lines, kept in this one place: at oneAtATime (999) wide or less a page shows one column at a time, up to twoColumns (1319) two, and wider all three. A tool's own width rule is built from these, as `(width <= ${KIT_WIDTHS.oneAtATime}px)`, never a copy. */
+export const KIT_WIDTHS: Readonly<{ oneAtATime: number; twoColumns: number }>;
+
+/**
+ * Lays the frame out by the window's width, in three layouts.
+ * At KIT_WIDTHS.oneAtATime or less (kit-narrow), one thing at a time: the centre, or a side in its place with the other a strip. A page opens on the centre.
+ * Up to KIT_WIDTHS.twoColumns (kit-two, with kit-two-left or kit-two-right for the open side), one side open beside the centre at its usual width and the other a 44px strip: a page opens on its right side, or its left with no right; a press on a strip opens it and folds the other; a press on the open side's toggle leaves two strips.
+ * Wider, the frame is as frame draws it. The fold and what is remembered of it are ignored and never written in the first two layouts, so they come back when the window widens; moving to another layout goes to its default.
+ */
 export function narrowMode(o: NarrowOptions): NarrowMode;
 
 // ---- index.js
