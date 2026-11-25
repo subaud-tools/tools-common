@@ -468,14 +468,16 @@ test('layout: at 1180 the middle column is the window less the 384px right colum
   n.stop();
 });
 
-// A layout page as a touch screen draws it: its kit.css taken whole, with the
-// (pointer: coarse) rules made to hold. o is frame's options; mode is the
-// layout narrowMode gives it, by the window's own width.
-async function touchPage(w, o = {}) {
-  const css = (await (await fetch('/_kit/kit.css')).text()).replaceAll('(pointer: coarse)', 'all');
+// A layout page as a touch screen (coarse: true) or a mouse (coarse: false)
+// draws it, whatever the host's own pointer: its kit.css taken whole, with the
+// (pointer: coarse) rules made to hold or never to. Its scrollbars are classic,
+// 15px and taking room, as on Windows and Linux, rather than macOS's overlay
+// ones, so a strip's scrollbar gutter is measured as those users get it.
+async function touchPage(w, o = {}, { coarse = true } = {}) {
+  const css = (await (await fetch('/_kit/kit.css')).text()).replaceAll('(pointer: coarse)', coarse ? 'all' : 'not all');
   const p = await layoutPage(w, o);
   p.doc.querySelector('link[rel=stylesheet]').remove();
-  p.doc.head.append(Object.assign(p.doc.createElement('style'), { textContent: css }));
+  p.doc.head.append(Object.assign(p.doc.createElement('style'), { textContent: `${css}\n::-webkit-scrollbar { width: 15px; height: 15px; }` }));
   return p;
 }
 
@@ -567,8 +569,7 @@ test('touch: on a coarse pointer every column toggle takes a press 44px across a
 });
 
 test('touch: with a fine pointer a column toggle is drawn and pressed at 25px, as before', async () => {
-  const p = await layoutPage(1655);
-  assert(p.doc.defaultView.matchMedia('(pointer: fine)').matches, 'the test window has a fine pointer');
+  const p = await touchPage(1655, {}, { coarse: false });
   const t = p.f.right.firstChild;
   eq([box(t).width, box(t).height], [25, 25]);
   const [across, down] = reach(p.doc, t);

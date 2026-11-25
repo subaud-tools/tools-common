@@ -789,11 +789,16 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    mouse; the ::before starts at the column's top edge, 8px above it, and is
    placed from inside the button's 1px border. A strip draws its edge line as
    an inset shadow rather than a border, so all 44px of it are inside, where
-   the ::before can reach. */
+   the ::before can reach, and keeps no scrollbar gutter: with classic
+   scrollbars (Windows, Linux) the column's stable gutter would take 15px of
+   a strip that never scrolls, pushing the toggle aside and clipping its press. */
 @media (pointer: coarse) {
   .kit-col-toggle::before { content: ""; position: absolute; top: -9px; bottom: -12px; left: -10.5px; right: -10.5px; }
   .kit-col.kit-collapsed,
   .kit-narrow:not(.kit-narrow-left) > .kit-left-col, .kit-narrow:not(.kit-narrow-right) > .kit-right-col { width: 44px; }
+  .kit-app:not(.kit-narrow, .kit-two) > .kit-col.kit-collapsed,
+  .kit-narrow:not(.kit-narrow-left) > .kit-left-col, .kit-narrow:not(.kit-narrow-right) > .kit-right-col,
+  .kit-two:not(.kit-two-left) > .kit-left-col, .kit-two:not(.kit-two-right) > .kit-right-col { scrollbar-gutter: auto; }
   .kit-narrow-left > .kit-left-col { grid-template-columns: 44px minmax(0, 1fr); }
   .kit-narrow-right > .kit-right-col { grid-template-columns: minmax(0, 1fr) 44px; }
   .kit-app:not(.kit-narrow, .kit-two) > .kit-list.kit-collapsed,
