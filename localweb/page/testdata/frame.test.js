@@ -459,19 +459,78 @@ test('narrowMode: in two columns presses leave what is remembered untouched', ()
 
 test('layout: at 1180 the middle column is the window less the 384px right column and a 44px strip', async () => {
   const p = await layoutPage(1180);
+  const n = laid(p);
+  assert(p.app.classList.contains('kit-two-right'), 'the right side is open');
+  near(box(p.f.left).width, 44, 'the left strip');
+  near(box(p.f.right).width, 384, 'the right column');
+  near(box(p.f.centre).width, 1180 - 384 - 44, 'the middle');
+  eq(p.doc.documentElement.scrollWidth, 1180);
+  n.stop();
+});
+
+// A layout page as a touch screen draws it: its kit.css taken whole, with the
+// (pointer: coarse) rules made to hold. o is frame's options; mode is the
+// layout narrowMode gives it, by the window's own width.
+async function touchPage(w, o = {}) {
+  const css = (await (await fetch('/_kit/kit.css')).text()).replaceAll('(pointer: coarse)', 'all');
+  const p = await layoutPage(w, o);
+  p.doc.querySelector('link[rel=stylesheet]').remove();
+  p.doc.head.append(Object.assign(p.doc.createElement('style'), { textContent: css }));
+  return p;
+}
+
+// laid runs narrowMode on p with its own window's widths, once the window has
+// its size (a new frame's queries see its old one until it is laid out).
+function laid(p) {
+  void p.doc.documentElement.offsetWidth;
   const real = window.matchMedia;
   window.matchMedia = q => p.doc.defaultView.matchMedia(q);
   try {
-    const n = narrowMode({ root: p.app, left: p.f.left, right: p.f.right });
-    assert(p.app.classList.contains('kit-two-right'), 'the right side is open');
-    near(box(p.f.left).width, 44, 'the left strip');
-    near(box(p.f.right).width, 384, 'the right column');
-    near(box(p.f.centre).width, 1180 - 384 - 44, 'the middle');
-    eq(p.doc.documentElement.scrollWidth, 1180);
-    n.stop();
+    return narrowMode({ root: p.app, left: p.f.left, right: p.f.right });
   } finally {
     window.matchMedia = real;
   }
+}
+
+// reach is how far a press on a toggle lands on it, across its middle and
+// down it, a pixel at a time.
+function reach(doc, t) {
+  const r = t.getBoundingClientRect();
+  const on = (x, y) => t.contains(doc.elementFromPoint(x, y));
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  let across = 0;
+  let down = 0;
+  for (let x = Math.floor(cx - 40); x <= cx + 40; x++) if (on(x, cy)) across++;
+  for (let y = Math.floor(cy - 40); y <= cy + 40; y++) if (on(cx, y)) down++;
+  return [across, down];
+}
+
+test('touch: on a coarse pointer every column toggle takes a press 44px across and down', async () => {
+  for (const [w, what, cls] of [[800, 'one at a time', 'kit-narrow'], [1180, 'two columns', 'kit-two'], [1655, 'three columns', 'kit-app']]) {
+    const p = await touchPage(w);
+    const n = laid(p);
+    assert(p.app.classList.contains(cls) && (cls !== 'kit-app' || !/kit-narrow|kit-two/.test(p.app.className)), `${what}: ${p.app.className}`);
+    for (const col of [p.f.left, p.f.right]) {
+      const [across, down] = reach(p.doc, col.firstChild);
+      assert(across >= 44 && down >= 44, `${what}, ${col.getAttribute('aria-label')}: ${across} by ${down}`);
+      near(box(col.firstChild).width, 25, `${what}: the toggle is drawn as before`);
+    }
+    n.stop();
+  }
+  const p = await touchPage(1655);
+  p.f.left.firstChild.click();
+  const [across, down] = reach(p.doc, p.f.left.firstChild);
+  assert(across >= 44 && down >= 44, `a folded strip at three columns: ${across} by ${down}`);
+});
+
+test('touch: with a fine pointer a column toggle is drawn and pressed at 25px, as before', async () => {
+  const p = await layoutPage(1655);
+  assert(p.doc.defaultView.matchMedia('(pointer: fine)').matches, 'the test window has a fine pointer');
+  const t = p.f.right.firstChild;
+  eq([box(t).width, box(t).height], [25, 25]);
+  const [across, down] = reach(p.doc, t);
+  assert(across <= 26 && down <= 26, `pressed only on the button: ${across} by ${down}`);
 });
 
 function tipped(when) {

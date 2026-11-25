@@ -783,6 +783,27 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
   .kit-app.kit-two-right > .kit-right-col > .kit-col-count { display: none; }
 }
 
+/* touch (a coarse pointer): a column toggle takes a press 44px across and
+   down, Apple's minimum, through a ::before larger than the drawn button, and
+   every strip is 44px wide so it holds that. The button is drawn as with a
+   mouse; the ::before starts at the column's top edge, 8px above it, and is
+   placed from inside the button's 1px border. A strip draws its edge line as
+   an inset shadow rather than a border, so all 44px of it are inside, where
+   the ::before can reach. */
+@media (pointer: coarse) {
+  .kit-col-toggle::before { content: ""; position: absolute; top: -9px; bottom: -12px; left: -10.5px; right: -10.5px; }
+  .kit-col.kit-collapsed,
+  .kit-narrow > .kit-left-col, .kit-narrow > .kit-right-col { width: 44px; }
+  .kit-narrow-left > .kit-left-col { grid-template-columns: 44px minmax(0, 1fr); }
+  .kit-narrow-right > .kit-right-col { grid-template-columns: minmax(0, 1fr) 44px; }
+  .kit-app:not(.kit-narrow, .kit-two) > .kit-list.kit-collapsed,
+  .kit-narrow:not(.kit-narrow-left) > .kit-list.kit-left-col,
+  .kit-two:not(.kit-two-left) > .kit-list.kit-left-col { border-right-width: 0; box-shadow: inset -1px 0 var(--kit-line); }
+  .kit-app:not(.kit-narrow, .kit-two) > .kit-rail.kit-collapsed,
+  .kit-narrow:not(.kit-narrow-right) > .kit-rail.kit-right-col,
+  .kit-two:not(.kit-two-right) > .kit-rail.kit-right-col { border-left-width: 0; box-shadow: inset 1px 0 var(--kit-line); }
+}
+
 /* the page's one pop-out (tip.js): fixed, so nothing that scrolls clips it */
 .kit-tip-at { display: inline-flex; }
 .kit-tip {
