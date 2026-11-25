@@ -1,5 +1,8 @@
-// The right half: a bar of tabs, one frame per tab, following the server's
-// list. Hidden frames stay loaded; the server knows which tab shows. Each
+// The right half: one frame per tab, following the server's list, and a slim
+// row of tabs for the pages that aren't a switch tool's (a tab with no Tool):
+// a tool's tab is reached through the bar's switch, so the row shows only
+// while one of the others is open. Hidden frames stay loaded; the server
+// knows which tab shows. Each
 // frame is told whether it shows ({type: "kit.shown", shown}, which the kit's
 // live() takes from its parent), so an unselected tool page lets go of its
 // live stream: a browser allows about six connections to one host.
@@ -13,6 +16,8 @@ export interface TabsView {
   list(): TabList;
   // The tab whose frame is source, or undefined for any other window.
   from(source: MessageEventSource | null): Tab | undefined;
+  // take shows a list a call answered (the bar's tool call), as the stream's.
+  take(list: TabList): void;
 }
 
 // changed hears each list the page shows, with the one it showed before:
@@ -23,6 +28,7 @@ export function startTabs(
   session: string,
   changed: (prev: TabList | null, next: TabList, again: boolean) => void,
 ): TabsView {
+  const row = document.getElementById('tabbar')!;
   const bar = document.getElementById('tab-list')!;
   const frames = document.getElementById('frames')!;
   const empty = document.getElementById('tabs-empty')!;
@@ -111,21 +117,27 @@ export function startTabs(
       }
     }
     for (const tab of tabs) {
-      let el = buttons.get(tab.id);
-      if (!el) {
-        el = button(tab);
-        buttons.set(tab.id, el);
-      }
-      // Never the address's query: a tool's ?t= token would show.
-      const where = new URL(tab.address);
-      el.querySelector('.tab-title')!.textContent = tab.title || where.host;
-      el.title = where.origin + where.pathname;
       const on = tab.id === list.selected;
-      el.classList.toggle('selected', on);
-      // Shown is seen: the mark goes as the tab shows, before the server says so.
-      el.classList.toggle('new', tab.new === true && !on);
-      el.setAttribute('aria-selected', String(on));
-      bar.append(el); // in the server's order
+      let el = buttons.get(tab.id);
+      if (tab.tool) {
+        // a tool's tab: on the switch, not in the row
+        el?.remove();
+        buttons.delete(tab.id);
+      } else {
+        if (!el) {
+          el = button(tab);
+          buttons.set(tab.id, el);
+        }
+        // Never the address's query: a tool's ?t= token would show.
+        const where = new URL(tab.address);
+        el.querySelector('.tab-title')!.textContent = tab.title || where.host;
+        el.title = where.origin + where.pathname;
+        el.classList.toggle('selected', on);
+        // Shown is seen: the mark goes as the tab shows, before the server says so.
+        el.classList.toggle('new', tab.new === true && !on);
+        el.setAttribute('aria-selected', String(on));
+        bar.append(el); // in the server's order
+      }
       let f = shown.get(tab.id);
       if (!f) {
         f = frame(tab);
@@ -142,6 +154,7 @@ export function startTabs(
         tell(f, tab.address);
       }
     }
+    row.hidden = buttons.size === 0;
     empty.hidden = tabs.length > 0;
     reload.disabled = list.selected === '';
     if (heard || streamed) changed(heard ? prev : null, current, again);
@@ -182,5 +195,5 @@ export function startTabs(
     return undefined;
   };
 
-  return { list: () => current, from };
+  return { list: () => current, from, take: (l) => render(l) };
 }

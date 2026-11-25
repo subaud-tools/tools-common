@@ -1,5 +1,10 @@
 @import '@xterm/xterm/css/xterm.css';
 
+/* The page loads the kit's stylesheet first (/_kit/kit.css): the bar across
+   the top is the kit's own bar, at the kit's sizes and in its colours. These
+   rules lay out only the split page's own parts: the terminal and its header,
+   the divider, the slim row of tabs and the frames. */
+
 html,
 body {
   height: 100%;
@@ -10,7 +15,8 @@ body {
 body {
   --term-width: 50%;
   display: flex;
-  background: #000;
+  flex-direction: column;
+  background: var(--kit-bg);
   font-family:
     system-ui,
     -apple-system,
@@ -19,14 +25,88 @@ body {
     sans-serif;
 }
 
+/* The bar spans the window above both sides. */
+#bar {
+  background: var(--kit-bg);
+}
+
+/* Terminal is highlighted while the terminal shows. */
+#term-toggle.on {
+  border-color: var(--kit-signal);
+  color: var(--kit-signal);
+}
+
+/* A switch tool whose tab was opened behind, until it shows: a dot. */
+.kit-bar-switch a.new::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--kit-signal);
+  vertical-align: middle;
+}
+
+/* Under the bar, the two sides and the divider. */
+#split {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
 #term {
   flex: none;
+  display: flex;
+  flex-direction: column;
   width: var(--term-width);
   height: 100%;
   min-width: 0;
   background: #000;
   overflow: hidden;
   position: relative;
+}
+
+/* The terminal's own header: its session's name, and × to close it. */
+#term-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 6px 0 10px;
+  background: #1a1a1a;
+  color: #9a9a9a;
+  font: 12px var(--kit-mono);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#term-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#term-close {
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #ccc;
+  font: 16px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+#term-close:hover {
+  background: #333;
+}
+
+/* xterm opens here, and is fitted to it. */
+#term-screen {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 /* Above xterm's layers, along the bottom so the last output stays readable. */
@@ -159,17 +239,18 @@ body:not([data-layout='split']) #grip button:hover {
   flex: 1;
   min-width: 0;
   height: 100%;
-  background: #fff;
+  background: var(--kit-bg);
 }
 
+/* The slim row: only the pages that aren't a switch tool's, shown while one
+   is open. */
 #tabbar {
   flex: none;
   display: flex;
   align-items: stretch;
-  height: 36px;
-  background: #e8eaee;
-  border-bottom: 1px solid #c9ced6;
-  font-size: 14px;
+  height: 30px;
+  border-bottom: 1px solid var(--kit-line);
+  font: 12px var(--kit-mono);
 }
 
 #tab-list {
@@ -189,38 +270,34 @@ body:not([data-layout='split']) #grip button:hover {
   align-items: center;
   gap: 8px;
   max-width: 220px;
-  padding: 0 12px;
-  color: #444;
-  background: #d5d9e0;
-  border: 1px solid #c9ced6;
+  padding: 0 10px;
+  color: var(--kit-muted);
+  border: 1px solid var(--kit-line);
   border-bottom: 0;
-  border-radius: 6px 6px 0 0;
+  border-radius: 5px 5px 0 0;
   cursor: pointer;
   user-select: none;
 }
 
 .tab:hover {
-  color: #111;
-  background: #dfe3e9;
+  color: var(--kit-fg);
 }
 
 .tab.selected {
-  color: #111;
-  font-weight: 600;
-  background: #fff;
-  box-shadow: inset 0 2px 0 #3b6fd8;
+  color: var(--kit-fg);
+  font-weight: 700;
+  background: var(--kit-card);
   margin-bottom: -1px;
 }
 
-/* The mark on a tab opened behind, until it first shows: a dot in the
-   selected tab's accent. */
+/* The mark on a tab opened behind, until it first shows: a dot. */
 .tab-new {
   display: none;
   flex: none;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #3b6fd8;
+  background: var(--kit-signal);
 }
 
 .tab.new .tab-new {
@@ -246,8 +323,8 @@ body:not([data-layout='split']) #grip button:hover {
 #reload {
   flex: none;
   padding: 0 12px;
-  color: #444;
-  font-size: 16px;
+  color: var(--kit-muted);
+  font-size: 15px;
 }
 
 #reload:disabled {
@@ -287,7 +364,7 @@ body:not([data-layout='split']) #grip button:hover {
   height: 100%;
   padding: 0 24px;
   box-sizing: border-box;
-  color: #555;
+  color: var(--kit-muted);
   font-size: 14px;
   text-align: center;
 }
@@ -296,60 +373,35 @@ body:not([data-layout='split']) #grip button:hover {
   display: none;
 }
 
-/* Narrow (the page kit's 640px): no divider, and a switch at the top shows
-   one side at a time, full width. The wide layout's rules above are kept for
-   when the window widens again; these win while it is narrow. */
-#switch {
-  display: none;
+/* "Starting galley…", or why it couldn't, over the pages until the tool's
+   page shows. */
+#tool-note {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: var(--kit-bg);
 }
 
-body.narrow {
-  flex-direction: column;
-}
-
-body.narrow #switch {
-  flex: none;
-  display: flex;
-  gap: 4px;
-  padding: 6px;
-  background: #e8eaee;
-  border-bottom: 1px solid #c9ced6;
-}
-
-#switch button {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 36px;
-  border: 1px solid #c9ced6;
+#tool-note-text {
+  margin: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--kit-line);
   border-radius: 8px;
-  background: #d5d9e0;
-  color: #444;
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
+  color: var(--kit-muted);
+  font: 12px/1.5 var(--kit-mono);
+  white-space: pre-wrap;
 }
 
-#switch button.on {
-  color: #111;
-  font-weight: 600;
-  background: #fff;
-  box-shadow: inset 0 -2px 0 #3b6fd8;
-}
-
-/* A tab opened behind, until Pages shows: the tab bar's dot. */
-.switch-new {
-  display: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #3b6fd8;
-}
-
-#show-pages.new .switch-new {
-  display: block;
+/* Narrow (the page kit's 640px): no divider, and one side at a time, full
+   width, under the bar: Terminal shows the terminal, a tool the pages. The
+   wide layout's rules above are kept for when the window widens again; these
+   win while it is narrow. On a phone the kit's rules hide the workspace, and
+   the split's bar has no ⋯ to hold it, so the workspace is not shown inside
+   the split; Terminal keeps only its mark. */
+@media (width <= 640px) {
+  .term-toggle-label {
+    display: none;
+  }
 }
 
 body.narrow #divider {
@@ -364,10 +416,6 @@ body.narrow #tabs-panel {
   max-width: none;
   height: auto;
   min-height: 0;
-}
-
-body.narrow #term {
-  display: block;
 }
 
 body.narrow:not([data-view='terminal']) #term,

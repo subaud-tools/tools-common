@@ -13869,6 +13869,100 @@ var Dl = class extends D2 {
   }
 };
 
+// bar.ts
+var api = "/api/split/";
+function startBar(session2, pressed, take) {
+  const ws3 = document.getElementById("bar-ws");
+  const toolSwitch = document.getElementById("bar-switch");
+  const note = document.getElementById("tool-note");
+  const noteText = document.getElementById("tool-note-text");
+  const links = /* @__PURE__ */ new Map();
+  let place = null;
+  let pending = "";
+  let last = { list: { session: session2, tabs: [], selected: "" }, pagesShow: false };
+  let noteFor = "";
+  const say = (text) => {
+    noteText.textContent = text;
+    note.hidden = text === "";
+    noteFor = last.list.selected;
+  };
+  const press = async (name) => {
+    const tool = place?.tools?.find((t) => t.name === name);
+    if (!tool || pending !== "") return;
+    pending = name;
+    pressed();
+    const open = (last.list.tabs ?? []).some((t) => t.tool === name);
+    say(!tool.up && !open ? `Starting ${name}…` : "");
+    view.draw(last.list, last.pagesShow);
+    try {
+      const res = await fetch(`${api}tool`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session: session2, name })
+      });
+      if (res.ok) {
+        const list = await res.json();
+        pending = "";
+        say("");
+        tool.up = true;
+        take(list);
+      } else {
+        const why = (await res.text()).trim();
+        pending = "";
+        say(res.status === 500 ? `Couldn’t start ${name}: ${why}` : `Couldn’t open ${name}: ${why}`);
+      }
+    } catch {
+      pending = "";
+      say(`Couldn’t reach the page’s server to show ${name}.`);
+    }
+    view.draw(last.list, last.pagesShow);
+  };
+  const view = {
+    draw(list, pagesShow) {
+      last = { list, pagesShow };
+      if (pending === "" && !note.hidden && list.selected !== noteFor) say("");
+      const tabs2 = list.tabs ?? [];
+      const front = pagesShow ? tabs2.find((t) => t.id === list.selected)?.tool ?? "" : "";
+      const filled = pending || front;
+      for (const [name, a] of links) {
+        const on3 = name === filled;
+        a.classList.toggle("on", on3);
+        if (on3) a.setAttribute("aria-current", "page");
+        else a.removeAttribute("aria-current");
+        a.classList.toggle("new", tabs2.some((t) => t.tool === name && t.new === true && t.id !== list.selected));
+      }
+    }
+  };
+  void (async () => {
+    try {
+      const res = await fetch(`${api}place?session=${encodeURIComponent(session2)}`);
+      if (!res.ok) return;
+      place = await res.json();
+    } catch {
+      return;
+    }
+    ws3.href = place.home;
+    ws3.textContent = place.workspace;
+    ws3.hidden = false;
+    for (const tool of place.tools ?? []) {
+      const a = document.createElement("a");
+      a.href = tool.href;
+      a.textContent = tool.name;
+      a.dataset.tool = tool.name;
+      a.addEventListener("click", (ev) => {
+        if (ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+        ev.preventDefault();
+        void press(tool.name);
+      });
+      links.set(tool.name, a);
+      toolSwitch.append(a);
+    }
+    toolSwitch.hidden = links.size === 0;
+    view.draw(last.list, last.pagesShow);
+  })();
+  return view;
+}
+
 // keys.ts
 function handleKey(ev, send) {
   if (ev.ctrlKey && !ev.altKey && !ev.metaKey && ev.key.toLowerCase() === "v") return false;
@@ -13896,6 +13990,17 @@ function storedWidth(v3) {
 function arrow(layout, dir) {
   if (dir === "left") return layout === "tabs-closed" ? "split" : "term-closed";
   return layout === "term-closed" ? "split" : "tabs-closed";
+}
+function toggleTerminal(layout) {
+  return layout === "term-closed" ? "split" : "term-closed";
+}
+function terminalPress(s15) {
+  if (s15.narrow) return show(s15, s15.view === "terminal" ? "pages" : "terminal");
+  return { ...s15, layout: toggleTerminal(s15.layout) };
+}
+function afterTool(s15) {
+  if (s15.narrow) return show(s15, "pages");
+  return s15.layout === "tabs-closed" ? { ...s15, layout: "split" } : s15;
 }
 function released(x, total, divider) {
   if (x < edge) return "term-closed";
@@ -13928,7 +14033,6 @@ function afterTabs(s15, c) {
     if (s15.narrow) return show(s15, "pages");
     return s15.layout === "tabs-closed" ? { ...s15, layout: "split" } : s15;
   }
-  if (c.behind && s15.narrow && s15.view === "terminal") return { ...s15, dot: true };
   return s15;
 }
 function afterTyped(s15) {
@@ -13936,7 +14040,7 @@ function afterTyped(s15) {
   return s15.layout === "term-closed" ? { ...s15, layout: "split" } : s15;
 }
 function show(s15, view) {
-  return { ...s15, view, dot: view === "pages" ? false : s15.dot };
+  return { ...s15, view };
 }
 
 // relay.ts
@@ -13955,9 +14059,10 @@ function socketScheme(protocol) {
 }
 
 // tabs.ts
-var api = "/api/split/";
+var api2 = "/api/split/";
 function startTabs(session2, changed) {
-  const bar = document.getElementById("tab-list");
+  const row = document.getElementById("tabbar");
+  const bar2 = document.getElementById("tab-list");
   const frames = document.getElementById("frames");
   const empty = document.getElementById("tabs-empty");
   const reload = document.getElementById("reload");
@@ -13967,7 +14072,7 @@ function startTabs(session2, changed) {
   let heard = false;
   let last = null;
   const call = async (name, body2) => {
-    const res = await fetch(api + name, {
+    const res = await fetch(api2 + name, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session: session2, ...body2 })
@@ -14033,19 +14138,24 @@ function startTabs(session2, changed) {
       }
     }
     for (const tab of tabs2) {
-      let el2 = buttons.get(tab.id);
-      if (!el2) {
-        el2 = button(tab);
-        buttons.set(tab.id, el2);
-      }
-      const where = new URL(tab.address);
-      el2.querySelector(".tab-title").textContent = tab.title || where.host;
-      el2.title = where.origin + where.pathname;
       const on3 = tab.id === list.selected;
-      el2.classList.toggle("selected", on3);
-      el2.classList.toggle("new", tab.new === true && !on3);
-      el2.setAttribute("aria-selected", String(on3));
-      bar.append(el2);
+      let el2 = buttons.get(tab.id);
+      if (tab.tool) {
+        el2?.remove();
+        buttons.delete(tab.id);
+      } else {
+        if (!el2) {
+          el2 = button(tab);
+          buttons.set(tab.id, el2);
+        }
+        const where = new URL(tab.address);
+        el2.querySelector(".tab-title").textContent = tab.title || where.host;
+        el2.title = where.origin + where.pathname;
+        el2.classList.toggle("selected", on3);
+        el2.classList.toggle("new", tab.new === true && !on3);
+        el2.setAttribute("aria-selected", String(on3));
+        bar2.append(el2);
+      }
       let f = shown.get(tab.id);
       if (!f) {
         f = frame(tab);
@@ -14061,6 +14171,7 @@ function startTabs(session2, changed) {
         tell(f, tab.address);
       }
     }
+    row.hidden = buttons.size === 0;
     empty.hidden = tabs2.length > 0;
     reload.disabled = list.selected === "";
     if (heard || streamed) changed(heard ? prev : null, current, again);
@@ -14075,7 +14186,7 @@ function startTabs(session2, changed) {
       shown.set(tab.id, fresh);
     }
   });
-  const stream = new EventSource(`${api}stream?session=${encodeURIComponent(session2)}`);
+  const stream = new EventSource(`${api2}stream?session=${encodeURIComponent(session2)}`);
   stream.onmessage = (ev) => {
     const data = ev.data;
     const again = last === data;
@@ -14094,7 +14205,7 @@ function startTabs(session2, changed) {
     }
     return void 0;
   };
-  return { list: () => current, from };
+  return { list: () => current, from, take: (l2) => render(l2) };
 }
 
 // entry.ts
@@ -14161,7 +14272,6 @@ var state = {
   layout: storedLayout(stored(() => sessionStorage, layoutKey)),
   narrow: narrowMedia.matches,
   view: "terminal",
-  dot: false,
   known: false
 };
 var keptWidth = storedWidth(stored(() => localStorage, widthAt));
@@ -14170,17 +14280,20 @@ var termShown = () => {
 };
 var closeTerm = document.getElementById("close-term");
 var closeTabs = document.getElementById("close-tabs");
-var showTerminal = document.getElementById("show-terminal");
-var showPages = document.getElementById("show-pages");
+var termToggle = document.getElementById("term-toggle");
+var termClose = document.getElementById("term-close");
+document.getElementById("term-name").textContent = `terminal · ${session}`;
+var tabs = null;
+var bar = null;
 function draw() {
   body.dataset.layout = state.layout;
   body.dataset.view = state.known || !state.narrow ? state.view : "";
   body.classList.toggle("narrow", state.narrow);
-  showTerminal.classList.toggle("on", body.dataset.view === "terminal");
-  showTerminal.setAttribute("aria-selected", String(body.dataset.view === "terminal"));
-  showPages.classList.toggle("on", body.dataset.view === "pages");
-  showPages.setAttribute("aria-selected", String(body.dataset.view === "pages"));
-  showPages.classList.toggle("new", state.dot);
+  const shows = termShows(state);
+  termToggle.classList.toggle("on", shows);
+  termToggle.setAttribute("aria-pressed", String(shows));
+  const pagesShow = state.narrow ? body.dataset.view === "pages" : state.layout !== "tabs-closed";
+  if (tabs && bar) bar.draw(tabs.list(), pagesShow);
   const left = state.layout === "tabs-closed" ? "Bring the tabs back" : "Close the terminal: the tabs fill the window";
   const right = state.layout === "term-closed" ? "Bring the terminal back" : "Close the tabs: the terminal fills the window";
   closeTerm.title = left;
@@ -14208,7 +14321,7 @@ function startTerminal() {
   term.loadAddon(new Ke());
   term.loadAddon(new L((_ev, uri) => window.open(uri, "_blank", "noopener")));
   term.unicode.activeVersion = "11";
-  term.open(document.getElementById("term"));
+  term.open(document.getElementById("term-screen"));
   try {
     const webgl = new xr();
     webgl.onContextLoss(() => webgl.dispose());
@@ -14265,7 +14378,7 @@ function startTerminal() {
     }
     return true;
   });
-  new ResizeObserver(fitShown).observe(document.getElementById("term"));
+  new ResizeObserver(fitShown).observe(document.getElementById("term-screen"));
   termShown = () => {
     let said = false;
     const heard = term.onResize(() => {
@@ -14277,7 +14390,7 @@ function startTerminal() {
     term.focus();
   };
   addEventListener("message", (ev) => {
-    const text = sentText(ev.data, ev.origin, tabs.from(ev.source));
+    const text = sentText(ev.data, ev.origin, tabs?.from(ev.source));
     if (text !== null) {
       apply(afterTyped(state));
       term.paste(text);
@@ -14388,14 +14501,17 @@ function startDivider() {
   closeTerm.addEventListener("click", () => apply({ ...state, layout: arrow(state.layout, "left") }));
   closeTabs.addEventListener("click", () => apply({ ...state, layout: arrow(state.layout, "right") }));
 }
-showTerminal.addEventListener("click", () => apply(show(state, "terminal")));
-showPages.addEventListener("click", () => apply(show(state, "pages")));
+termToggle.addEventListener("click", () => apply(terminalPress(state)));
+termClose.addEventListener("click", () => apply(terminalPress(state)));
 narrowMedia.addEventListener("change", () => apply({ ...state, narrow: narrowMedia.matches }));
 draw();
-var tabs = startTabs(session, (prev, next, again) => {
+tabs = startTabs(session, (prev, next, again) => {
   if (prev === null) apply({ ...state, view: firstView(next.tabs?.length ?? 0), known: true });
   else apply(afterTabs(state, tabChange(prev, next, again)));
 });
+var shownTabs = tabs;
+bar = startBar(session, () => apply(afterTool(state)), (l2) => shownTabs.take(l2));
+draw();
 startTerminal();
 startDivider();
 if (script !== "") {

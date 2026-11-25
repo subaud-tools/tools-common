@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="/_kit/kit.css">
+<body>
+<!-- dom.test.js frames this page: the kit's bar drawn inside a frame, from
+     the guide answer in ?guide= (a data: URL). -->
+<script type="module">
+import { bar } from '/_kit/dom.js';
+const b = bar({ brand: { name: 'diazo', href: '/' }, guideUrl: new URLSearchParams(location.search).get('guide') });
+document.body.append(b.el);
+await b.place;
+window.barDone = true;
+</script>
