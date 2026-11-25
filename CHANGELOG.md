@@ -4,6 +4,17 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.130.0
+
+### Added
+- kit: a two-column layout for iPad widths. `narrowMode` now has three layouts: one at a time at 999px or less (the old 1080 rule, moved), two columns from 1000 to 1319px (the middle with one side open beside it at 288px or 384px, the other a 44px strip with its count; an item page opens with its right side open, a front page with its left; pressing a strip swaps sides, pressing the open side's toggle leaves two strips; nothing is remembered), and three columns from 1320px, unchanged. The page gets `kit-two` with `kit-two-left` or `kit-two-right`.
+- kit: `KIT_WIDTHS` (`{ oneAtATime: 999, twoColumns: 1319 }`), exported from `frame.js` and typed in `kit.d.ts`: the one source for the width lines. A tool with a width rule of its own uses it instead of a copy.
+- kit: `narrowMode().centre()`: back to the middle in one at a time, nothing in two columns or wide. `recordPage` uses it on load, on a hash change and on a search pick. A tool that calls `show(null)` to mean "back to the middle" should call `centre()`: in two columns `show(null)` folds both sides.
+- kit: on a touch screen (`pointer: coarse`) every column toggle takes a press 44px across and down, and every closed strip is 44px wide with no scrollbar gutter, so classic scrollbars don't cut the target. With a mouse nothing is drawn differently.
+
+### Changed
+- `PAGE-STANDARD.md`, the laying-out-a-page skill (its Phone row, and check widths that add 1180px and 1032px), the layout starter at `/_kit/layout/` and the README describe the three layouts.
+
 ## 0.129.0
 
 ### Added
