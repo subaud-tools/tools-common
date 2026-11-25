@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -460,5 +461,161 @@ func TestOpenMovesTheToolsFrontPageTabToThePage(t *testing.T) {
 	l, _ = tabs.Open(OpenRequest{Session: "s", Address: "http://127.0.0.1:4007/guide", Behind: true})
 	if got := addresses(l); len(got) != 4 || got[3] != "http://127.0.0.1:4007/guide" || l.Selected != other.Selected {
 		t.Fatalf("behind: tabs = %v selected %q", got, l.Selected)
+	}
+}
+
+// The place a host gives: the workspace, and the switch's tools, diazo on
+// pageA's server (up) and galley on another (down).
+const (
+	diazoHref  = "http://127.0.0.1:4001/"
+	galleyHref = "http://127.0.0.1:4003/"
+)
+
+func testPlace(string) (Place, bool) {
+	return Place{Workspace: "tools-workspace", Home: "http://127.0.0.1:4000/", Tools: []PlaceTool{
+		{Name: "diazo", Href: diazoHref, Up: true},
+		{Name: "galley", Href: galleyHref, Up: false},
+	}}, true
+}
+
+// serveTabsWith serves tabs whose host gives testPlace and start (nil: no Start).
+func serveTabsWith(t *testing.T, start func(ctx context.Context, name string) (string, error)) (*Tabs, *httptest.Server) {
+	t.Helper()
+	tabs := NewTabs()
+	tabs.Place(testPlace)
+	if start != nil {
+		tabs.Start(start)
+	}
+	srv := httptest.NewServer(tabs.Handler())
+	t.Cleanup(srv.Close)
+	return tabs, srv
+}
+
+// postTool presses a tool: the status, the list, and the body's text.
+func postTool(t *testing.T, srv *httptest.Server, name string) (int, TabList, string) {
+	t.Helper()
+	b, _ := json.Marshal(ToolRequest{Session: "s1", Name: name})
+	res, err := http.Post(srv.URL+"/api/split/tool", "application/json", bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = res.Body.Close() }()
+	body, _ := io.ReadAll(res.Body)
+	var l TabList
+	if res.StatusCode == http.StatusOK {
+		if err := json.Unmarshal(body, &l); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return res.StatusCode, l, string(body)
+}
+
+func TestPlaceIsWhatTheHostGives(t *testing.T) {
+	get := func(srv *httptest.Server) (int, Place) {
+		res, err := http.Get(srv.URL + "/api/split/place?session=s1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = res.Body.Close() }()
+		var p Place
+		if res.StatusCode == http.StatusOK {
+			if err := json.NewDecoder(res.Body).Decode(&p); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return res.StatusCode, p
+	}
+	if code, _ := get(serveTabs(t)); code != http.StatusNotFound {
+		t.Fatalf("no Place hook: %d, want 404", code)
+	}
+	none := NewTabs()
+	none.Place(func(string) (Place, bool) { return Place{}, false })
+	srv := httptest.NewServer(none.Handler())
+	t.Cleanup(srv.Close)
+	if code, _ := get(srv); code != http.StatusNotFound {
+		t.Fatalf("a host with no place: %d, want 404", code)
+	}
+	_, srv = serveTabsWith(t, nil)
+	code, p := get(srv)
+	if code != http.StatusOK || p.Workspace != "tools-workspace" || len(p.Tools) != 2 || p.Tools[0].Name != "diazo" || !p.Tools[0].Up {
+		t.Fatalf("place: %d %+v", code, p)
+	}
+}
+
+func TestToolShowsTheTabOnItsHost(t *testing.T) {
+	_, srv := serveTabsWith(t, func(context.Context, string) (string, error) {
+		t.Error("Start called for a tool that is up")
+		return "", nil
+	})
+	plan := open(t, srv, "s1", diazoHref+"?plan=p1", false).Selected
+	open(t, srv, "s1", pageB, false)
+	code, l, body := postTool(t, srv, "diazo")
+	if code != http.StatusOK {
+		t.Fatalf("tool diazo: %d %s", code, body)
+	}
+	if len(l.Tabs) != 2 || l.Selected != plan {
+		t.Fatalf("tool diazo: selected %q of %v, want the open tab %q", l.Selected, addresses(l), plan)
+	}
+}
+
+func TestToolOpensItsFrontPage(t *testing.T) {
+	_, srv := serveTabsWith(t, func(context.Context, string) (string, error) {
+		t.Error("Start called for a tool that is up")
+		return "", nil
+	})
+	open(t, srv, "s1", pageB, false)
+	code, l, body := postTool(t, srv, "diazo")
+	if code != http.StatusOK {
+		t.Fatalf("tool diazo: %d %s", code, body)
+	}
+	if len(l.Tabs) != 2 || l.Tabs[1].Address != diazoHref || l.Tabs[1].Title != "diazo" || l.Selected != l.Tabs[1].ID {
+		t.Fatalf("tool diazo: %+v", l)
+	}
+}
+
+func TestToolStartsAToolThatIsDown(t *testing.T) {
+	started := []string{}
+	_, srv := serveTabsWith(t, func(_ context.Context, name string) (string, error) {
+		started = append(started, name)
+		return galleyHref + "?t=tok", nil
+	})
+	code, l, body := postTool(t, srv, "galley")
+	if code != http.StatusOK {
+		t.Fatalf("tool galley: %d %s", code, body)
+	}
+	if len(started) != 1 || started[0] != "galley" {
+		t.Fatalf("started %v, want [galley]", started)
+	}
+	if len(l.Tabs) != 1 || l.Tabs[0].Address != galleyHref+"?t=tok" || l.Selected != l.Tabs[0].ID {
+		t.Fatalf("tool galley: %+v", l)
+	}
+}
+
+func TestToolSaysWhyItCouldNotStart(t *testing.T) {
+	_, srv := serveTabsWith(t, func(context.Context, string) (string, error) {
+		return "", errors.New("galley: address already in use")
+	})
+	if code, _, body := postTool(t, srv, "galley"); code != http.StatusInternalServerError || !strings.Contains(body, "galley: address already in use") {
+		t.Fatalf("a failed start: %d %q", code, body)
+	}
+	_, srv = serveTabsWith(t, nil)
+	if code, _, _ := postTool(t, srv, "galley"); code != http.StatusConflict {
+		t.Fatalf("a tool down with no Start: %d, want 409", code)
+	}
+	if code, _, _ := postTool(t, srv, "cull"); code != http.StatusNotFound {
+		t.Fatalf("a tool not in the place: %d, want 404", code)
+	}
+	if code, _, _ := postTool(t, serveTabs(t), "diazo"); code != http.StatusNotFound {
+		t.Fatalf("no place: %d, want 404", code)
+	}
+}
+
+func TestATabOnAToolsHostSaysItsTool(t *testing.T) {
+	_, srv := serveTabsWith(t, nil)
+	open(t, srv, "s1", diazoHref+"?plan=p1", false)
+	open(t, srv, "s1", pageB, false)
+	l := list(t, srv, "s1")
+	if len(l.Tabs) != 2 || l.Tabs[0].Tool != "diazo" || l.Tabs[1].Tool != "" {
+		t.Fatalf("tools: %+v", l.Tabs)
 	}
 }

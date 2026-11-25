@@ -1,6 +1,7 @@
 package splitpage
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +23,8 @@ var (
 	ErrNotLocal = errors.New("splitpage: a tab holds only an http://127.0.0.1:<port> address, or https://<tool>.<PAGE_PUBLIC_DOMAIN> when that is set")
 	ErrNoTab    = errors.New("splitpage: no such tab")
 	ErrPinned   = errors.New("splitpage: a pinned tab can't be closed")
+	ErrNoTool   = errors.New("splitpage: no such tool in the split page's place")
+	ErrNoStart  = errors.New("splitpage: the tool isn't running, and this host can't start it")
 )
 
 // maxBody bounds one tab call's JSON.
@@ -35,6 +38,67 @@ type Tabs struct {
 	mu       sync.Mutex
 	sessions map[string]*session
 	next     int // the last tab id's number, across every session
+	place    func(session string) (Place, bool)
+	start    func(ctx context.Context, name string) (href string, err error)
+}
+
+// Place sets where the split page sits, which the host knows: f gives a
+// session's Place, or false for none. The page draws it as its bar, and a
+// tab on a place's tool's host is marked with the tool (Tab.Tool). Unset, the
+// split page has no place.
+func (t *Tabs) Place(f func(session string) (Place, bool)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.place = f
+}
+
+// Start sets how the host starts a switch tool that isn't up: f starts tool
+// name and answers its front page's address. Unset, pressing a tool that is
+// down answers 409.
+func (t *Tabs) Start(f func(ctx context.Context, name string) (href string, err error)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.start = f
+}
+
+// placeOf is the session's place from the host, if it gives one.
+func (t *Tabs) placeOf(name string) (Place, bool) {
+	t.mu.Lock()
+	f := t.place
+	t.mu.Unlock()
+	if f == nil {
+		return Place{}, false
+	}
+	return f(name)
+}
+
+// hostOf is address's host, or "" for an address that doesn't parse.
+func hostOf(address string) string {
+	u, err := url.Parse(address)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(u.Host)
+}
+
+// marked is l with each tab on a place's tool's host marked with the tool.
+func (t *Tabs) marked(l TabList) TabList {
+	p, ok := t.placeOf(l.Session)
+	l = copyList(l)
+	for i := range l.Tabs {
+		l.Tabs[i].Tool = ""
+		if !ok {
+			continue
+		}
+		h := hostOf(l.Tabs[i].Address)
+		for _, tool := range p.Tools {
+			if h != "" && hostOf(tool.Href) == h {
+				l.Tabs[i].Tool = tool.Name
+				break
+			}
+		}
+	}
+	return l
 }
 
 type session struct {
@@ -55,11 +119,12 @@ func (t *Tabs) get(name string) *session {
 	return s
 }
 
-// List returns a copy of the session's tabs.
+// List returns a copy of the session's tabs, each marked with its tool.
 func (t *Tabs) List(name string) TabList {
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	return copyList(t.get(name).list)
+	l := copyList(t.get(name).list)
+	t.mu.Unlock()
+	return t.marked(l)
 }
 
 func copyList(l TabList) TabList {
@@ -281,6 +346,54 @@ func (s *session) show(id string) {
 	}
 }
 
+// tool shows switch tool r.Name's page for r.Session: the session's tab on
+// the tool's host if it has one, else the tool's front page as a new tab in
+// front, once the host has started the tool if it was down. A tool's host is
+// the host of its Href.
+func (t *Tabs) tool(ctx context.Context, r ToolRequest) (TabList, error) {
+	p, ok := t.placeOf(r.Session)
+	if !ok {
+		return TabList{}, ErrNoTool
+	}
+	var tool *PlaceTool
+	for i := range p.Tools {
+		if p.Tools[i].Name == r.Name {
+			tool = &p.Tools[i]
+			break
+		}
+	}
+	if tool == nil {
+		return TabList{}, ErrNoTool
+	}
+	host := hostOf(tool.Href)
+	t.mu.Lock()
+	for _, tb := range t.get(r.Session).list.Tabs {
+		if host != "" && hostOf(tb.Address) == host {
+			id := tb.ID
+			t.mu.Unlock()
+			return t.Select(r.Session, id)
+		}
+	}
+	start := t.start
+	t.mu.Unlock()
+	href := tool.Href
+	if !tool.Up {
+		if start == nil {
+			return TabList{}, ErrNoStart
+		}
+		var err error
+		if href, err = start(ctx, tool.Name); err != nil {
+			return TabList{}, startError{err}
+		}
+	}
+	return t.Open(OpenRequest{Session: r.Session, Address: href, Title: tool.Name})
+}
+
+// startError is the host's Start failing: Handler answers its text with 500.
+type startError struct{ error }
+
+func (e startError) Unwrap() error { return e.error }
+
 func (s *session) index(id string) int {
 	for i, tb := range s.list.Tabs {
 		if tb.ID == id {
@@ -298,10 +411,40 @@ func (s *session) index(id string) int {
 //	POST /api/split/select           SelectRequest → TabList (404)
 //	POST /api/split/close            CloseRequest → TabList (404, 409 pinned)
 //	GET  /api/split/stream?session=  server-sent events: the TabList now and after every change
+//	GET  /api/split/place?session=   the session's Place (404 when the host gives none)
+//	POST /api/split/tool             ToolRequest → TabList (404 no such tool, 409 down with no Start, 500 Start failed)
+//
+// Every TabList it answers has each tab marked with its tool (Tab.Tool).
 func (t *Tabs) Handler() http.Handler {
 	mux := http.NewServeMux()
+	writeList := func(w http.ResponseWriter, l TabList, err error) {
+		if err == nil {
+			l = t.marked(l)
+		}
+		writeList(w, l, err)
+	}
 	mux.HandleFunc("GET /api/split/tabs", func(w http.ResponseWriter, r *http.Request) {
 		writeList(w, t.List(r.URL.Query().Get("session")), nil)
+	})
+	mux.HandleFunc("GET /api/split/place", func(w http.ResponseWriter, r *http.Request) {
+		p, ok := t.placeOf(r.URL.Query().Get("session"))
+		if !ok {
+			http.Error(w, "no place", http.StatusNotFound)
+			return
+		}
+		if p.Tools == nil {
+			p.Tools = []PlaceTool{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_ = json.NewEncoder(w).Encode(p)
+	})
+	mux.HandleFunc("POST /api/split/tool", func(w http.ResponseWriter, r *http.Request) {
+		var req ToolRequest
+		if readBody(w, r, &req) {
+			l, err := t.tool(r.Context(), req)
+			writeList(w, l, err)
+		}
 	})
 	mux.HandleFunc("POST /api/split/open", func(w http.ResponseWriter, r *http.Request) {
 		var req OpenRequest
@@ -337,14 +480,18 @@ func readBody(w http.ResponseWriter, r *http.Request, v any) bool {
 }
 
 func writeList(w http.ResponseWriter, l TabList, err error) {
+	var started startError
 	switch {
+	case errors.As(err, &started): // the host's Start, whatever it wraps
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	case errors.Is(err, ErrNotLocal):
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-	case errors.Is(err, ErrNoTab):
+	case errors.Is(err, ErrNoTab), errors.Is(err, ErrNoTool):
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
-	case errors.Is(err, ErrPinned):
+	case errors.Is(err, ErrPinned), errors.Is(err, ErrNoStart):
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	case err != nil:
@@ -379,7 +526,7 @@ func (t *Tabs) stream(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case l := <-ch:
-			b, err := json.Marshal(l)
+			b, err := json.Marshal(t.marked(l))
 			if err != nil {
 				return
 			}

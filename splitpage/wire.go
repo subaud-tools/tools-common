@@ -34,6 +34,10 @@ type Tab struct {
 	// New says the tab was opened behind (OpenRequest.Behind) and hasn't
 	// shown since: the page marks it until it is first shown.
 	New bool `json:"new,omitempty"`
+	// Tool is the switch tool whose page the tab shows (its address is on the
+	// host of the tool's Href in the host's Place), or empty for any other
+	// page: the page lists only those in its row of tabs.
+	Tool string `json:"tool,omitempty"`
 }
 
 // TabList is a session's tabs, in bar order, and the one that shows ("" when
@@ -67,6 +71,31 @@ type SelectRequest struct {
 type CloseRequest struct {
 	Session string `json:"session"`
 	ID      string `json:"id"`
+}
+
+// Place is GET /api/split/place: where the split page sits, which it draws
+// as its bar's workspace link and switch. Its host gives it (Tabs.Place); a
+// host that gives none answers 404, and the bar shows only its Terminal
+// button.
+type Place struct {
+	Workspace string      `json:"workspace"` // the workspace's name, or locally the session's project
+	Home      string      `json:"home"`      // where the workspace's name links
+	Tools     []PlaceTool `json:"tools"`     // the switch, in order
+}
+
+// PlaceTool is one tool of the switch: its name, its front page (a tab whose
+// address is on Href's host is the tool's), and whether it is running.
+type PlaceTool struct {
+	Name string `json:"name"`
+	Href string `json:"href"`
+	Up   bool   `json:"up"`
+}
+
+// ToolRequest is POST /api/split/tool: show tool Name's page, starting the
+// tool first when it is down.
+type ToolRequest struct {
+	Session string `json:"session"`
+	Name    string `json:"name"`
 }
 
 // ResizeType is a Resize message's type, always "resize".

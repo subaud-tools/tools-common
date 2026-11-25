@@ -26,6 +26,17 @@ export interface CloseRequest {
   id: string;
 }
 
+export interface Place {
+  workspace: string;
+  home: string;
+  tools: PlaceTool[] | null;
+}
+
+export interface ToolRequest {
+  session: string;
+  name: string;
+}
+
 export interface Resize {
   type: ResizeType;
   cols: number;
@@ -39,6 +50,13 @@ export interface Tab {
   pinned: boolean;
   types: boolean;
   new?: boolean;
+  tool?: string;
+}
+
+export interface PlaceTool {
+  name: string;
+  href: string;
+  up: boolean;
 }
 
 export type ResizeType = 'resize';
