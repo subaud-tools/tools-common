@@ -743,6 +743,8 @@ export interface NarrowOptions {
 export interface NarrowMode {
   /** Gives the frame to a side, or to the centre with null; in two columns null folds both sides. Does nothing while the page is wide. */
   show(side: NarrowSide): void;
+  /** Goes back to the middle: in one at a time it gives the frame to the centre; in two columns, where the middle already shows beside the open side, and at wide widths, it moves nothing. Use it, not show(null), after a navigation (a link, a pick, a hash change). */
+  centre(): void;
   /** Puts n under a strip's toggle, none at zero. It shows on a closed strip in one or two columns, and on a closed right strip at wide widths. */
   setCount(side: 'left' | 'right', n: number): void;
   /** Lets go of the window, when the page goes. */

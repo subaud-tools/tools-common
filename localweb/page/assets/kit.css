@@ -793,7 +793,7 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
 @media (pointer: coarse) {
   .kit-col-toggle::before { content: ""; position: absolute; top: -9px; bottom: -12px; left: -10.5px; right: -10.5px; }
   .kit-col.kit-collapsed,
-  .kit-narrow > .kit-left-col, .kit-narrow > .kit-right-col { width: 44px; }
+  .kit-narrow:not(.kit-narrow-left) > .kit-left-col, .kit-narrow:not(.kit-narrow-right) > .kit-right-col { width: 44px; }
   .kit-narrow-left > .kit-left-col { grid-template-columns: 44px minmax(0, 1fr); }
   .kit-narrow-right > .kit-right-col { grid-template-columns: minmax(0, 1fr) 44px; }
   .kit-app:not(.kit-narrow, .kit-two) > .kit-list.kit-collapsed,

@@ -506,6 +506,48 @@ function reach(doc, t) {
   return [across, down];
 }
 
+test('touch: on a coarse pointer at 800 an opened side fills the centre\'s track', async () => {
+  for (const [side, other] of [['left', 'right'], ['right', 'left']]) {
+    const p = await touchPage(800);
+    const n = laid(p);
+    p.f[side].firstChild.click();
+    assert(p.app.classList.contains(`kit-narrow-${side}`), `${side} open`);
+    near(box(p.f[side]).width, 800 - 44, `the open ${side} side`);
+    near(box(p.f[other]).width, 44, `the ${other} strip`);
+    assert(box(p.f[`${side}Body`]).width > 600, `the ${side} body shows: ${box(p.f[`${side}Body`]).width}`);
+    n.stop();
+  }
+});
+
+test('layout: in two columns a closed right strip holding tabs puts its toggle where every strip does', async () => {
+  const p = await layoutPage(1180);
+  p.f.rightBody.append(tabs(['Thread', 'Asks']).el);
+  const n = laid(p);
+  near(box(p.f.right.firstChild).top - box(p.f.right).top, 17, 'open: the toggle on the tabs\' line');
+  p.f.right.firstChild.click();
+  near(box(p.f.right.firstChild).top - box(p.f.right).top, 8, 'closed: 8px down, as every strip');
+  n.stop();
+});
+
+test('narrowMode: centre goes back to the middle in one at a time, and moves nothing in two columns or wide', () => {
+  withWidth(fire => {
+    const p = narrowed();
+    p.n.show('left');
+    p.n.centre();
+    eq(stateOf(p), null);
+    fire(1180);
+    eq(twoOf(p), 'right');
+    p.n.centre();
+    eq(twoOf(p), 'right');
+    p.f.left.firstChild.click();
+    p.n.centre();
+    eq(twoOf(p), 'left');
+    fire(1600);
+    p.n.centre();
+    eq(p.seen, ['left', null, 'right', 'left', null]);
+  });
+});
+
 test('touch: on a coarse pointer every column toggle takes a press 44px across and down', async () => {
   for (const [w, what, cls] of [[800, 'one at a time', 'kit-narrow'], [1180, 'two columns', 'kit-two'], [1655, 'three columns', 'kit-app']]) {
     const p = await touchPage(w);

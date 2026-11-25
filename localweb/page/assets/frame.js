@@ -102,7 +102,9 @@ export const KIT_WIDTHS = Object.freeze({ oneAtATime: 999, twoColumns: 1319 });
 // drive the layout, so the fold and what is remembered of it keep their
 // meaning for the wide page: in the other two layouts they are ignored and
 // never written. Nothing else is remembered: moving to another layout goes to
-// its default. show(side) takes 'left', 'right' or null, setCount(side, n) puts
+// its default. show(side) takes 'left', 'right' or null (in two columns null
+// folds both sides), centre() goes back to the middle in one at a time and
+// moves nothing in the other two, setCount(side, n) puts
 // a count under a strip's toggle (none at zero; at wide widths only a closed
 // right strip shows it), onShow(side) hears each change, and stop lets go of
 // the window.
@@ -164,9 +166,15 @@ export function narrowMode({ root, left, right, onShow }) {
     }
     badge.textContent = String(n);
   };
+  // centre goes back to the middle where a side can stand in its place (one
+  // at a time); in two columns the middle already shows, so it moves nothing,
+  // and wide neither.
+  const centre = () => {
+    if (mode === 'narrow') show(null);
+  };
   const stop = () => {
     narrow.removeEventListener('change', follow);
     two.removeEventListener('change', follow);
   };
-  return { show, setCount, stop };
+  return { show, centre, setCount, stop };
 }
