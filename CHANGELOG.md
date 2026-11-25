@@ -4,6 +4,17 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.131.0
+
+### Added
+- splitpage: one bar across the top of the split page, the kit's own bar: the workspace, the diazo | cast | galley switch and a Terminal button. The switch shows the tool's tab, or opens its front page, without leaving the split. A host fills it with two hooks, `Tabs.Place` (the workspace, its link and each tool's address and whether it is up) and `Tabs.Start` (start a tool that is down); with no place the bar shows only the Terminal button.
+- splitpage: `GET /api/split/place` and `POST /api/split/tool` (show the tool's first tab, else start it if it is down and Start is set, one start per tool at a time, then open its front page in front); `Place`, `PlaceTool`, `ToolRequest` and `Tab.Tool` on the wire.
+- splitpage: the terminal has its own header with ×. × and the Terminal button close and open the terminal through the same layout as the divider's ◀ ▶, which stay.
+
+### Changed
+- splitpage: the tab row is now a slim row of only the pages that aren't a tool's tab (each tool's tab is the first one on its host); it shows only while one is open. At phone width the bar's ▣ and switch replace the Terminal / Pages row.
+- kit: inside a frame the bar leaves out its workspace and switch, which the split page's bar carries; a page on its own is unchanged.
+
 ## 0.130.0
 
 ### Added
