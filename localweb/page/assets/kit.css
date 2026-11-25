@@ -901,8 +901,10 @@ a.kit-brand:hover, a.kit-brand:focus-visible { text-decoration: underline; }
    its toggle in a strip of its own, and a folded one only the toggle. */
 .kit-rail-tabs { padding-top: 16px; }
 .kit-rail-tabrow { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px; }
-:not(.kit-narrow) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-toggle { margin-top: 17px; }
-:not(.kit-narrow) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-body { margin-top: -42px; }
+:not(.kit-narrow, .kit-two) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-toggle,
+.kit-two-right > .kit-right-col:has(> .kit-col-body > .kit-rail-tabs) > .kit-col-toggle { margin-top: 17px; }
+:not(.kit-narrow, .kit-two) > .kit-right-col:not(.kit-collapsed):has(> .kit-col-body > .kit-rail-tabs) > .kit-col-body,
+.kit-two-right > .kit-right-col:has(> .kit-col-body > .kit-rail-tabs) > .kit-col-body { margin-top: -42px; }
 :not(.kit-narrow) > .kit-right-col > .kit-col-body > .kit-rail-tabs > .kit-rail-tabrow { padding-right: 49px; }
 .kit-rail-panel { padding: 0 16px 16px; }
 .kit-right-col > .kit-col-body .kit-rail-panel .kit-thread { padding: 0; }
