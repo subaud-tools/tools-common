@@ -1,4 +1,4 @@
-import { test, eq, assert, fixture } from './harness.js';
+import { test, eq, assert, fixture, focusEl } from './harness.js';
 import { repoPick } from '/_kit/repopick.js';
 
 const HOUR = 3600e3, DAY = 24 * HOUR;
@@ -133,7 +133,9 @@ test('repoPick: paging shows ten and keeps ticks across pages', () => {
   assert(box(p, 'a/r2').checked, 'the tick on page 1 is kept');
   eq(p.chosen(), ['a/r2', 'b/r0']);
   search(p, 'c/');
-  assert(p.el.querySelector('.kit-repo-pager').hidden, 'no pager with one page');
+  assert(!p.el.querySelector('.kit-repo-pager').hidden, 'one page still shows the pager');
+  eq(range(), 'page 1 of 1');
+  assert(btn(p, 'Previous').disabled && btn(p, 'Next').disabled, 'both off on the one page');
 });
 
 test('repoPick: an org link ticks every listed repo of that owner', () => {
@@ -251,4 +253,40 @@ test('repoPick: a row is on one line in a 720px sheet', () => {
   press(p, 'a/r0');
   const r = row(p, 'a/r0').getBoundingClientRect();
   assert(r.height < 40, `row is ${Math.round(r.height)}px tall`);
+});
+
+test('repoPick: focus stays on the pressed row, chip and mark', () => {
+  const p = make({ mark: { on: '★', off: '☆' } });
+  focusEl(box(p, 'a/r2'));
+  press(p, 'a/r2');
+  assert(document.activeElement === box(p, 'a/r2'), `focus on the row's box, got ${document.activeElement.outerHTML.slice(0, 80)}`);
+  press(p, 'a/r5');
+  const m5 = row(p, 'a/r5').querySelector('.kit-repo-mark');
+  focusEl(m5);
+  m5.click();
+  eq(p.marked(), 'a/r5');
+  assert(document.activeElement === row(p, 'a/r5').querySelector('.kit-repo-mark'), 'focus on the mark');
+  focusEl(chip(p, 'b'));
+  chip(p, 'b').click();
+  assert(document.activeElement === chip(p, 'b'), 'focus on the chip');
+});
+
+test('repoPick: a typed repo already chosen elsewhere errors and is not chosen, listed or not', () => {
+  const have = { names: ['Org/Kept', 'a/r0'], label: 'already on the workspace' };
+  const f = make({ typed: true, repos: null, have });
+  f.failed('nope');
+  type(f, 'org/kept');
+  eq(f.chosen(), [], 'not chosen while typing');
+  type(f, 'https://github.com/org/kept', true);
+  eq(typedError(f).textContent, 'Org/Kept: already on the workspace');
+  eq(f.chosen(), []);
+  const t = repoPick({ typed: true, have });
+  fixture().append(t.el);
+  type(t, 'A/R0', true);
+  eq(t.chosen(), []);
+  eq(typedError(t).textContent, 'a/r0: already on the workspace');
+  const l = make({ typed: true, have });
+  type(l, 'org/kept', true);
+  eq(l.chosen(), [], 'a have name the list does not hold');
+  eq(typedError(l).textContent, 'Org/Kept: already on the workspace');
 });

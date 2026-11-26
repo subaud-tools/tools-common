@@ -13,7 +13,8 @@
 // greyed and labelled, which tick-all skips and chosen() leaves out.
 // o.typed (true, or { label, placeholder }) adds the typed field: owner/name,
 // a repo's GitHub link, or an org's link, which ticks every listed repo of
-// that owner. A repo not in the list joins chosen() as typed.
+// that owner. A repo not in the list joins chosen() as typed; one in o.have
+// (in any case, listed or not) is never chosen and says so once committed.
 // o.mark is { on, off, title } for one mark on a ticked repo (the setup
 // page's ★): on the first ticked unless pressed elsewhere, and following the
 // first ticked when its repo is unticked. title is a string or name => string.
@@ -63,6 +64,8 @@ export function repoPick(o = {}) {
   let owner = '';
   let page = 0;
   const have = new Set(o.have ? o.have.names : []);
+  // haveName is the have entry a name matches, whatever its case, or ''.
+  const haveName = name => [...have].find(n => n.toLowerCase() === name.toLowerCase()) || '';
   // The ticked repos in the order they were ticked; the mark is one of them.
   const order = [];
   let mark = '';
@@ -142,7 +145,26 @@ export function repoPick(o = {}) {
       h('label', { class: 'kit-tick kit-repo-name' }, input, h('span', null, r.name)), markBtn, h('span', { class: 'kit-repo-meta' }, meta));
   }
 
+  // A redraw replaces the rows and chips, so the control the user pressed
+  // leaves the page: focusKey names it first and refocus finds its
+  // replacement (the same row's box or mark, the same owner's chip).
+  function focusKey() {
+    const a = document.activeElement;
+    if (!a || !el.contains(a)) return null;
+    const r = a.closest('.kit-repo-row');
+    if (r) return `.kit-repo-row[data-name="${CSS.escape(r.dataset.name)}"] ${a.classList.contains('kit-repo-mark') ? '.kit-repo-mark' : 'input[type=checkbox]'}`;
+    if (a.closest('.kit-repo-owners')) return `.kit-repo-owners .kit-chip[data-owner="${CSS.escape(a.dataset.owner)}"]`;
+    return null;
+  }
   function draw() {
+    const key = focusKey();
+    drawParts();
+    if (key && !el.contains(document.activeElement)) {
+      const n = el.querySelector(key);
+      if (n) n.focus();
+    }
+  }
+  function drawParts() {
     if (typedOnly && !all) return;
     const ready = !!all && !failure;
     search.disabled = !all;
@@ -186,7 +208,7 @@ export function repoPick(o = {}) {
     range.textContent = `page ${page + 1} of ${pages}`;
     prev.disabled = page === 0;
     next.disabled = page >= pages - 1;
-    pager.hidden = pages < 2;
+    pager.hidden = false;
   }
 
   search.addEventListener('input', () => { query = search.value.trim(); page = 0; draw(); });
@@ -201,7 +223,7 @@ export function repoPick(o = {}) {
     typedInput.addEventListener('input', () => {
       setError();
       const p = parseRepo(typedInput.value);
-      const repo = p && p.repo && !(listed(p.repo) && have.has(listed(p.repo).name)) ? p.repo : '';
+      const repo = p && p.repo && !haveName(p.repo) ? p.repo : '';
       if (repo !== typedRepo) {
         typedRepo = repo;
         changed();
@@ -216,19 +238,19 @@ export function repoPick(o = {}) {
         return;
       }
       if (p.org) {
-        const theirs = (all || []).filter(r => ownerOf(r.name).toLowerCase() === p.org.toLowerCase() && !have.has(r.name));
+        const theirs = (all || []).filter(r => ownerOf(r.name).toLowerCase() === p.org.toLowerCase() && !haveName(r.name));
         if (!theirs.length) {
           setError(`No listed repo belongs to ${p.org}.`);
           return;
         }
         for (const r of theirs) tickRepo(r.name, true);
       } else {
-        const r = listed(p.repo);
-        if (!r) return;
-        if (have.has(r.name)) {
-          setError(`${r.name}: ${o.have.label}`);
+        if (haveName(p.repo)) {
+          setError(`${haveName(p.repo)}: ${o.have.label}`);
           return;
         }
+        const r = listed(p.repo);
+        if (!r) return;
         tickRepo(r.name, true);
       }
       typedInput.value = '';
