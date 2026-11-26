@@ -7,6 +7,7 @@ import {
   afterTyped,
   arrow,
   firstView,
+  leaveTo,
   released,
   type State,
   storedLayout,
@@ -127,10 +128,10 @@ test('narrow: the returns are switches, and never touch the wide layout', () => 
   assert.deepEqual(afterTyped(t), { ...t, view: 'terminal' });
 });
 
-test('the Terminal button and × close and open the terminal, as the arrows do', () => {
+test('the Terminal button closes and opens the terminal, as the arrows do', () => {
   assert.equal(toggleTerminal('split'), 'term-closed');
   assert.equal(toggleTerminal('term-closed'), 'split');
-  // The terminal fills the window: × closes it and the pages fill it instead.
+  // The terminal fills the window: the button closes it and the pages fill it instead.
   assert.equal(toggleTerminal('tabs-closed'), 'term-closed');
   // The same layouts the divider's arrows reach.
   assert.equal(toggleTerminal('split'), arrow('split', 'left'));
@@ -151,4 +152,11 @@ test('a tool pressed in the switch shows the pages: closed tabs open, narrow sho
   assert.deepEqual(afterTool({ ...wide, layout: 'term-closed' }), { ...wide, layout: 'term-closed' });
   const s: State = { ...narrow, layout: 'tabs-closed', view: 'terminal' };
   assert.deepEqual(afterTool(s), { ...s, view: 'pages' });
+});
+
+test('× leaves for the tab showing, else the place\'s home, else the server\'s /', () => {
+  const origin = 'http://127.0.0.1:9';
+  assert.equal(leaveTo(list('b', 'a', 'b'), 'http://home/', origin), 'http://127.0.0.1:1/b');
+  assert.equal(leaveTo(list(''), 'http://home/', origin), 'http://home/');
+  assert.equal(leaveTo(list(''), '', origin), 'http://127.0.0.1:9/');
 });

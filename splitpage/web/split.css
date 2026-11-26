@@ -67,7 +67,7 @@ body {
   position: relative;
 }
 
-/* The terminal's own header: its session's name, and × to close it. */
+/* The terminal's own header: its session's name, and × to leave the split page. */
 #term-head {
   flex: none;
   display: flex;

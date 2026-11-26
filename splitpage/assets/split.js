@@ -13931,6 +13931,9 @@ function startBar(session2, pressed, take) {
         else a.removeAttribute("aria-current");
         a.classList.toggle("new", tabs2.some((t) => t.tool === name && t.new === true && t.id !== list.selected));
       }
+    },
+    home() {
+      return place?.home ?? "";
     }
   };
   void (async () => {
@@ -13997,6 +14000,11 @@ function toggleTerminal(layout) {
 function terminalPress(s15) {
   if (s15.narrow) return show(s15, s15.view === "terminal" ? "pages" : "terminal");
   return { ...s15, layout: toggleTerminal(s15.layout) };
+}
+function leaveTo(list, home, origin) {
+  const tab = (list.tabs ?? []).find((t) => t.id === list.selected);
+  if (tab) return tab.address;
+  return home || `${origin}/`;
 }
 function afterTool(s15) {
   if (s15.narrow) return show(s15, "pages");
@@ -14176,16 +14184,17 @@ function startTabs(session2, changed) {
     reload.disabled = list.selected === "";
     if (heard || streamed) changed(heard ? prev : null, current, again);
   }
-  reload.addEventListener("click", () => {
-    const tab = current.tabs?.find((t) => t.id === current.selected);
+  const fresh = (id) => {
+    const tab = current.tabs?.find((t) => t.id === id);
     const f = tab && shown.get(tab.id);
     if (tab && f) {
-      const fresh = frame(tab);
-      fresh.classList.add("shown");
-      f.replaceWith(fresh);
-      shown.set(tab.id, fresh);
+      const el2 = frame(tab);
+      el2.classList.toggle("shown", f.classList.contains("shown"));
+      f.replaceWith(el2);
+      shown.set(tab.id, el2);
     }
-  });
+  };
+  reload.addEventListener("click", () => fresh(current.selected));
   const stream = new EventSource(`${api2}stream?session=${encodeURIComponent(session2)}`);
   stream.onmessage = (ev) => {
     const data = ev.data;
@@ -14205,7 +14214,7 @@ function startTabs(session2, changed) {
     }
     return void 0;
   };
-  return { list: () => current, from, take: (l2) => render(l2) };
+  return { list: () => current, from, take: (l2) => render(l2), fresh };
 }
 
 // entry.ts
@@ -14502,7 +14511,9 @@ function startDivider() {
   closeTabs.addEventListener("click", () => apply({ ...state, layout: arrow(state.layout, "right") }));
 }
 termToggle.addEventListener("click", () => apply(terminalPress(state)));
-termClose.addEventListener("click", () => apply(terminalPress(state)));
+termClose.addEventListener("click", () => {
+  location.assign(leaveTo(tabs?.list() ?? { session, tabs: [], selected: "" }, bar?.home() ?? "", location.origin));
+});
 narrowMedia.addEventListener("change", () => apply({ ...state, narrow: narrowMedia.matches }));
 draw();
 tabs = startTabs(session, (prev, next, again) => {
@@ -14510,7 +14521,10 @@ tabs = startTabs(session, (prev, next, again) => {
   else apply(afterTabs(state, tabChange(prev, next, again)));
 });
 var shownTabs = tabs;
-bar = startBar(session, () => apply(afterTool(state)), (l2) => shownTabs.take(l2));
+bar = startBar(session, () => apply(afterTool(state)), (l2) => {
+  shownTabs.take(l2);
+  shownTabs.fresh(l2.selected);
+});
 draw();
 startTerminal();
 startDivider();

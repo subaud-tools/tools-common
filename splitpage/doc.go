@@ -14,12 +14,14 @@
 // Entry.Loopback), never a public one.
 //
 // The bar draws the place the tool gives with Tabs.Place: the workspace, and
-// the diazo | cast | galley switch, which shows a tool's tab on the right, or
-// opens its front page, starting the tool first through Tabs.Start when it is
-// down. A tab on a switch tool's host is that tool's (Tab.Tool) and is reached
+// the diazo | cast | galley switch, which shows a tool's front page on the
+// right, moving the tool's tab there or opening one, starting the tool first
+// through Tabs.Start when it is down. A tab on a switch tool's host is that tool's (Tab.Tool) and is reached
 // through the switch; the others are listed in a slim row over the pages,
-// shown while one is open. The Terminal button and the terminal's × close
-// and open the terminal, as the divider's arrows do.
+// shown while one is open. The Terminal button closes and opens the
+// terminal, as the divider's arrows do; the terminal's × leaves the split
+// page for the page showing on the right (or the place's home, or /), and
+// the session keeps running.
 //
 // A tab opened with Types may type into the terminal (lwc's lesson does), a
 // tab opened Behind joins the page without showing, marked New until it first

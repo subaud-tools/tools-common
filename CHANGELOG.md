@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.132.0
+
+### Changed
+- splitpage: the terminal's × leaves the split page: the browser tab goes to the page showing on the right, or with none to the place's home, else the server's `/`. The divider's ◀ and the Terminal button still collapse the terminal.
+- splitpage: a tool press in the bar's switch always shows that tool's front page, the same as the button on the tool's own page: the tool's tab moves to its front page in place (same id) and loads afresh, so a press after clicking into a page inside the frame still lands on the front page.
+
 ## 0.131.0
 
 ### Added
