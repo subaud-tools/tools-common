@@ -14,6 +14,8 @@ export interface BarView {
   // pages shows, or the tool being started; and marks a tool whose tab was
   // opened behind and hasn't shown.
   draw(list: TabList, pagesShow: boolean): void;
+  // home is the place's home, or '' before the place is heard or with none.
+  home(): string;
 }
 
 // startBar draws the bar's place. pressed is told a tool was pressed, before
@@ -86,6 +88,9 @@ export function startBar(session: string, pressed: () => void, take: (list: TabL
         else a.removeAttribute('aria-current');
         a.classList.toggle('new', tabs.some((t) => t.tool === name && t.new === true && t.id !== list.selected));
       }
+    },
+    home() {
+      return place?.home ?? '';
     },
   };
 

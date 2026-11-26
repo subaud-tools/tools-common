@@ -47,18 +47,27 @@ export function arrow(layout: Layout, dir: 'left' | 'right'): Layout {
   return layout === 'term-closed' ? 'split' : 'tabs-closed';
 }
 
-// toggleTerminal is the layout after the Terminal button or the terminal's ×:
+// toggleTerminal is the layout after the Terminal button:
 // a closed terminal opens the split, and a terminal that shows closes, the
 // pages filling the window (from the split, as the divider's ◀ does).
 export function toggleTerminal(layout: Layout): Layout {
   return layout === 'term-closed' ? 'split' : 'term-closed';
 }
 
-// terminalPress is the state after the Terminal button or ×: wide, the layout
+// terminalPress is the state after the Terminal button: wide, the layout
 // toggles; narrow, the side shown does, the terminal or the pages.
 export function terminalPress(s: State): State {
   if (s.narrow) return show(s, s.view === 'terminal' ? 'pages' : 'terminal');
   return { ...s, layout: toggleTerminal(s.layout) };
+}
+
+// leaveTo is where the terminal's × sends the browser tab, leaving the split
+// page: the address of the tab showing on the right; with none, the place's
+// home; with no home either, the page's own server's /.
+export function leaveTo(list: TabList, home: string, origin: string): string {
+  const tab = (list.tabs ?? []).find((t) => t.id === list.selected);
+  if (tab) return tab.address;
+  return home || `${origin}/`;
 }
 
 // afterTool is the state once a tool is pressed in the bar's switch: its page

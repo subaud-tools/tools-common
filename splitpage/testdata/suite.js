@@ -908,10 +908,10 @@ if (phone) {
     await until(() => !barTab(second), 'the second diazo page closes');
   });
 
-  test('× closes the terminal, Terminal brings it back at its width, and the arrows agree', async () => {
+  test('Terminal closes the terminal and brings it back at its width, and the arrows agree', async () => {
     const w0 = rect('term').width;
-    termX().click();
-    await until(termClosed, '× closes the terminal');
+    termToggle().click();
+    await until(termClosed, 'Terminal closes the terminal');
     assert(termToggle().getAttribute('aria-pressed') === 'false' && !termToggle().classList.contains('on'), 'Terminal is highlighted with the terminal closed');
     assertBar();
     termToggle().click();
@@ -948,6 +948,23 @@ if (phone) {
     assert(r.top === rect('bar').bottom && near(r.left, p.left) && near(r.width, p.width), `the row at ${r.left},${r.top} ${r.width}, over the pages at ${p.left} ${p.width}`);
     barTab(id).querySelector('.tab-close').click();
     await until(() => !rowShows(), 'closing it removes the row');
+  });
+
+  test('× leaves the split page for the tab showing on the right', async () => {
+    const x = termX();
+    assert(x.title === 'Close the split page: show this page on its own' && x.getAttribute('aria-label') === x.title, `× says: ${x.title}`);
+    const back = win().location.href;
+    // On the split page's own origin, so the frame's address can be read once it lands.
+    const address = `${location.origin}/test/one.html?leave`;
+    const res = await post('/api/split/open', { session: xs, address, title: 'Leave' });
+    const id = (await res.json()).selected;
+    await until(() => shownFrame()?.dataset.id === id, 'the tab shows');
+    const loaded = new Promise((r) => frame.addEventListener('load', r, { once: true }));
+    x.click();
+    await loaded;
+    assert(win().location.href === address, `× landed on ${win().location.href}, want ${address}`);
+    await load(back);
+    await post('/api/split/close', { session: xs, id });
   });
 } else {
   test('without a Script nothing extra loads', async () => {

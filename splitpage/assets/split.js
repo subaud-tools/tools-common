@@ -13931,6 +13931,9 @@ function startBar(session2, pressed, take) {
         else a.removeAttribute("aria-current");
         a.classList.toggle("new", tabs2.some((t) => t.tool === name && t.new === true && t.id !== list.selected));
       }
+    },
+    home() {
+      return place?.home ?? "";
     }
   };
   void (async () => {
@@ -13997,6 +14000,11 @@ function toggleTerminal(layout) {
 function terminalPress(s15) {
   if (s15.narrow) return show(s15, s15.view === "terminal" ? "pages" : "terminal");
   return { ...s15, layout: toggleTerminal(s15.layout) };
+}
+function leaveTo(list, home, origin) {
+  const tab = (list.tabs ?? []).find((t) => t.id === list.selected);
+  if (tab) return tab.address;
+  return home || `${origin}/`;
 }
 function afterTool(s15) {
   if (s15.narrow) return show(s15, "pages");
@@ -14502,7 +14510,9 @@ function startDivider() {
   closeTabs.addEventListener("click", () => apply({ ...state, layout: arrow(state.layout, "right") }));
 }
 termToggle.addEventListener("click", () => apply(terminalPress(state)));
-termClose.addEventListener("click", () => apply(terminalPress(state)));
+termClose.addEventListener("click", () => {
+  location.assign(leaveTo(tabs?.list() ?? { session, tabs: [], selected: "" }, bar?.home() ?? "", location.origin));
+});
 narrowMedia.addEventListener("change", () => apply({ ...state, narrow: narrowMedia.matches }));
 draw();
 tabs = startTabs(session, (prev, next, again) => {

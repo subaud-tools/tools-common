@@ -20,6 +20,7 @@ import {
   edge,
   firstView,
   layoutKey,
+  leaveTo,
   narrowQuery,
   released,
   type State,
@@ -394,11 +395,14 @@ function startDivider(): void {
   closeTabs.addEventListener('click', () => apply({ ...state, layout: arrow(state.layout, 'right') }));
 }
 
-// The Terminal button and the terminal's × close and open it (narrow, they
-// switch the side shown); the page goes narrow and wide again as the window
-// changes.
+// The Terminal button closes and opens the terminal (narrow, it switches the
+// side shown). The terminal's × leaves the split page for the page showing on
+// the right, at any width: the session keeps running. The page goes narrow
+// and wide again as the window changes.
 termToggle.addEventListener('click', () => apply(terminalPress(state)));
-termClose.addEventListener('click', () => apply(terminalPress(state)));
+termClose.addEventListener('click', () => {
+  location.assign(leaveTo(tabs?.list() ?? { session, tabs: [], selected: '' }, bar?.home() ?? '', location.origin));
+});
 narrowMedia.addEventListener('change', () => apply({ ...state, narrow: narrowMedia.matches }));
 
 draw();
