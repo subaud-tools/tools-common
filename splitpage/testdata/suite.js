@@ -894,6 +894,32 @@ if (phone) {
     await until(() => shownHost() === hostOf(tool.diazo) && note().hidden, 'diazo shows and the note goes');
   });
 
+  test('pressing a tool loads its front page afresh, though its frame went elsewhere', async () => {
+    press('diazo');
+    await until(() => shownHost() === hostOf(tool.diazo), 'diazo shows');
+    await sleep(300); // the press's answer loads the frame afresh
+    const id = (await tabs_(xs)).selected;
+    const old = shownFrame();
+    assert(old.getAttribute('src') === tool.diazo, `diazo's frame is on ${old.getAttribute('src')}`);
+    // A click inside the tool's page moves its frame; the tab's address stays.
+    const away = `${location.origin}/test/one.html?away`;
+    const moved = new Promise((r) => old.addEventListener('load', r, { once: true }));
+    old.contentWindow.location.href = away;
+    await moved;
+    assert(old.contentWindow.location.href === away, 'the frame moved');
+    press('diazo');
+    await until(() => shownFrame() !== old && shownFrame()?.dataset.id === id, 'a new frame replaces the moved one');
+    assert(!old.isConnected && shownFrame().getAttribute('src') === tool.diazo, `diazo's frame is on ${shownFrame().getAttribute('src')}`);
+    await until(() => {
+      try {
+        void shownFrame().contentWindow.location.href; // readable while blank or on this origin
+        return false;
+      } catch {
+        return true; // back on diazo's own origin
+      }
+    }, 'the frame loads diazo again');
+  });
+
   test('a second page on diazo\'s host is an other page, in the slim row with ×; diazo shows its first', async () => {
     const diazoTab = (await tabs_(xs)).selected;
     const res = await post('/api/split/open', { session: xs, address: `${tool.diazo}?plan=p2`, title: 'Plan two' });

@@ -18,6 +18,9 @@ export interface TabsView {
   from(source: MessageEventSource | null): Tab | undefined;
   // take shows a list a call answered (the bar's tool call), as the stream's.
   take(list: TabList): void;
+  // fresh loads tab id again in a new frame in place, though its address is
+  // unchanged: its page may have moved inside the frame.
+  fresh(id: string): void;
 }
 
 // changed hears each list the page shows, with the one it showed before:
@@ -160,19 +163,20 @@ export function startTabs(
     if (heard || streamed) changed(heard ? prev : null, current, again);
   }
 
-  reload.addEventListener('click', () => {
-    const tab = current.tabs?.find((t) => t.id === current.selected);
+  // A cross-origin frame can't be told to reload, and setting src again does
+  // nothing when the address has a # part (casebook's do): a new frame in its
+  // place always loads.
+  const fresh = (id: string): void => {
+    const tab = current.tabs?.find((t) => t.id === id);
     const f = tab && shown.get(tab.id);
-    // A cross-origin frame can't be told to reload, and setting src again does
-    // nothing when the address has a # part (casebook's do): a new frame in its
-    // place always loads.
     if (tab && f) {
-      const fresh = frame(tab);
-      fresh.classList.add('shown');
-      f.replaceWith(fresh);
-      shown.set(tab.id, fresh);
+      const el = frame(tab);
+      el.classList.toggle('shown', f.classList.contains('shown'));
+      f.replaceWith(el);
+      shown.set(tab.id, el);
     }
-  });
+  };
+  reload.addEventListener('click', () => fresh(current.selected));
 
   const stream = new EventSource(`${api}stream?session=${encodeURIComponent(session)}`);
   stream.onmessage = (ev) => {
@@ -195,5 +199,5 @@ export function startTabs(
     return undefined;
   };
 
-  return { list: () => current, from, take: (l) => render(l) };
+  return { list: () => current, from, take: (l) => render(l), fresh };
 }

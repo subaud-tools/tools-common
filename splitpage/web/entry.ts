@@ -412,9 +412,14 @@ tabs = startTabs(session, (prev, next, again) => {
   if (prev === null) apply({ ...state, view: firstView(next.tabs?.length ?? 0), known: true });
   else apply(afterTabs(state, tabChange(prev, next, again)));
 });
-// A tool pressed in the switch shows the pages side, then its page.
+// A tool pressed in the switch shows the pages side, then its front page,
+// loaded afresh: a click inside the tool's frame may have moved it from the
+// address the tab still has.
 const shownTabs = tabs;
-bar = startBar(session, () => apply(afterTool(state)), (l) => shownTabs.take(l));
+bar = startBar(session, () => apply(afterTool(state)), (l) => {
+  shownTabs.take(l);
+  shownTabs.fresh(l.selected);
+});
 draw();
 startTerminal();
 startDivider();
