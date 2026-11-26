@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -29,6 +31,17 @@ var (
 
 // maxBody bounds one tab call's JSON.
 const maxBody = 64 << 10
+
+// maxPaste bounds one pasted image.
+const maxPaste = 20 << 20
+
+// pasteExt is each image type a paste may hold, with its file's extension.
+var pasteExt = map[string]string{
+	"image/png":  "png",
+	"image/jpeg": "jpg",
+	"image/gif":  "gif",
+	"image/webp": "webp",
+}
 
 // Tabs holds each session's tabs and the one that shows, in memory, for as
 // long as the server runs. A tool mounts Handler under its localweb /api/, or
@@ -461,6 +474,7 @@ func (s *session) index(id string) int {
 //	GET  /api/split/stream?session=  server-sent events: the TabList now and after every change
 //	GET  /api/split/place?session=   the session's Place (404 when the host gives none)
 //	POST /api/split/tool             ToolRequest → TabList (404 no such tool, 409 down with no Start, 500 Start failed)
+//	POST /api/split/paste            an image's bytes → PasteResponse (415 not PNG, JPEG, GIF or WebP, 413 over 20 MB)
 //
 // Every TabList it answers has each tab marked with its tool (Tab.Tool).
 func (t *Tabs) Handler() http.Handler {
@@ -516,7 +530,53 @@ func (t *Tabs) Handler() http.Handler {
 		}
 	})
 	mux.HandleFunc("GET /api/split/stream", t.stream)
+	mux.HandleFunc("POST /api/split/paste", paste)
 	return mux
+}
+
+// paste saves a pasted image in the system temp folder as paste-*.<ext>,
+// readable only by the server's user, and answers its path, which the page
+// types into the terminal: a program there (pi, Claude Code) attaches an image
+// named by its path. The body's Content-Type and its bytes must both say one
+// of the image types pasteExt lists.
+func paste(w http.ResponseWriter, r *http.Request) {
+	mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	ext, ok := pasteExt[mt]
+	if !ok {
+		http.Error(w, "paste: not a PNG, JPEG, GIF or WebP image", http.StatusUnsupportedMediaType)
+		return
+	}
+	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxPaste))
+	var tooBig *http.MaxBytesError
+	switch {
+	case errors.As(err, &tooBig):
+		http.Error(w, "paste: the image is over 20 MB", http.StatusRequestEntityTooLarge)
+		return
+	case err != nil:
+		http.Error(w, "paste: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if http.DetectContentType(b) != mt {
+		http.Error(w, "paste: the bytes are not a "+mt+" image", http.StatusUnsupportedMediaType)
+		return
+	}
+	f, err := os.CreateTemp("", "paste-*."+ext) // mode 0600
+	if err != nil {
+		http.Error(w, "paste: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_, err = f.Write(b)
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		_ = os.Remove(f.Name())
+		http.Error(w, "paste: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(PasteResponse{Path: f.Name()})
 }
 
 func readBody(w http.ResponseWriter, r *http.Request, v any) bool {

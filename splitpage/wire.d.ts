@@ -37,6 +37,10 @@ export interface ToolRequest {
   name: string;
 }
 
+export interface PasteResponse {
+  path: string;
+}
+
 export interface Resize {
   type: ResizeType;
   cols: number;

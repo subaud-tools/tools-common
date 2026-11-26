@@ -9,7 +9,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
-import type { Resize } from '../wire.d.ts';
+import type { PasteResponse, Resize } from '../wire.d.ts';
 import { type BarView, startBar } from './bar.ts';
 import { handleKey } from './keys.ts';
 import {
@@ -42,6 +42,8 @@ const encoder = new TextEncoder();
 const closeNoSession = 4404;
 const closeReplaced = 4409;
 const closeStopped = 4410;
+// The image types POST /api/split/paste takes.
+const pasteTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
 // What the tool filled in (splitpage.Config). The page is authenticated by
 // localweb's cookie, so no address here carries a token. A page opened with
@@ -266,6 +268,39 @@ function startTerminal(): void {
     if (!said) sendSize();
     term.focus();
   };
+
+  // xterm passes on only text, so a pasted image is saved by the page's
+  // server and its path typed instead, as a paste with no Enter: pi and Claude
+  // Code attach an image named by its path. Caught before xterm sees it; a
+  // paste with no image goes on to xterm. A failed save types nothing.
+  term.element!.addEventListener(
+    'paste',
+    (ev) => {
+      const image = Array.from(ev.clipboardData?.files ?? []).find((f) => pasteTypes.includes(f.type));
+      if (!image) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      void (async () => {
+        try {
+          const res = await fetch('/api/split/paste', {
+            method: 'POST',
+            headers: { 'Content-Type': image.type },
+            body: image,
+          });
+          if (!res.ok) {
+            console.warn(`splitpage: the pasted image wasn’t saved: ${res.status} ${await res.text()}`);
+            return;
+          }
+          const { path } = (await res.json()) as PasteResponse;
+          term.paste(path);
+          term.focus();
+        } catch (err) {
+          console.warn('splitpage: the pasted image wasn’t saved:', err);
+        }
+      })();
+    },
+    { capture: true },
+  );
 
   // A tab opened with types (lwc's lesson) types into the terminal as a paste
   // does, with no Enter: the user reads it and sends it. A closed terminal

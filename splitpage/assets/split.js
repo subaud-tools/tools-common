@@ -14223,6 +14223,7 @@ var encoder = new TextEncoder();
 var closeNoSession = 4404;
 var closeReplaced = 4409;
 var closeStopped = 4410;
+var pasteTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 var pageQuery = new URLSearchParams(location.search);
 pageQuery.delete("t");
 var takeOnLoad = pageQuery.get("take") === "1";
@@ -14398,6 +14399,34 @@ function startTerminal() {
     if (!said) sendSize();
     term.focus();
   };
+  term.element.addEventListener(
+    "paste",
+    (ev) => {
+      const image = Array.from(ev.clipboardData?.files ?? []).find((f) => pasteTypes.includes(f.type));
+      if (!image) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      void (async () => {
+        try {
+          const res = await fetch("/api/split/paste", {
+            method: "POST",
+            headers: { "Content-Type": image.type },
+            body: image
+          });
+          if (!res.ok) {
+            console.warn(`splitpage: the pasted image wasn’t saved: ${res.status} ${await res.text()}`);
+            return;
+          }
+          const { path } = await res.json();
+          term.paste(path);
+          term.focus();
+        } catch (err) {
+          console.warn("splitpage: the pasted image wasn’t saved:", err);
+        }
+      })();
+    },
+    { capture: true }
+  );
   addEventListener("message", (ev) => {
     const text = sentText(ev.data, ev.origin, tabs?.from(ev.source));
     if (text !== null) {

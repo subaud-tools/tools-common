@@ -365,6 +365,54 @@ if (phone) {
     await until(async () => (await input()) === 'latehi\n', 'the newline arrives');
   });
 
+  // paste dispatches a paste carrying data on the terminal's input box, as the
+  // browser does on Cmd+V.
+  const paste = (data) => {
+    const box = doc().querySelector('.xterm-helper-textarea');
+    box.dispatchEvent(new (win().ClipboardEvent)('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  };
+
+  test('a pasted image types the path the server saved it at', async () => {
+    // A whole 1x1 PNG.
+    const png = Uint8Array.from(
+      atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4DwAAAQEABRjYTgAAAABJRU5ErkJggg=='),
+      (c) => c.charCodeAt(0),
+    );
+    // What the server answers, read beside the page.
+    const pageFetch = win().fetch;
+    let answered = null;
+    win().fetch = async (...a) => {
+      const res = await pageFetch(...a);
+      if (String(a[0]).includes('/api/split/paste') && res.ok) answered = (await res.clone().json()).path;
+      return res;
+    };
+    try {
+      const before = await input();
+      const data = new (win().DataTransfer)();
+      data.items.add(new (win().File)([png], 'shot.png', { type: 'image/png' }));
+      paste(data);
+      await until(() => answered, 'the server saves the image');
+      assert(/\/paste-[^/]+\.png$/.test(answered), `saved at ${answered}`);
+      await until(async () => (await input()).slice(before.length) === answered, 'the path is typed');
+      await sleep(200);
+      const got = (await input()).slice(before.length);
+      assert(got === answered, `typed ${JSON.stringify(got)}, want only ${answered}`);
+    } finally {
+      win().fetch = pageFetch;
+    }
+  });
+
+  test('a pasted text reaches the terminal unchanged', async () => {
+    const before = await input();
+    const data = new (win().DataTransfer)();
+    data.setData('text/plain', 'pasted text');
+    paste(data);
+    await until(async () => (await input()).length > before.length, 'the text arrives');
+    await sleep(200);
+    const got = (await input()).slice(before.length);
+    assert(got === 'pasted text', `typed ${JSON.stringify(got)}`);
+  });
+
   test('a link in the terminal opens in a browser tab when clicked', async () => {
     const opened = [];
     win().open = (...a) => {
@@ -372,7 +420,8 @@ if (phone) {
       return null;
     };
     const t = split().term;
-    t.input(' https://example.com/x ');
+    // On a fresh line, so what earlier tests typed (a pasted path) can't wrap it.
+    t.input('\r\n https://example.com/x ');
     await until(() => screen().includes('https://example.com/x'), 'the link shows');
     const b = t.buffer.active;
     let row = -1;

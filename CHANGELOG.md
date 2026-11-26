@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.134.0
+
+### Added
+- splitpage: pasting an image (PNG, JPEG, GIF or WebP) into the split page's terminal now gives the program there the image's path, as pi does on a Mac: the page sends the image to its server, which saves it in the system temp folder as `paste-<random>.<ext>`, readable only by you, and the page types the path as a paste, with no Enter. pi and Claude Code attach an image named by its path. A paste with text goes to the terminal as before; a failed save types nothing and says why in the browser console.
+- splitpage: `POST /api/split/paste` in `Tabs.Handler` (the image's bytes with its Content-Type; 415 for anything but those four types, checked against the bytes too, 413 over 20 MB) and `PasteResponse` on the wire. Every tool that mounts `Tabs.Handler` gets it with this update.
+
 ## 0.133.0
 
 ### Added
