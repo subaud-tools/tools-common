@@ -420,7 +420,8 @@ if (phone) {
       return null;
     };
     const t = split().term;
-    t.input(' https://example.com/x ');
+    // On a fresh line, so what earlier tests typed (a pasted path) can't wrap it.
+    t.input('\r\n https://example.com/x ');
     await until(() => screen().includes('https://example.com/x'), 'the link shows');
     const b = t.buffer.active;
     let row = -1;
