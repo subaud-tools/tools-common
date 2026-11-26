@@ -386,8 +386,9 @@ func (s *session) show(id string) {
 	}
 }
 
-// tool shows switch tool r.Name's page for r.Session: the tool's tab (the
-// session's first tab on the tool's host) if it has one, else the tool's
+// tool shows switch tool r.Name's front page for r.Session: the tool's tab
+// (the session's first tab on the tool's host), moved to the front page in
+// place if it shows another of the tool's pages (a diazo plan), else the
 // front page as a new tab in front, once the host has started the tool if it
 // was down; presses while it starts wait for that one Start. A tool's host is
 // the host of its Href.
@@ -408,11 +409,17 @@ func (t *Tabs) tool(ctx context.Context, r ToolRequest) (TabList, error) {
 	}
 	host := hostOf(tool.Href)
 	t.mu.Lock()
-	for _, tb := range t.get(r.Session).list.Tabs {
-		if host != "" && hostOf(tb.Address) == host {
-			id := tb.ID
+	s := t.get(r.Session)
+	for i := range s.list.Tabs {
+		if tb := &s.list.Tabs[i]; host != "" && hostOf(tb.Address) == host {
+			// In place, as Open moves a front-page tab: the same id, pin and
+			// types, so the page keeps one frame for the tool.
+			tb.Address, tb.Title = tool.Href, tool.Name
+			s.show(tb.ID)
+			s.changed()
+			l := copyList(s.list)
 			t.mu.Unlock()
-			return t.Select(r.Session, id)
+			return l, nil
 		}
 	}
 	start := t.start

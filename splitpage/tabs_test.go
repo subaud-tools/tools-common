@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -543,7 +544,7 @@ func TestPlaceIsWhatTheHostGives(t *testing.T) {
 	}
 }
 
-func TestToolShowsTheTabOnItsHost(t *testing.T) {
+func TestToolMovesItsTabToTheFrontPage(t *testing.T) {
 	_, srv := serveTabsWith(t, func(context.Context, string) (string, error) {
 		t.Error("Start called for a tool that is up")
 		return "", nil
@@ -554,8 +555,16 @@ func TestToolShowsTheTabOnItsHost(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("tool diazo: %d %s", code, body)
 	}
-	if len(l.Tabs) != 2 || l.Selected != plan {
-		t.Fatalf("tool diazo: selected %q of %v, want the open tab %q", l.Selected, addresses(l), plan)
+	if len(l.Tabs) != 2 || l.Selected != plan || l.Tabs[0].ID != plan || l.Tabs[0].Address != diazoHref {
+		t.Fatalf("tool diazo: selected %q of %v, want the plan's tab %q moved to %s", l.Selected, addresses(l), plan, diazoHref)
+	}
+	// With the front page showing, a second press changes nothing.
+	code, again, body := postTool(t, srv, "diazo")
+	if code != http.StatusOK {
+		t.Fatalf("tool diazo again: %d %s", code, body)
+	}
+	if !reflect.DeepEqual(again, l) {
+		t.Fatalf("a second press changed the list:\n%+v\nwas\n%+v", again, l)
 	}
 }
 
