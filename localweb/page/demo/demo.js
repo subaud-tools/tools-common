@@ -1,5 +1,5 @@
 import { demoRecord, DEMO } from './record.js';
-import { h, bar, band, cardLine, settingLine, textField, pickField, chipPick, confirmBox, emptyCard, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, narrowMode, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, sortedList, needsPill, nextLine, arrive, renderMarkdown, decisionCard } from '/_kit/kit.js';
+import { h, bar, band, cardLine, settingLine, textField, pickField, chipPick, confirmBox, emptyCard, list, facts, card, buttons, codeBlock, fold, noteField, messagePill, MESSAGE_STATES, createKeys, initTheme, frame, narrowMode, lineTip, wireTip, indexRow, indexSection, thread, railTabs, draftList, stageTrack, workingLine, waitBadges, createDrafts, questionButton, QUESTIONS, sendBar, keepElsewhere, filterRow, statusPills, groupList, sortedList, needsPill, nextLine, arrive, renderMarkdown, decisionCard, repoPick, sheet } from '/_kit/kit.js';
 
 const MARK = `<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#14161d"/><path d="M13 22H28M13 32H26M13 42H28" stroke="#9aa0ab" stroke-width="3.6" stroke-linecap="round"/><path d="M13 22H28" stroke="#d98f66" stroke-width="3.6" stroke-linecap="round"/><path d="M33 17V47" stroke="#d98f66" stroke-width="2.4"/><rect x="38" y="18" width="14" height="28" rx="3" fill="none" stroke="#d98f66" stroke-width="2.4"/></svg>`;
 const mark = () => {
@@ -493,6 +493,71 @@ function chipsDemo() {
   return card({ head: 'New sessions', body: [body] });
 }
 
+// A made-up list for the repo picker: thirty repos over three owners, each
+// updated some hours before the last.
+const DEMO_REPOS = [
+  'subaud-tools/billet', 'schuettc/research-archive-in-a-box', 'subaud-tools/diazo', 'subaud-tools/tools-common',
+  'schuettc/research-in-a-box', 'workshop-institute/handbook', 'subaud-tools/galley', 'schuettc/dotfiles',
+  'subaud-tools/muster', 'workshop-institute/site', 'schuettc/amazon-chime-sdk-call-analytics-reader', 'subaud-tools/kempt',
+  'subaud-tools/cdk-github-microvm-runners', 'schuettc/notes', 'subaud-tools/tools-actions', 'workshop-institute/curriculum',
+  'subaud-tools/starter', 'schuettc/cdk-create-ami', 'subaud-tools/tools-workspace', 'schuettc/codex-reviewer',
+  'workshop-institute/workshops-2026', 'subaud-tools/hail', 'schuettc/bettor-help-platform', 'subaud-tools/casebook',
+  'schuettc/aws-samples-mirror', 'workshop-institute/brand', 'subaud-tools/cull', 'schuettc/old-blog',
+  'subaud-tools/sift', 'workshop-institute/infra',
+].map((name, i) => ({ name, private: i % 3 !== 2, updated: new Date(Date.now() - (i * i + 1) * 3600e3).toISOString() }));
+
+// The repo picker twice, as its tools use it: inline in a card with the mark
+// (the setup page's Choose the repos) and in a wide sheet with repos already
+// on the workspace and the typed field (billet's Add repos). ?open=repos
+// opens the sheet as the page loads.
+function repoPickDemo() {
+  const use = h('button', { class: 'kit-btn fill', type: 'button' });
+  const inline = repoPick({
+    repos: DEMO_REPOS,
+    mark: { on: '★ plans saved here', off: '☆', title: n => `Save the workspace's plans to ${n}` },
+    onChange: s => { use.textContent = words(s.chosen.length); },
+  });
+  const words = n => (n === 0 ? 'Continue with no repos' : `Use ${n} repo${n === 1 ? '' : 's'}`);
+  use.textContent = words(0);
+  const said = h('span', { class: 'kit-meta', role: 'status' });
+  const added = [];
+  function openAdd() {
+    let add = null;
+    const picker = repoPick({
+      repos: DEMO_REPOS,
+      have: { names: ['subaud-tools/tools-workspace', ...added], label: 'already on the workspace' },
+      typed: true,
+      onChange: st => {
+        add.textContent = st.chosen.length ? `Add ${st.chosen.length} repo${st.chosen.length === 1 ? '' : 's'}` : 'Add';
+        add.disabled = !st.chosen.length;
+      },
+    });
+    picker.scroll.classList.add('kit-sheet-scroll');
+    const s = sheet({
+      wide: true,
+      title: 'Add repos to alpha',
+      body: h('div', null, picker.el, h('p', { class: 'kit-field-hint' }, "Each repo is cloned into everyone's home within a minute, with each person's own GitHub login.")),
+      actions: [{ label: 'Add', fill: true, disabled: true, run() {
+        added.push(...picker.chosen());
+        said.textContent = `Added ${picker.chosen().join(', ')}.`;
+        s.close();
+      } }, { label: 'Cancel', run: () => s.close() }],
+    });
+    add = s.el.querySelector('.kit-btns .kit-btn');
+  }
+  const cards = [
+    card({ head: 'Choose the repos (repoPick with a mark)', stack: true, body: [
+      h('p', null, "Everyone you add to this workspace gets these repos. Star the one diazo saves the workspace's plans to."),
+      inline.el, h('div', { class: 'kit-btns' }, use),
+    ] }),
+    card({ head: 'Add repos (repoPick in a wide sheet)', body: [
+      h('div', { class: 'kit-btns' }, h('button', { class: 'kit-btn', type: 'button', dataset: { demo: 'add-repos' }, onclick: openAdd }, 'Add repos'), said),
+    ] }),
+  ];
+  if (new URLSearchParams(location.search).get('open') === 'repos') queueMicrotask(openAdd);
+  return cards;
+}
+
 // ?view=page: a page in the family's shape (billet's), the band under the bar,
 // then the step list down the left and the cards.
 function shapePage() {
@@ -534,6 +599,7 @@ function shapePage() {
     card({ head: 'Repos', body: [
       textField({ label: 'Add a repo', placeholder: 'owner/name', mono: true, hint: 'Everyone in the workspace gets it.' }).el,
     ] }),
+    ...repoPickDemo(),
     chipsDemo(),
     emptyCard({ text: 'No workspaces yet. A workspace is a machine of your own.', action: { label: 'New workspace', run() {} } }));
   // A settings card on settingLine: a line's height is the same with its
