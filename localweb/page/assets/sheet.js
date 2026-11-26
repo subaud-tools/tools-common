@@ -6,6 +6,10 @@
 // o.canDismiss, when given, is asked before Esc or a backdrop click closes the
 // sheet (a draft to keep); close() always closes. A sheet with actions ends
 // its button row with an error spot that handle.error(msg) fills and clears.
+// o.wide makes it a wide sheet (kit-sheet-wide, min(720px, 92vw)) for a sheet
+// that holds a list: when its body holds an element marked kit-sheet-scroll,
+// that element is the only part that scrolls, so the head, the rest of the
+// body and the button row stay in view.
 
 import { h, buttons } from './dom.js';
 
@@ -20,7 +24,7 @@ export function sheetOpen() {
 export function sheet(o = {}) {
   const returnTo = document.activeElement;
   const backdrop = h('div', { class: 'kit-backdrop' });
-  const el = h('div', { class: 'kit-float kit-sheet', role: 'dialog', 'aria-modal': 'true', tabindex: '-1' },
+  const el = h('div', { class: 'kit-float kit-sheet' + (o.wide ? ' kit-sheet-wide' : ''), role: 'dialog', 'aria-modal': 'true', tabindex: '-1' },
     o.title ? h('div', { class: 'kit-label kit-sheet-head' }, o.title) : null,
     o.body !== undefined ? h('div', { class: 'kit-sheet-body' }, o.body) : null,
     o.actions && o.actions.length ? buttons(o.actions) : null);

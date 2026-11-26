@@ -188,6 +188,28 @@ test('sheet: on a narrow sheet the error takes a line of its own rather than a s
   } finally { s.close(); }
 });
 
+test('sheet: wide is 720px, its list scrolls and its button row stays in the window', () => {
+  // run at --window-size=1280,900; headless Chrome keeps some of the height for itself
+  assert(innerWidth === 1280 && innerHeight >= 800, `a 1280×900 window, got ${innerWidth}×${innerHeight}`);
+  const rows = h('div', { class: 'kit-sheet-scroll' }, Array.from({ length: 30 }, (_, i) => h('p', null, `owner/repo-${i}`)));
+  const s = sheet({ wide: true, title: 'Add repos', body: h('div', null, h('input', { class: 'kit-input' }), rows), actions: [{ label: 'Add', fill: true }, { label: 'Cancel' }] });
+  try {
+    assert(s.el.classList.contains('kit-sheet-wide'), 'kit-sheet-wide');
+    eq(Math.round(s.el.getBoundingClientRect().width), 720, 'the wide width');
+    const btns = s.el.querySelector('.kit-btns').getBoundingClientRect();
+    assert(btns.bottom <= innerHeight && btns.height > 0, `the button row ends at ${Math.round(btns.bottom)}, inside ${innerHeight}`);
+    eq(s.el.scrollHeight <= s.el.clientHeight + 1, true, 'the sheet itself does not scroll');
+    assert(rows.scrollHeight > rows.clientHeight, 'the scroll region overflows');
+    rows.scrollTop = 100;
+    assert(rows.scrollTop > 0, 'and scrolls');
+  } finally { s.close(); }
+  const plain = sheet({ title: 'plain', body: h('div', { class: 'kit-sheet-scroll' }, 'x') });
+  try {
+    assert(!plain.el.classList.contains('kit-sheet-wide'), 'not wide');
+    eq(Math.round(plain.el.getBoundingClientRect().width), 480, 'a plain sheet is still 480px');
+  } finally { plain.close(); }
+});
+
 const tick = () => new Promise(r => setTimeout(r, 0));
 const actionBtn = c => c.el.querySelector('.kit-btns .kit-btn');
 const cancelBtn = c => [...c.el.querySelectorAll('.kit-btns .kit-btn')].find(b => b.textContent === 'Cancel');

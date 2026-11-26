@@ -117,10 +117,10 @@ func serveTestdata(t *testing.T) *httptest.Server {
 }
 
 // browserResult runs one suite and returns its result text.
-func browserResult(t *testing.T, name string) (string, error) {
+func browserResult(t *testing.T, name string, extra ...string) (string, error) {
 	t.Helper()
 	srv := serveTestdata(t)
-	dom, err := dumpDOM(t, srv.URL+"/run.html?t="+name)
+	dom, err := dumpDOM(t, srv.URL+"/run.html?t="+name, extra...)
 	if err != nil {
 		return "", err
 	}
@@ -135,9 +135,9 @@ type noResult struct{ dom string }
 
 func (e *noResult) Error() string { return "no result in page:\n" + e.dom }
 
-func runBrowser(t *testing.T, name string) {
+func runBrowser(t *testing.T, name string, extra ...string) {
 	t.Helper()
-	res, err := browserResult(t, name)
+	res, err := browserResult(t, name, extra...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestJSLive(t *testing.T)      { runBrowser(t, "live") }
 func TestJSDom(t *testing.T)       { runBrowser(t, "dom") }
 func TestJSKit(t *testing.T)       { runBrowser(t, "kit") }
 func TestJSSelection(t *testing.T) { runBrowser(t, "selection") }
-func TestJSSheet(t *testing.T)     { runBrowser(t, "sheet") }
+func TestJSSheet(t *testing.T)     { runBrowser(t, "sheet", "--window-size=1280,900") }
 func TestJSSearch(t *testing.T)    { runBrowser(t, "search") }
 func TestJSShare(t *testing.T)     { runBrowser(t, "share") }
 func TestJSEnter(t *testing.T)     { runBrowser(t, "enter") }
@@ -187,3 +187,4 @@ func TestJSGuide(t *testing.T)     { runBrowser(t, "guide") }
 func TestJSSpotlight(t *testing.T) { runBrowser(t, "spotlight") }
 func TestJSViewer(t *testing.T)    { runBrowser(t, "viewer") }
 func TestJSDiff(t *testing.T)      { runBrowser(t, "diff") }
+func TestJSRepopick(t *testing.T)  { runBrowser(t, "repopick") }

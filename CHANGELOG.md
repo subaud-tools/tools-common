@@ -4,6 +4,12 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.133.0
+
+### Added
+- page kit: `repoPick(o)`, the repo picker any page that selects repos reaches for: a search, owner chips with counts, a "Tick all N" line that half-ticks and covers every page, ten to a page, repos already chosen ticked and greyed, an optional "Not in the list?" field taking `owner/name`, a repo's link or an org's link (which ticks that owner's listed repos), and an optional single mark (a ★). The page hands it the list and reads back what is ticked. On the demo page inline and in a wide sheet.
+- page kit: `sheet({ wide: true })`, a sheet `min(720px, 92vw)` wide whose element marked `kit-sheet-scroll` is the only part that scrolls, so its head and buttons stay in view. Sheets without it are unchanged.
+
 ## 0.132.0
 
 ### Changed

@@ -178,7 +178,8 @@ export interface SheetHandle {
 /** returnFocus: where focus goes on close if the opener has left the page (default: the main region, else body). */
 /** canDismiss: asked before Esc or a backdrop click closes it; false keeps it open (a draft to keep). */
 /** With actions, the button row ends with an empty `.kit-sheet-error` (role alert) that error() fills. */
-export function sheet(o?: { title?: string; body?: Node | string; actions?: Button[]; onClose?(): void; returnFocus?: HTMLElement; canDismiss?(): boolean }): SheetHandle;
+/** wide: `.kit-sheet-wide`, min(720px, 92vw), for a sheet holding a list; an element in its body marked `.kit-sheet-scroll` is then the only part that scrolls, so the head, the rest of the body and the buttons stay in view. Without it the sheet is 480px. */
+export function sheet(o?: { title?: string; body?: Node | string; actions?: Button[]; onClose?(): void; returnFocus?: HTMLElement; canDismiss?(): boolean; wide?: boolean }): SheetHandle;
 
 export interface ConfirmHandle {
   el: HTMLElement;
@@ -1745,3 +1746,42 @@ export interface DiffBoxOptions {
 
 /** The diff drawn (section.kit-diff): head, why, then each hunk under its section (.kit-diff-section) as .kit-dl rows (same, del struck on red, add on green), unchanged lines counted in .kit-fold ("11 lines unchanged"). With no change: the box with the none words, or null without them. */
 export function diffBox(o: DiffBoxOptions): HTMLElement | null;
+
+// ---- repopick.js
+
+/** A repo the picker lists: its owner/name, whether it is private, and when it was last updated (RFC 3339). */
+export interface PickRepo {
+  name: string;
+  private?: boolean;
+  updated: string;
+}
+
+export interface RepoPickOptions {
+  /** The repos, drawn newest first; null while they are listed (until setRepos), as is leaving it out without typed. Left out with typed, only the typed field draws. */
+  repos?: PickRepo[] | null;
+  /** Repos already chosen elsewhere: drawn ticked, greyed (.kit-repo-had) and labelled with label; tick-all skips them and chosen() leaves them out. */
+  have?: { names: string[]; label: string };
+  /** The "Not in the list?" field (label and placeholder may be given): owner/name, a repo's GitHub link (with or without .git or a trailing path), or an org's link, which ticks every listed repo of that owner. A repo not in the list joins chosen() as typed; anything else shows a one-line .kit-repo-typed-error under it once committed (Enter or leaving the field). */
+  typed?: boolean | { label?: string; placeholder?: string };
+  /** One mark on a ticked repo (the setup page's ★): on (the marked repo's words), off (the other ticked repos'), title (a string, or the repo's name to one). It sits on the first ticked unless pressed elsewhere, and follows the first ticked when its repo is unticked. */
+  mark?: { on: string; off: string; title?: string | ((name: string) => string) };
+  /** Hears every change: a tick, tick-all, a mark, or the typed field. */
+  onChange?(state: { chosen: string[]; marked: string }): void;
+}
+
+export interface RepoPick {
+  el: HTMLElement;
+  /** The list's element (.kit-repo-rows): in a wide sheet, mark it kit-sheet-scroll. */
+  scroll: HTMLElement;
+  /** The ticked repos in the order they were ticked, then the typed one. */
+  chosen(): string[];
+  /** The marked repo ('' with no mark or nothing chosen). */
+  marked(): string;
+  /** Draws the list (ending listing or failed). */
+  setRepos(list: PickRepo[]): void;
+  /** Puts text in the list's place (default: the list couldn't be read); the typed field still works. */
+  failed(text?: string): void;
+}
+
+/** The repo picker (.kit-repo-pick): a search over owner/name, owner chips with counts and all (when there are two owners or more), the tick-all line in the setup chooser's words ("Tick all 30", "Tick all 12 in b", "Tick all 3 matches"; half-ticked when only some are, a press then unticking them all) with the count chosen, the list ten to a page with Previous and Next (each row a checkbox, the name and "private · 2 days ago"), and the optional typed field. Listing shows "Listing your repos…" with the search off. The page hands it the repos; it never calls GitHub. */
+export function repoPick(o?: RepoPickOptions): RepoPick;

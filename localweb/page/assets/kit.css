@@ -113,6 +113,44 @@ code { font: .88em var(--kit-mono); }
 .kit-sheet-error { flex: 1 1 10em; min-width: 0; margin: 0; color: var(--kit-danger); font: 12px var(--kit-mono); overflow-wrap: anywhere; }
 .kit-sheet-error:empty { display: none; }
 
+/* a wide sheet (sheet({ wide: true })) holds a list: with an element marked
+   kit-sheet-scroll in its body it is a column inside the sheet's max-height,
+   and that element, taking what is left, is the only part that scrolls; every
+   element between the body and it passes the room down */
+.kit-sheet.kit-sheet-wide { width: min(720px, 92vw); }
+.kit-sheet-wide:has(.kit-sheet-scroll) { display: flex; flex-direction: column; overflow: hidden; }
+.kit-sheet-wide:has(.kit-sheet-scroll) > * { flex: none; }
+.kit-sheet-wide > .kit-sheet-body:has(.kit-sheet-scroll),
+.kit-sheet-wide > .kit-sheet-body :has(.kit-sheet-scroll) { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.kit-sheet-wide .kit-sheet-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+
+/* the repo picker (repopick.js): the search, owner chips, the tick-all line
+   with the count chosen, the rows (a wide sheet's kit-sheet-scroll), the
+   pager and the typed field, one under another */
+.kit-repo-pick { display: flex; flex-direction: column; gap: 8px; }
+.kit-repo-pick > .kit-repo-owners { margin-top: 0; }
+.kit-repo-all { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; }
+.kit-repo-count, .kit-repo-meta, .kit-repo-pager { font: 12px var(--kit-mono); color: var(--kit-muted); }
+.kit-repo-count, .kit-repo-meta { white-space: nowrap; }
+.kit-repo-rows { border-top: 1px solid var(--kit-line); border-bottom: 1px solid var(--kit-line); }
+.kit-repo-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px; border-top: 1px solid var(--kit-line); font-size: 14px; }
+.kit-repo-row:first-child { border-top: 0; }
+.kit-repo-name { flex: 1 1 auto; min-width: 0; }
+.kit-repo-name > span { min-width: 0; overflow-wrap: anywhere; }
+.kit-repo-had { color: var(--kit-muted); }
+.kit-repo-mark { padding: 0; border: 0; background: none; font: 12px var(--kit-mono); color: var(--kit-muted); white-space: nowrap; cursor: pointer; }
+.kit-repo-mark.on { color: var(--kit-fg); }
+.kit-repo-msg { margin: 0; padding: 14px 2px; font-size: 14px; color: var(--kit-muted); }
+.kit-repo-pager { display: flex; align-items: center; gap: 10px; }
+.kit-repo-typed > .kit-field-label { margin: 6px 0 0; }
+.kit-repo-typed .kit-input { display: block; width: 100%; margin-top: 4px; }
+.kit-repo-typed-error { margin: 4px 0 0; font: 12px var(--kit-mono); color: var(--kit-danger); }
+.kit-repo-typed-error:empty { display: none; }
+@media (width <= 640px) {
+  .kit-repo-row { flex-wrap: wrap; row-gap: 2px; }
+  .kit-repo-meta { flex-basis: 100%; padding-left: 26px; }
+}
+
 /* the ? overlay */
 .kit-keys { width: min(440px, 92vw); font: 13px var(--kit-mono); }
 .kit-keys .kit-label { margin: 14px 0 6px; }
