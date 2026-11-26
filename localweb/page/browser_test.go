@@ -187,3 +187,4 @@ func TestJSGuide(t *testing.T)     { runBrowser(t, "guide") }
 func TestJSSpotlight(t *testing.T) { runBrowser(t, "spotlight") }
 func TestJSViewer(t *testing.T)    { runBrowser(t, "viewer") }
 func TestJSDiff(t *testing.T)      { runBrowser(t, "diff") }
+func TestJSRepopick(t *testing.T)  { runBrowser(t, "repopick") }

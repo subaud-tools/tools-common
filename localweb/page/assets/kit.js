@@ -31,3 +31,4 @@ export * from './spotlight.js';
 export * from './guide.js';
 export * from './viewer.js';
 export * from './diff.js';
+export * from './repopick.js';
