@@ -113,6 +113,17 @@ code { font: .88em var(--kit-mono); }
 .kit-sheet-error { flex: 1 1 10em; min-width: 0; margin: 0; color: var(--kit-danger); font: 12px var(--kit-mono); overflow-wrap: anywhere; }
 .kit-sheet-error:empty { display: none; }
 
+/* a wide sheet (sheet({ wide: true })) holds a list: with an element marked
+   kit-sheet-scroll in its body it is a column inside the sheet's max-height,
+   and that element, taking what is left, is the only part that scrolls; every
+   element between the body and it passes the room down */
+.kit-sheet.kit-sheet-wide { width: min(720px, 92vw); }
+.kit-sheet-wide:has(.kit-sheet-scroll) { display: flex; flex-direction: column; overflow: hidden; }
+.kit-sheet-wide:has(.kit-sheet-scroll) > * { flex: none; }
+.kit-sheet-wide > .kit-sheet-body:has(.kit-sheet-scroll),
+.kit-sheet-wide > .kit-sheet-body :has(.kit-sheet-scroll) { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.kit-sheet-wide .kit-sheet-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+
 /* the ? overlay */
 .kit-keys { width: min(440px, 92vw); font: 13px var(--kit-mono); }
 .kit-keys .kit-label { margin: 14px 0 6px; }

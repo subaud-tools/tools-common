@@ -178,7 +178,8 @@ export interface SheetHandle {
 /** returnFocus: where focus goes on close if the opener has left the page (default: the main region, else body). */
 /** canDismiss: asked before Esc or a backdrop click closes it; false keeps it open (a draft to keep). */
 /** With actions, the button row ends with an empty `.kit-sheet-error` (role alert) that error() fills. */
-export function sheet(o?: { title?: string; body?: Node | string; actions?: Button[]; onClose?(): void; returnFocus?: HTMLElement; canDismiss?(): boolean }): SheetHandle;
+/** wide: `.kit-sheet-wide`, min(720px, 92vw), for a sheet holding a list; an element in its body marked `.kit-sheet-scroll` is then the only part that scrolls, so the head, the rest of the body and the buttons stay in view. Without it the sheet is 480px. */
+export function sheet(o?: { title?: string; body?: Node | string; actions?: Button[]; onClose?(): void; returnFocus?: HTMLElement; canDismiss?(): boolean; wide?: boolean }): SheetHandle;
 
 export interface ConfirmHandle {
   el: HTMLElement;
