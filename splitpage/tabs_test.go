@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -691,5 +693,67 @@ func TestToolStartsOnceForPressesWhileItStarts(t *testing.T) {
 	defer mu.Unlock()
 	if calls != 1 {
 		t.Fatalf("Start called %d times, want 1", calls)
+	}
+}
+
+// pasteImage posts body as contentType to /api/split/paste and returns the
+// status and the path the server answered (empty when it refused).
+func pasteImage(t *testing.T, srv *httptest.Server, contentType string, body []byte) (int, string) {
+	t.Helper()
+	res, err := http.Post(srv.URL+"/api/split/paste", contentType, bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = res.Body.Close() }()
+	var got PasteResponse
+	if res.StatusCode == http.StatusOK {
+		if err := json.NewDecoder(res.Body).Decode(&got); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return res.StatusCode, got.Path
+}
+
+// onePixelPNG is a whole 1x1 PNG.
+var onePixelPNG = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82")
+
+func TestPasteSavesAnImage(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("TMPDIR", dir)
+	srv := serveTabs(t)
+	code, path := pasteImage(t, srv, "image/png", onePixelPNG)
+	if code != http.StatusOK {
+		t.Fatalf("paste a PNG: %d", code)
+	}
+	if filepath.Dir(path) != os.TempDir() || !strings.HasPrefix(filepath.Base(path), "paste-") || filepath.Ext(path) != ".png" {
+		t.Fatalf("path %q, want paste-*.png in %s", path, os.TempDir())
+	}
+	b, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(b, onePixelPNG) {
+		t.Fatalf("saved %d bytes (%v), want the pasted %d", len(b), err, len(onePixelPNG))
+	}
+	if fi, err := os.Stat(path); err != nil || fi.Mode().Perm() != 0o600 {
+		t.Fatalf("mode %v (%v), want 0600", fi.Mode().Perm(), err)
+	}
+}
+
+func TestPasteRefusesWhatIsNotAnImage(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+	srv := serveTabs(t)
+	if code, _ := pasteImage(t, srv, "text/plain", []byte("hello")); code != http.StatusUnsupportedMediaType {
+		t.Fatalf("text body: %d, want 415", code)
+	}
+	// Called a PNG, but its bytes say text.
+	if code, _ := pasteImage(t, srv, "image/png", []byte("hello")); code != http.StatusUnsupportedMediaType {
+		t.Fatalf("text called a PNG: %d, want 415", code)
+	}
+}
+
+func TestPasteRefusesAnImageOverTheCap(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+	srv := serveTabs(t)
+	big := append(append([]byte{}, onePixelPNG...), make([]byte, maxPaste)...)
+	if code, _ := pasteImage(t, srv, "image/png", big); code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("over the cap: %d, want 413", code)
 	}
 }

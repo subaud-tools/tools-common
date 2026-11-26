@@ -96,6 +96,7 @@ func runSuite(t *testing.T, restart bool) { runSuiteAt(t, restart, false) }
 func runSuiteAt(t *testing.T, restart, phone bool) {
 	chrome := needChrome(t)
 	t.Setenv("XDG_STATE_HOME", t.TempDir()) // localweb remembers its port there
+	t.Setenv("TMPDIR", t.TempDir())         // where a pasted image is saved
 
 	term := &stubTerminal{held: make(chan struct{})}
 	t.Cleanup(term.closeAll)

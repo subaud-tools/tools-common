@@ -98,6 +98,13 @@ type ToolRequest struct {
 	Name    string `json:"name"`
 }
 
+// PasteResponse answers POST /api/split/paste, whose body is a pasted
+// image's bytes with its Content-Type: Path is where the server saved it
+// (paste-*.<ext> in its temp folder), which the page types into the terminal.
+type PasteResponse struct {
+	Path string `json:"path"`
+}
+
 // ResizeType is a Resize message's type, always "resize".
 type ResizeType string
 
