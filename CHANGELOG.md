@@ -4,6 +4,14 @@ Root module releases are tagged `vX.Y.Z`; the separate `sqlitedb` and
 `mermaidkit` modules are tagged `sqlitedb/vX.Y.Z` and `mermaidkit/vX.Y.Z`. Releases before this file are described by their
 tags and PRs.
 
+## 0.135.0
+
+### Added
+- page kit: `sourceLine(source, {tags, word, url})` draws a source on one line under the text it backs: its tags first (`{text, tone}`, tone `ok` or `signal`), then every http(s) address as its own short link (the host and the last path segment, or the last three when that one is a number; the full address on hover; a new tab) and the words between as words, or the caller's own Node through `word`. Long pieces wrap instead of spilling past the column. A source with no address is kept as written.
+
+### Changed
+- page kit: `evidenceList` draws each entry's text, then its source line under it, then the output fold. A source that starts with an address and says more is no longer one link to a broken address; `o.source` is now called on each run of words rather than the whole source, and a url that is not the web shows as words. The `.kit-source` class is gone.
+
 ## 0.134.0
 
 ### Added
