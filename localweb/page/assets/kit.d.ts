@@ -1256,21 +1256,46 @@ export type CardText = string | Node;
 /** One evidence entry: what it shows and where it comes from. */
 export interface EvidenceEntry {
   text: string;
-  /** The run, job, file, resource or bill line it names. A web address is a link. */
+  /** The run, job, file, resource or bill line it names, drawn by sourceLine: each web address in it is its own short link. */
   source?: string;
-  /** Where source's words link to, when they aren't an address themselves: only http(s) or a #fragment; any other url is shown as code. */
+  /** Where source's words link to, when they aren't an address themselves: only http(s) or a #fragment; any other url is ignored. With no source, the link reads as url's short label. */
   url?: string;
   /** A command's output, folded under the entry. */
   output?: string;
 }
 
 export interface EvidenceListOptions {
-  /** Draws a source that isn't a web address as the caller's own link (a file it can open); null leaves it as code. */
-  source?(source: string): Node | null;
+  /** Draws a run of a source's words as the caller's own Node (a file it can open); null leaves it a span. Passed to sourceLine as word. */
+  source?(words: string): Node | null;
 }
 
-/** The entries as a list: a web source or url is a link, o.source draws others, else code; output folds. null for none. */
+/** Each entry's text, then its sourceLine under it, then its output folded. null for none. */
 export function evidenceList(entries: EvidenceEntry[] | null | undefined, o?: EvidenceListOptions): HTMLUListElement | null;
+
+/** A tag on a source line: the cases in ok, the assumed mark in signal. */
+export interface SourceTag {
+  text: string;
+  tone: 'ok' | 'signal';
+}
+
+export interface SourceLineOptions {
+  /** Drawn first, in order, as span.kit-tag.<tone>. */
+  tags?: SourceTag[];
+  /** May draw a run of words (the text between addresses) as the caller's own Node; null leaves it a span. */
+  word?(words: string): Node | null;
+  /** A link for the whole source: http(s) or a #fragment makes the words one link there (or, with no source, url's short label); any other url is ignored. */
+  url?: string;
+}
+
+/**
+ * One source on a line under the text it backs (div.kit-source-line): the tags,
+ * then the source cut in order into links and words. Each http(s) address, less
+ * a trailing , ; . ) ], is a link reading "host · last path segment" (the host
+ * alone with no path), its full address the title, opening in a new tab; each
+ * run of words between, trimmed of , ; and spaces, is a span or o.word's Node.
+ * It wraps anywhere rather than spill. null with neither a source nor a tag.
+ */
+export function sourceLine(source: string | null | undefined, o?: SourceLineOptions): HTMLDivElement | null;
 
 export interface OptionValue {
   id: string;

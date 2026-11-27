@@ -1,5 +1,5 @@
 import { test, eq, assert, fixture } from './harness.js';
-import { decisionCard, optionBlock, evidenceList, callRow } from '/_kit/decision.js';
+import { decisionCard, optionBlock, evidenceList, callRow, sourceLine } from '/_kit/decision.js';
 import { h } from '/_kit/dom.js';
 
 const text = el => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -148,28 +148,120 @@ test('optionBlock: a choice that was yours, and several visuals', () => {
   assert(!el.querySelector('details'), 'no includes, no fold');
 });
 
-test('evidenceList: a web source is a link, the caller draws others, else code; output folds', () => {
+test('evidenceList: text, then the source line under it, then the output fold; the caller draws words', () => {
   const opened = [];
   const ul = evidenceList([
     { text: 'Cold install', source: 'https://example.com/run/1' },
     { text: 'The transcript', source: 'documents/call.md', output: 'line one\nline two' },
     { text: 'Job log', source: 'ci.yml:12' },
+    { text: 'No source' },
   ], { source: s => (s.startsWith('documents/') ? h('a', { class: 'mine', onclick: () => opened.push(s) }, s) : null) });
   eq(ul.className, 'kit-evidence');
   const lis = ul.querySelectorAll('li');
-  const a = lis[0].querySelector('a');
-  eq([a.href, a.target, a.rel, a.textContent], ['https://example.com/run/1', '_blank', 'noreferrer', 'https://example.com/run/1']);
-  eq(lis[1].querySelector('a.mine').textContent, 'documents/call.md');
+  eq([...lis[1].children].map(c => c.tagName + (c.className ? '.' + c.className : '')), ['SPAN', 'DIV.kit-source-line', 'DETAILS.kit-fold']);
+  const a = lis[0].querySelector('.kit-source-line a');
+  eq([a.href, a.title, a.target, a.rel, a.textContent], ['https://example.com/run/1', 'https://example.com/run/1', '_blank', 'noreferrer', 'example.com · run/1']);
+  eq(lis[1].querySelector('.kit-source-line a.mine').textContent, 'documents/call.md');
   eq(text(lis[1].querySelector('details summary')), 'output');
   eq(lis[1].querySelector('pre.kit-output').textContent, 'line one\nline two');
-  eq([lis[2].querySelector('code.kit-source').textContent], ['ci.yml:12']);
+  eq(lis[2].querySelector('.kit-source-line').innerHTML, '<span>ci.yml:12</span>');
+  eq([...lis[3].children].map(c => c.tagName), ['SPAN']);
   eq(evidenceList([]), null);
   eq(evidenceList(undefined), null);
 });
 
-test('evidenceList: an entry with a url links its source words there', () => {
-  const a = evidenceList([{ text: 'Run', source: 'run 42', url: 'https://example.com/42' }]).querySelector('a');
-  eq([a.getAttribute('href'), a.textContent], ['https://example.com/42', 'run 42']);
+test('evidenceList: an entry with a url links its source words there, or its short label with no source', () => {
+  const ul = evidenceList([
+    { text: 'Run', source: 'run 42', url: 'https://example.com/42' },
+    { text: 'Bare', url: 'https://github.com/subaud-tools/diazo/pull/7' },
+  ]);
+  const [one, two] = ul.querySelectorAll('.kit-source-line a');
+  eq([one.getAttribute('href'), one.title, one.target, one.textContent], ['https://example.com/42', 'https://example.com/42', '_blank', 'run 42']);
+  eq([two.getAttribute('href'), two.textContent], ['https://github.com/subaud-tools/diazo/pull/7', 'github.com · diazo/pull/7']);
+});
+
+// pieces is the line's children as [tag, text, href].
+const pieces = el => [...el.children].map(c => [c.tagName, c.textContent, c.getAttribute('href')]);
+
+test('sourceLine: an address with words after it is a short link, then the words', () => {
+  const el = sourceLine('https://clerk.com/pricing, fetched 2026-10-25');
+  eq(el.className, 'kit-source-line');
+  eq(pieces(el), [['A', 'clerk.com · pricing', 'https://clerk.com/pricing'], ['SPAN', 'fetched 2026-10-25', null]]);
+  const a = el.querySelector('a');
+  eq([a.title, a.target, a.rel], ['https://clerk.com/pricing', '_blank', 'noreferrer']);
+});
+
+test('sourceLine: two addresses joined by a semicolon are two links', () => {
+  const el = sourceLine('https://docs.aws.amazon.com/lambda/latest/dg/microvms-networking.html; https://aws.amazon.com/lambda/pricing/');
+  eq(pieces(el), [
+    ['A', 'docs.aws.amazon.com · microvms-networking.html', 'https://docs.aws.amazon.com/lambda/latest/dg/microvms-networking.html'],
+    ['A', 'aws.amazon.com · pricing', 'https://aws.amazon.com/lambda/pricing/'],
+  ]);
+});
+
+test('sourceLine: a bracketed note after an address stays words', () => {
+  eq(pieces(sourceLine('https://github.com/subaud-tools/tools-ops/pull/482 (head after 7e728ed)')), [
+    ['A', 'github.com · tools-ops/pull/482', 'https://github.com/subaud-tools/tools-ops/pull/482'],
+    ['SPAN', '(head after 7e728ed)', null],
+  ]);
+});
+
+test('sourceLine: an address in brackets drops both brackets; query and fragment are not in the label', () => {
+  eq(pieces(sourceLine('the pricing page (https://clerk.com/pricing?plan=pro#teams)')), [
+    ['SPAN', 'the pricing page', null],
+    ['A', 'clerk.com · pricing', 'https://clerk.com/pricing?plan=pro#teams'],
+  ]);
+  eq(pieces(sourceLine('see https://clerk.com/pricing. Then .github/workflows/ci.yml')), [
+    ['SPAN', 'see', null],
+    ['A', 'clerk.com · pricing', 'https://clerk.com/pricing'],
+    ['SPAN', 'Then .github/workflows/ci.yml', null],
+  ]);
+});
+
+test('sourceLine: a source with no address is words; a site alone reads as its host', () => {
+  eq(pieces(sourceLine('internal/web/project.ts:656 at muda origin/main')), [['SPAN', 'internal/web/project.ts:656 at muda origin/main', null]]);
+  eq(pieces(sourceLine('https://clerk.com')), [['A', 'clerk.com', 'https://clerk.com']]);
+  eq(pieces(sourceLine('https://clerk.com/')), [['A', 'clerk.com', 'https://clerk.com/']]);
+});
+
+test('sourceLine: tags come first in order; word may draw a run of words; null with nothing', () => {
+  const el = sourceLine('documents/auth-notes.md, see https://clerk.com/docs', {
+    tags: [{ text: '7 of 7 sessions', tone: 'ok' }, { text: 'assumed', tone: 'signal' }],
+    word: w => (w.startsWith('documents/') ? h('span', { class: 'file' }, w) : null),
+  });
+  eq([...el.children].map(c => [c.tagName, c.className, c.textContent]), [
+    ['SPAN', 'kit-tag ok', '7 of 7 sessions'],
+    ['SPAN', 'kit-tag signal', 'assumed'],
+    ['SPAN', 'file', 'documents/auth-notes.md, see'],
+    ['A', '', 'clerk.com · docs'],
+  ]);
+  eq(pieces(sourceLine('', { tags: [{ text: 'assumed', tone: 'signal' }] })), [['SPAN', 'assumed', null]]);
+  eq(sourceLine(''), null);
+  eq(sourceLine(undefined, { tags: [] }), null);
+});
+
+test('sourceLine: a source with no address is kept exactly as written', () => {
+  eq(pieces(sourceLine('. (current directory)')), [['SPAN', '. (current directory)', null]]);
+  eq(pieces(sourceLine('notes[')), [['SPAN', 'notes[', null]]);
+});
+
+test('evidenceList: a url that is not the web stays as words; an address as the words is labelled short', () => {
+  const ul = evidenceList([
+    { text: 'Trace', url: 's3://logs/run-42' },
+    { text: 'Both', source: 'https://github.com/subaud-tools/diazo/pull/7', url: 'https://github.com/subaud-tools/diazo/pull/7' },
+  ]);
+  const [one, two] = ul.querySelectorAll('.kit-source-line');
+  eq(pieces(one), [['SPAN', 's3://logs/run-42', null]]);
+  eq(pieces(two), [['A', 'github.com · diazo/pull/7', 'https://github.com/subaud-tools/diazo/pull/7']]);
+});
+
+test('sourceLine: a long address wraps inside a narrow column', () => {
+  const fx = fixture();
+  const box = h('div', { style: 'width: 120px' }, sourceLine('https://example.com/a/very-long-segment-without-any-place-to-break-at-all-in-it'));
+  fx.append(box);
+  const line = box.firstChild;
+  eq(getComputedStyle(line).overflowWrap, 'anywhere');
+  assert(line.scrollWidth <= 120, `line is ${line.scrollWidth}px wide`);
 });
 
 test('callRow: what it took, instead and why, with Reverse', () => {
@@ -218,7 +310,7 @@ test('evidenceList: a url that is not the web or a fragment is not a link', () =
   ]);
   const lis = ul.querySelectorAll('li');
   eq([lis[0].querySelector('a'), lis[1].querySelector('a')], [null, null]);
-  eq([lis[0].querySelector('code.kit-source').textContent, lis[1].querySelector('code.kit-source').textContent], ['run 1', 'run 2']);
+  eq([text(lis[0].querySelector('.kit-source-line')), text(lis[1].querySelector('.kit-source-line'))], ['run 1', 'run 2']);
   eq(lis[2].querySelector('a').getAttribute('href'), '#card-F2');
 });
 
