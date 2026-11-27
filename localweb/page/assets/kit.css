@@ -1312,9 +1312,8 @@ textarea.kit-draft { min-height: 72px; field-sizing: content; max-height: 360px;
 .kit-source-line .kit-tag { border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; line-height: 16px; }
 .kit-source-line .kit-tag.ok { color: var(--kit-ok); }
 .kit-source-line .kit-tag.signal { color: var(--kit-signal); }
-.kit-source-line a { color: var(--kit-link, #3b6aa8); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, currentColor 35%, transparent); }
+.kit-source-line a { color: var(--kit-signal); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, currentColor 35%, transparent); }
 .kit-source-line a::before { content: "\2197\00a0"; opacity: .6; }
-.kit-source-line .file { color: var(--kit-link, #3b6aa8); cursor: pointer; }
 .kit-output { font: 12px var(--kit-mono); white-space: pre-wrap; margin: 4px 0; }
 .kit-evidence-fold { margin-top: 16px; }
 .kit-decision .kit-card-body > .kit-btns { margin-top: 12px; flex-wrap: wrap; gap: 8px; }

@@ -160,7 +160,7 @@ test('evidenceList: text, then the source line under it, then the output fold; t
   const lis = ul.querySelectorAll('li');
   eq([...lis[1].children].map(c => c.tagName + (c.className ? '.' + c.className : '')), ['SPAN', 'DIV.kit-source-line', 'DETAILS.kit-fold']);
   const a = lis[0].querySelector('.kit-source-line a');
-  eq([a.href, a.title, a.target, a.rel, a.textContent], ['https://example.com/run/1', 'https://example.com/run/1', '_blank', 'noreferrer', 'example.com · 1']);
+  eq([a.href, a.title, a.target, a.rel, a.textContent], ['https://example.com/run/1', 'https://example.com/run/1', '_blank', 'noreferrer', 'example.com · run/1']);
   eq(lis[1].querySelector('.kit-source-line a.mine').textContent, 'documents/call.md');
   eq(text(lis[1].querySelector('details summary')), 'output');
   eq(lis[1].querySelector('pre.kit-output').textContent, 'line one\nline two');
@@ -177,7 +177,7 @@ test('evidenceList: an entry with a url links its source words there, or its sho
   ]);
   const [one, two] = ul.querySelectorAll('.kit-source-line a');
   eq([one.getAttribute('href'), one.title, one.target, one.textContent], ['https://example.com/42', 'https://example.com/42', '_blank', 'run 42']);
-  eq([two.getAttribute('href'), two.textContent], ['https://github.com/subaud-tools/diazo/pull/7', 'github.com · 7']);
+  eq([two.getAttribute('href'), two.textContent], ['https://github.com/subaud-tools/diazo/pull/7', 'github.com · diazo/pull/7']);
 });
 
 // pieces is the line's children as [tag, text, href].
@@ -201,16 +201,20 @@ test('sourceLine: two addresses joined by a semicolon are two links', () => {
 
 test('sourceLine: a bracketed note after an address stays words', () => {
   eq(pieces(sourceLine('https://github.com/subaud-tools/tools-ops/pull/482 (head after 7e728ed)')), [
-    ['A', 'github.com · 482', 'https://github.com/subaud-tools/tools-ops/pull/482'],
+    ['A', 'github.com · tools-ops/pull/482', 'https://github.com/subaud-tools/tools-ops/pull/482'],
     ['SPAN', '(head after 7e728ed)', null],
   ]);
 });
 
-test('sourceLine: an address in brackets leaves its closing bracket out; query and fragment are not in the label', () => {
+test('sourceLine: an address in brackets drops both brackets; query and fragment are not in the label', () => {
   eq(pieces(sourceLine('the pricing page (https://clerk.com/pricing?plan=pro#teams)')), [
-    ['SPAN', 'the pricing page (', null],
+    ['SPAN', 'the pricing page', null],
     ['A', 'clerk.com · pricing', 'https://clerk.com/pricing?plan=pro#teams'],
-    ['SPAN', ')', null],
+  ]);
+  eq(pieces(sourceLine('see https://clerk.com/pricing. Then .github/workflows/ci.yml')), [
+    ['SPAN', 'see', null],
+    ['A', 'clerk.com · pricing', 'https://clerk.com/pricing'],
+    ['SPAN', 'Then .github/workflows/ci.yml', null],
   ]);
 });
 

@@ -44,21 +44,34 @@ const ADDRESS = /https?:\/\/\S+/gi;
 const TRAIL = /[,;.)\]]+$/;
 
 // shortLabel is an address as its host, then · and its last non-empty path
-// segment (no query or fragment); the host alone with no path past it.
+// segment (no query or fragment); a number alone says nothing, so a last
+// segment of digits takes the two before it too (tools-ops/pull/482). The host
+// alone with no path past it.
 function shortLabel(address) {
   let u;
   try { u = new URL(address); } catch { return address; }
-  const last = u.pathname.split('/').filter(Boolean).pop();
-  return last ? `${u.host} · ${last}` : u.host;
+  const segs = u.pathname.split('/').filter(Boolean);
+  if (!segs.length) return u.host;
+  const tail = /^\d+$/.test(segs[segs.length - 1]) ? segs.slice(-3) : segs.slice(-1);
+  return `${u.host} · ${tail.join('/')}`;
 }
 
 // sourcePieces cuts a source into addresses and runs of words, in order. A run
-// is trimmed of the separators around it (, ; and spaces); an empty one goes.
+// is trimmed of the separators around it (, ; and spaces) and of a bracket
+// whose partner was on the address's other side, so 'see (https://x)' is
+// 'see' then the link, and of a full stop the address ended a sentence with;
+// a run left empty goes.
+const unmatched = (t, open, close) => (t.split(open).length > t.split(close).length);
 function sourcePieces(source) {
   const s = String(source || '');
   const out = [];
   const words = w => {
-    const t = w.replace(/^[\s,;]+|[\s,;]+$/g, '');
+    let t = w.replace(/^[\s,;]+|[\s,;]+$/g, '');
+    for (const [o, c] of [['(', ')'], ['[', ']']]) {
+      if (t.endsWith(o) && unmatched(t, o, c)) t = t.slice(0, -1);
+      if (t.startsWith(c) && unmatched(t, c, o)) t = t.slice(1);
+    }
+    t = t.replace(/^\.(\s|$)/, '').replace(/^[\s,;]+|[\s,;]+$/g, '');
     if (t) out.push({ words: t });
   };
   let at = 0;
