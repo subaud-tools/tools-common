@@ -35,28 +35,76 @@ function led(lead, v) {
   return el;
 }
 
-const isLink = s => /^https?:\/\//i.test(s);
 // A url an entry may link to: the web or a fragment, as renderMarkdown's links.
 const safeHref = s => /^(https?:\/\/|#)/i.test(s);
 
-// evidenceList is a list of evidence entries ({text, source, url, output}): a
-// web source, or an entry's url when it is the web or a fragment, is a link; o.source(source), when given, may
-// draw any other as the caller's link (null to leave it); else it is code. An
-// entry's output folds under it. null for none.
+// An address in a source: http(s):// and what follows up to a space, less any
+// trailing , ; . ) ] (they stay words).
+const ADDRESS = /https?:\/\/\S+/gi;
+const TRAIL = /[,;.)\]]+$/;
+
+// shortLabel is an address as its host, then · and its last non-empty path
+// segment (no query or fragment); the host alone with no path past it.
+function shortLabel(address) {
+  let u;
+  try { u = new URL(address); } catch { return address; }
+  const last = u.pathname.split('/').filter(Boolean).pop();
+  return last ? `${u.host} · ${last}` : u.host;
+}
+
+// sourcePieces cuts a source into addresses and runs of words, in order. A run
+// is trimmed of the separators around it (, ; and spaces); an empty one goes.
+function sourcePieces(source) {
+  const s = String(source || '');
+  const out = [];
+  const words = w => {
+    const t = w.replace(/^[\s,;]+|[\s,;]+$/g, '');
+    if (t) out.push({ words: t });
+  };
+  let at = 0;
+  for (const m of s.matchAll(ADDRESS)) {
+    const address = m[0].replace(TRAIL, '');
+    words(s.slice(at, m.index));
+    out.push({ address });
+    at = m.index + address.length;
+  }
+  words(s.slice(at));
+  return out;
+}
+
+const link = (href, label) => h('a', { href, title: href, target: '_blank', rel: 'noreferrer' }, label);
+
+// sourceLine is one source under the text it backs: o.tags ({text, tone ok or
+// signal}) first, then each address as a short link (its full address the
+// title, in a new tab) and each run of words as a span, or o.word(words)'s Node
+// when it gives one. o.url, when it is the web or a fragment, makes the words
+// one link there instead (evidenceList's entry url). null with neither a
+// source nor a tag.
+export function sourceLine(source, o = {}) {
+  const tags = (o.tags || []).map(t => h('span', { class: `kit-tag ${t.tone}` }, t.text));
+  let parts;
+  if (o.url && safeHref(o.url)) {
+    parts = source ? [link(o.url, source)] : [link(o.url, o.url.startsWith('#') ? o.url : shortLabel(o.url))];
+  } else {
+    parts = sourcePieces(source).map(p =>
+      p.address ? link(p.address, shortLabel(p.address)) : (o.word && o.word(p.words)) || h('span', null, p.words));
+  }
+  if (!tags.length && !parts.length) return null;
+  return h('div', { class: 'kit-source-line' }, ...tags, ...parts);
+}
+
+// evidenceList is a list of evidence entries ({text, source, url, output}):
+// each entry's text, then its source line under it (sourceLine; an entry's url,
+// when it is the web or a fragment, links the source's words there), then its
+// output folded. o.source(words), when given, may draw a run of words as the
+// caller's own Node (null to leave it). null for none.
 export function evidenceList(entries, o = {}) {
   if (!entries?.length) return null;
-  const source = e => {
-    if (!e.source && !e.url) return null;
-    const href = e.url && safeHref(e.url) ? e.url : isLink(e.source) ? e.source : '';
-    if (href) return h('a', { href, target: '_blank', rel: 'noreferrer' }, e.source || e.url);
-    const words = e.source || e.url;
-    return (e.source && o.source && o.source(e.source)) ?? h('code', { class: 'kit-source' }, words);
-  };
   return h('ul', { class: 'kit-evidence' }, entries.map(e =>
     h('li', null,
       h('span', null, e.text),
       ' ',
-      source(e),
+      e.source || e.url ? sourceLine(e.source, { url: e.url, word: o.source }) : null,
       e.output ? fold('output', h('pre', { class: 'kit-output' }, e.output)) : null)));
 }
 
