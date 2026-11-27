@@ -240,6 +240,21 @@ test('sourceLine: tags come first in order; word may draw a run of words; null w
   eq(sourceLine(undefined, { tags: [] }), null);
 });
 
+test('sourceLine: a source with no address is kept exactly as written', () => {
+  eq(pieces(sourceLine('. (current directory)')), [['SPAN', '. (current directory)', null]]);
+  eq(pieces(sourceLine('notes[')), [['SPAN', 'notes[', null]]);
+});
+
+test('evidenceList: a url that is not the web stays as words; an address as the words is labelled short', () => {
+  const ul = evidenceList([
+    { text: 'Trace', url: 's3://logs/run-42' },
+    { text: 'Both', source: 'https://github.com/subaud-tools/diazo/pull/7', url: 'https://github.com/subaud-tools/diazo/pull/7' },
+  ]);
+  const [one, two] = ul.querySelectorAll('.kit-source-line');
+  eq(pieces(one), [['SPAN', 's3://logs/run-42', null]]);
+  eq(pieces(two), [['A', 'github.com · diazo/pull/7', 'https://github.com/subaud-tools/diazo/pull/7']]);
+});
+
 test('sourceLine: a long address wraps inside a narrow column', () => {
   const fx = fixture();
   const box = h('div', { style: 'width: 120px' }, sourceLine('https://example.com/a/very-long-segment-without-any-place-to-break-at-all-in-it'));

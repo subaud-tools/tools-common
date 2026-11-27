@@ -57,31 +57,38 @@ function shortLabel(address) {
 }
 
 // sourcePieces cuts a source into addresses and runs of words, in order. A run
-// is trimmed of the separators around it (, ; and spaces) and of a bracket
-// whose partner was on the address's other side, so 'see (https://x)' is
-// 'see' then the link, and of a full stop the address ended a sentence with;
-// a run left empty goes.
+// touches an address is trimmed, on the side that touches it, of the
+// separators (, ; and spaces), of a bracket whose partner was on the address's
+// other side, so 'see (https://x)' is 'see' then the link, and of a full stop
+// the address ended a sentence with; a run left empty goes. A source with no
+// address is one run, as written.
 const unmatched = (t, open, close) => (t.split(open).length > t.split(close).length);
 function sourcePieces(source) {
   const s = String(source || '');
   const out = [];
-  const words = w => {
-    let t = w.replace(/^[\s,;]+|[\s,;]+$/g, '');
-    for (const [o, c] of [['(', ')'], ['[', ']']]) {
-      if (t.endsWith(o) && unmatched(t, o, c)) t = t.slice(0, -1);
-      if (t.startsWith(c) && unmatched(t, c, o)) t = t.slice(1);
+  const words = (w, before, after) => {
+    let t = w;
+    if (after) {
+      t = t.replace(/^[\s,;]+/, '');
+      if (/^[)\]]/.test(t) && unmatched(t, t[0], t[0] === ')' ? '(' : '[')) t = t.slice(1);
+      t = t.replace(/^\.(\s|$)/, '').replace(/^[\s,;]+/, '');
     }
-    t = t.replace(/^\.(\s|$)/, '').replace(/^[\s,;]+|[\s,;]+$/g, '');
+    if (before) {
+      t = t.replace(/[\s,;]+$/, '');
+      if (/[([]$/.test(t) && unmatched(t, t.at(-1), t.at(-1) === '(' ? ')' : ']')) t = t.slice(0, -1);
+      t = t.replace(/[\s,;]+$/, '');
+    }
+    t = t.trim();
     if (t) out.push({ words: t });
   };
   let at = 0;
   for (const m of s.matchAll(ADDRESS)) {
     const address = m[0].replace(TRAIL, '');
-    words(s.slice(at, m.index));
+    words(s.slice(at, m.index), true, at > 0);
     out.push({ address });
     at = m.index + address.length;
   }
-  words(s.slice(at));
+  words(s.slice(at), false, at > 0);
   return out;
 }
 
@@ -91,15 +98,18 @@ const link = (href, label) => h('a', { href, title: href, target: '_blank', rel:
 // signal}) first, then each address as a short link (its full address the
 // title, in a new tab) and each run of words as a span, or o.word(words)'s Node
 // when it gives one. o.url, when it is the web or a fragment, makes the words
-// one link there instead (evidenceList's entry url). null with neither a
-// source nor a tag.
+// one link there instead (evidenceList's entry url), labelled short when the
+// words are themselves an address or missing; any other url stays as words.
+// null with neither a source nor a tag.
 export function sourceLine(source, o = {}) {
   const tags = (o.tags || []).map(t => h('span', { class: `kit-tag ${t.tone}` }, t.text));
   let parts;
+  const short = u => (u.startsWith('#') ? u : shortLabel(u));
   if (o.url && safeHref(o.url)) {
-    parts = source ? [link(o.url, source)] : [link(o.url, o.url.startsWith('#') ? o.url : shortLabel(o.url))];
+    const words = String(source || '').trim();
+    parts = [link(o.url, words && !/^https?:\/\/\S+$/i.test(words) ? words : short(words || o.url))];
   } else {
-    parts = sourcePieces(source).map(p =>
+    parts = sourcePieces(source || o.url).map(p =>
       p.address ? link(p.address, shortLabel(p.address)) : (o.word && o.word(p.words)) || h('span', null, p.words));
   }
   if (!tags.length && !parts.length) return null;
